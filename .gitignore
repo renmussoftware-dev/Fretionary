@@ -1,0 +1,8 @@
+node_modules/
+.expo/
+dist/
+*.tar.gz
+.env
+.env.local
+ios/
+android/

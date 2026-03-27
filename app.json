@@ -1,0 +1,38 @@
+{
+  "expo": {
+    "name": "Nodi",
+    "slug": "nodi",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "dark",
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#0F0F11"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.renmussoftware.nodi"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#0F0F11"
+      },
+      "package": "com.renmussoftware.nodi",
+      "predictiveBackGestureEnabled": false
+    },
+    "web": {
+      "favicon": "./assets/favicon.png",
+      "bundler": "metro"
+    },
+    "plugins": [
+      "expo-router"
+    ],
+    "scheme": "nodi",
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}
