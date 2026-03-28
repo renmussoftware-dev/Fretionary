@@ -12,7 +12,7 @@ Built with Expo (React Native) + TypeScript.
 
 ```bash
 npm install
-npx expo start
+npx expo start --tunnel --clear
 ```
 
 Scan the QR code with **Expo Go** on your phone (iOS or Android).
