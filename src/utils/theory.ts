@@ -230,24 +230,48 @@ export function getChordVoicings(root: number, chordKey: string): ChordVoicing[]
       }
     }
 
-    // Verify all chord tones still covered after muting
+    // Re-enforce contiguous block after any muting above
+    const firstPlayed = playable.findIndex(f => f !== null);
+    if (firstPlayed >= 0) {
+      let lastP = firstPlayed;
+      for (let i = firstPlayed + 1; i < 6; i++) {
+        if (playable[i] !== null) {
+          if (i > lastP + 1) { playable[i] = null; } else { lastP = i; }
+        }
+      }
+    }
+
+    // Verify coverage
     const playableCovered = new Set<number>();
     playable.forEach((f, i) => {
       if (f !== null) playableCovered.add((OPEN_STRINGS[5 - i] + f) % 12);
     });
     if (![...chordSet].every(n => playableCovered.has(n))) continue;
+    if (playable.filter(f => f !== null).length < Math.min(3, chordNotes.length)) continue;
+
+    // Reject unplayable stretches (adjacent played strings > 3 frets apart)
+    let unplayable = false;
+    let prevF: number | null = null;
+    for (let i = 0; i < 6; i++) {
+      const f = playable[i];
+      if (f === null || f === 0) { prevF = null; continue; }
+      if (prevF !== null && Math.abs(f - prevF) > 3) { unplayable = true; break; }
+      prevF = f;
+    }
+    if (unplayable) continue;
 
     const baseFret = pressed.length > 0 ? Math.min(...pressed) : 1;
     const displayBase = startFret === 0 ? 1 : baseFret;
-
-    if (results.some(v => Math.abs(v.baseFret - displayBase) <= 1)) continue;
-
     const isOpen = startFret === 0 && frets.some(f => f === 0);
-    const label = isOpen ? 'Open position' : `${displayBase}${displayBase === 1 ? 'st' : displayBase === 2 ? 'nd' : displayBase === 3 ? 'rd' : 'th'} fret`;
-    const position = isOpen ? 'Open' : displayBase <= 3 ? 'Low' : displayBase <= 7 ? 'Mid' : 'High';
 
-    results.push({ frets: playable, baseFret: displayBase, rootFret, label, position });
-    if (results.length >= 5) break;
+    // One voicing per neck region — no duplicates
+    const region = isOpen ? 'open' : displayBase <= 5 ? 'low' : displayBase <= 9 ? 'mid' : 'high';
+    if (results.some(v => v.position === region)) continue;
+
+    const label = isOpen ? 'Open position' : `${displayBase}${displayBase === 1 ? 'st' : displayBase === 2 ? 'nd' : displayBase === 3 ? 'rd' : 'th'} fret`;
+
+    results.push({ frets: playable, baseFret: displayBase, rootFret, label, position: region });
+    if (results.length >= 3) break;
   }
 
   return results;
