@@ -93,103 +93,72 @@ export function noteLabel(
   return NOTES[noteIdx];
 }
 
+import { VOICING_TEMPLATES } from '../constants/voicings';
+
 export interface ChordVoicing {
   frets: (number | null)[];
   baseFret: number;
-  rootFret: number;    // actual fret where the root note sits
+  rootFret: number;
   label: string;
   position: string;
 }
 
+// Find which fret a given note falls on a given string at or above minFret
+function findNoteFret(stringIdx: number, noteClass: number, minFret: number): number | null {
+  // stringIdx 0=low E, 5=high e; OPEN_STRINGS index 5=low E, 0=high e
+  const openNote = OPEN_STRINGS[5 - stringIdx];
+  for (let f = minFret; f <= minFret + 12; f++) {
+    if ((openNote + f) % 12 === noteClass) return f;
+  }
+  return null;
+}
+
 export function getChordVoicings(root: number, chordKey: string): ChordVoicing[] {
-  const ch = CHORDS[chordKey];
-  if (!ch) return [];
-  const chordNotes = ch.intervals.map((iv: number) => (root + iv) % 12);
-  const chordSet = new Set(chordNotes);
+  const templates = VOICING_TEMPLATES[chordKey];
+  if (!templates || templates.length === 0) return [];
+
   const results: ChordVoicing[] = [];
-  const windows = [0, 2, 4, 5, 7, 9, 10, 12];
 
-  for (const startFret of windows) {
-    const endFret = startFret === 0 ? 4 : startFret + 4;
-    const frets: (number | null)[] = [];
-    let rootFound = false;
-    let rootFret = 1;
-    const covered = new Set<number>();
+  for (const tmpl of templates) {
+    // Find the lowest fret for the root on the root string
+    // Try across the neck in 4 positions
+    const rootStringOpen = OPEN_STRINGS[5 - tmpl.rootString];
+    let rootFret: number | null = null;
 
-    for (let s = 5; s >= 0; s--) {
-      let best: number | null = null;
-      for (let f = startFret === 0 ? 0 : startFret; f <= endFret; f++) {
-        const n = (OPEN_STRINGS[s] + f) % 12;
-        if (chordSet.has(n)) {
-          if (best === null) best = f;
-          if (n === root && !rootFound && s >= 3) { best = f; rootFound = true; rootFret = f; break; }
-        }
-      }
-      frets.push(best);
-      if (best !== null) covered.add((OPEN_STRINGS[s] + best) % 12);
-    }
-
-    if (![...chordSet].every(n => covered.has(n))) continue;
-    const usedStrings = frets.filter(f => f !== null).length;
-    if (usedStrings < Math.min(4, chordNotes.length)) continue;
-    if (!rootFound && chordNotes.length > 1) continue;
-
-    const pressed = frets.filter(f => f !== null && f > 0) as number[];
-    if (pressed.length > 0 && Math.max(...pressed) - Math.min(...pressed) > 4) continue;
-
-    // ── Playability pass: mute strings that break contiguous fingering ──
-    // frets[0]=low E, frets[5]=high e
-    // Rule 1: find the lowest played string (root side), then mute any
-    //   string that has a gap (null) between it and the root string.
-    // Rule 2: working from highest string downward, mute strings that
-    //   are duplicate chord tones, keeping playability tight.
-    const playable = [...frets] as (number | null)[];
-
-    // Find root string index (lowest string with root note)
-    let rootStringIdx = -1;
-    for (let i = 0; i < 6; i++) {
-      const f = playable[i];
-      if (f !== null && (OPEN_STRINGS[5 - i] + f) % 12 === root) {
-        rootStringIdx = i; break;
+    // Find root fret: lowest position that gives a playable barre shape
+    for (let rf = 0; rf <= 12; rf++) {
+      if ((rootStringOpen + rf) % 12 === root) {
+        rootFret = rf;
+        break;
       }
     }
 
-    // Mute strings below rootStringIdx (they can\'t be played cleanly)
-    if (rootStringIdx > 0) {
-      for (let i = 0; i < rootStringIdx; i++) playable[i] = null;
-    }
+    if (rootFret === null) continue;
 
-    // Find the contiguous block from rootStringIdx upward
-    // Mute any string that has a gap after it in the played block
-    if (rootStringIdx >= 0) {
-      let lastPlayed = rootStringIdx;
-      for (let i = rootStringIdx + 1; i < 6; i++) {
-        if (playable[i] !== null) {
-          // Check for gap — if previous string (i-1) was null and i>lastPlayed+1, mute this too
-          if (i > lastPlayed + 1) { playable[i] = null; }
-          else { lastPlayed = i; }
-        }
-      }
-    }
-
-    // Verify all chord tones still covered after muting
-    const playableCovered = new Set<number>();
-    playable.forEach((f, i) => {
-      if (f !== null) playableCovered.add((OPEN_STRINGS[5 - i] + f) % 12);
+    // Build absolute fret positions by adding rootFret to each template offset
+    const frets: (number | null)[] = tmpl.frets.map(f => {
+      if (f === null) return null;
+      return rootFret! + f;
     });
-    if (![...chordSet].every(n => playableCovered.has(n))) continue;
 
-    const baseFret = pressed.length > 0 ? Math.min(...pressed) : 1;
-    const displayBase = startFret === 0 ? 1 : baseFret;
+    const baseFret = rootFret;
+    const pressed = frets.filter(f => f !== null && f > 0) as number[];
+    const displayBase = pressed.length > 0 ? Math.min(...pressed) : rootFret;
 
-    if (results.some(v => Math.abs(v.baseFret - displayBase) <= 1)) continue;
+    // Skip if shape goes above fret 12 (too high to be practical)
+    if (pressed.length > 0 && Math.max(...pressed) > 12) continue;
 
-    const isOpen = startFret === 0 && frets.some(f => f === 0);
-    const label = isOpen ? 'Open position' : `${displayBase}${displayBase === 1 ? 'st' : displayBase === 2 ? 'nd' : displayBase === 3 ? 'rd' : 'th'} fret`;
-    const position = isOpen ? 'Open' : displayBase <= 3 ? 'Low' : displayBase <= 7 ? 'Mid' : 'High';
+    // For open shapes (rootFret=0) with open strings, keep as is
+    // For barre shapes, ensure minimum fret isn't 0 unless it's an open chord
+    // (some templates have 0s that become open strings — that's fine for rootFret=0)
 
-    results.push({ frets: playable, baseFret: displayBase, rootFret, label, position });
-    if (results.length >= 5) break;
+    results.push({
+      frets,
+      baseFret: displayBase,
+      rootFret: baseFret,
+      label: rootFret === 0 ? tmpl.label : `${tmpl.label} (${rootFret}fr)`,
+      position: tmpl.position,
+    });
   }
 
   return results;
