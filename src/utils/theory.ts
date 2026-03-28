@@ -172,6 +172,37 @@ export function getChordVoicings(root: number, chordKey: string): ChordVoicing[]
       }
     }
 
+    // Rule 3: only trim the single highest string if it is a duplicate tone
+    // AND the voicing has a fret span >= 3 (stretched shape worth simplifying).
+    // Tight/open voicings keep all their strings — don't strip a full G Major open chord.
+    const playablePressed = playable.filter(f => f !== null && f > 0) as number[];
+    const fretSpan = playablePressed.length > 0
+      ? Math.max(...playablePressed) - Math.min(...playablePressed)
+      : 0;
+
+    if (fretSpan >= 2) {
+      // Only trim the single topmost played string if it's a duplicate
+      for (let i = 5; i >= 1; i--) {
+        if (playable[i] === null) continue;
+        const thisTone = (OPEN_STRINGS[5 - i] + (playable[i] as number)) % 12;
+        let duplicate = false;
+        for (let j = 0; j < i; j++) {
+          if (playable[j] !== null && (OPEN_STRINGS[5 - j] + (playable[j] as number)) % 12 === thisTone) {
+            duplicate = true; break;
+          }
+        }
+        if (!duplicate) break;
+        const temp = playable[i];
+        playable[i] = null;
+        const stillCovered = new Set<number>();
+        playable.forEach((f, idx) => { if (f !== null) stillCovered.add((OPEN_STRINGS[5 - idx] + f) % 12); });
+        if (![...chordSet].every(n => stillCovered.has(n))) {
+          playable[i] = temp; break; // needed for coverage, restore
+        }
+        break; // only trim one string at most
+      }
+    }
+
     // Verify all chord tones still covered after muting
     const playableCovered = new Set<number>();
     playable.forEach((f, i) => {
