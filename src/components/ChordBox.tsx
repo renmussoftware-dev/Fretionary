@@ -235,7 +235,7 @@ export default function ChordBox({ root, chordKey, compact = false }: Props) {
             <TouchableOpacity key={i} onPress={() => setVoicingIdx(i)} activeOpacity={0.7}
               style={[styles.pill, i === safeIdx && styles.pillActive]}>
               <Text style={[styles.pillText, i === safeIdx && styles.pillTextActive]}>
-                {v.position.charAt(0).toUpperCase() + v.position.slice(1)}
+                {v.position}
               </Text>
             </TouchableOpacity>
           ))}

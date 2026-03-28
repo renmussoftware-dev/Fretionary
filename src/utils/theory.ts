@@ -172,108 +172,24 @@ export function getChordVoicings(root: number, chordKey: string): ChordVoicing[]
       }
     }
 
-    // Rule 2b: mute the string immediately above the root if it's a non-root
-    // 3rd/7th that also appears higher — avoids muddy bass clusters.
-    // Only on barre chords, and only if the string after it is also played
-    // (so muting doesn't create a gap that breaks the whole contiguous block).
-    if (startFret > 0 && rootStringIdx >= 0 && rootStringIdx + 1 < 6 && playable[rootStringIdx + 1] !== null) {
-      const adjacentFret = playable[rootStringIdx + 1] as number;
-      const adjacentTone = (OPEN_STRINGS[5 - (rootStringIdx + 1)] + adjacentFret) % 12;
-      const adjacentInterval = (adjacentTone - root + 12) % 12;
-      // Only mute 3rds and 7ths, and only when the string after is also played
-      // (muting a string between two played strings breaks contiguity)
-      // Only mute if rsi+2 is null — muting rsi+1 would otherwise create a gap
-      const nextStringEmpty = rootStringIdx + 2 >= 6 || playable[rootStringIdx + 2] === null;
-      if ([3, 4, 10, 11].includes(adjacentInterval) && nextStringEmpty) {
-        const appearsHigher = playable.slice(rootStringIdx + 2).some((f, offset) => {
-          if (f === null) return false;
-          return (OPEN_STRINGS[5 - (rootStringIdx + 2 + offset)] + f) % 12 === adjacentTone;
-        });
-        if (appearsHigher) {
-          const temp = playable[rootStringIdx + 1];
-          playable[rootStringIdx + 1] = null;
-          const stillCovered = new Set<number>();
-          playable.forEach((f, idx) => { if (f !== null) stillCovered.add((OPEN_STRINGS[5 - idx] + f) % 12); });
-          if (![...chordSet].every(n => stillCovered.has(n))) {
-            playable[rootStringIdx + 1] = temp;
-          }
-        }
-      }
-    }
-
-    // Rule 3: only trim the single highest string if it is a duplicate tone
-    // AND the voicing has a fret span >= 3 (stretched shape worth simplifying).
-    // Tight/open voicings keep all their strings — don't strip a full G Major open chord.
-    const playablePressed = playable.filter(f => f !== null && f > 0) as number[];
-    const fretSpan = playablePressed.length > 0
-      ? Math.max(...playablePressed) - Math.min(...playablePressed)
-      : 0;
-
-    if (fretSpan >= 2) {
-      // Only trim the single topmost played string if it's a duplicate
-      for (let i = 5; i >= 1; i--) {
-        if (playable[i] === null) continue;
-        const thisTone = (OPEN_STRINGS[5 - i] + (playable[i] as number)) % 12;
-        let duplicate = false;
-        for (let j = 0; j < i; j++) {
-          if (playable[j] !== null && (OPEN_STRINGS[5 - j] + (playable[j] as number)) % 12 === thisTone) {
-            duplicate = true; break;
-          }
-        }
-        if (!duplicate) break;
-        const temp = playable[i];
-        playable[i] = null;
-        const stillCovered = new Set<number>();
-        playable.forEach((f, idx) => { if (f !== null) stillCovered.add((OPEN_STRINGS[5 - idx] + f) % 12); });
-        if (![...chordSet].every(n => stillCovered.has(n))) {
-          playable[i] = temp; break; // needed for coverage, restore
-        }
-        break; // only trim one string at most
-      }
-    }
-
-    // Re-enforce contiguous block after any muting above
-    const firstPlayed = playable.findIndex(f => f !== null);
-    if (firstPlayed >= 0) {
-      let lastP = firstPlayed;
-      for (let i = firstPlayed + 1; i < 6; i++) {
-        if (playable[i] !== null) {
-          if (i > lastP + 1) { playable[i] = null; } else { lastP = i; }
-        }
-      }
-    }
-
-    // Verify coverage
+    // Verify all chord tones still covered after muting
     const playableCovered = new Set<number>();
     playable.forEach((f, i) => {
       if (f !== null) playableCovered.add((OPEN_STRINGS[5 - i] + f) % 12);
     });
     if (![...chordSet].every(n => playableCovered.has(n))) continue;
-    if (playable.filter(f => f !== null).length < Math.min(3, chordNotes.length)) continue;
-
-    // Reject unplayable stretches (adjacent played strings > 3 frets apart)
-    let unplayable = false;
-    let prevF: number | null = null;
-    for (let i = 0; i < 6; i++) {
-      const f = playable[i];
-      if (f === null || f === 0) { prevF = null; continue; }
-      if (prevF !== null && Math.abs(f - prevF) > 3) { unplayable = true; break; }
-      prevF = f;
-    }
-    if (unplayable) continue;
 
     const baseFret = pressed.length > 0 ? Math.min(...pressed) : 1;
     const displayBase = startFret === 0 ? 1 : baseFret;
+
+    if (results.some(v => Math.abs(v.baseFret - displayBase) <= 1)) continue;
+
     const isOpen = startFret === 0 && frets.some(f => f === 0);
-
-    // One voicing per neck region — no duplicates
-    const region = isOpen ? 'open' : displayBase <= 5 ? 'low' : displayBase <= 9 ? 'mid' : 'high';
-    if (results.some(v => v.position === region)) continue;
-
     const label = isOpen ? 'Open position' : `${displayBase}${displayBase === 1 ? 'st' : displayBase === 2 ? 'nd' : displayBase === 3 ? 'rd' : 'th'} fret`;
+    const position = isOpen ? 'Open' : displayBase <= 3 ? 'Low' : displayBase <= 7 ? 'Mid' : 'High';
 
-    results.push({ frets: playable, baseFret: displayBase, rootFret, label, position: region });
-    if (results.length >= 3) break;
+    results.push({ frets: playable, baseFret: displayBase, rootFret, label, position });
+    if (results.length >= 5) break;
   }
 
   return results;
