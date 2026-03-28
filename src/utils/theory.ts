@@ -93,61 +93,60 @@ export function noteLabel(
   return NOTES[noteIdx];
 }
 
-// Build chord voicings for box diagram (standard cowboy/barre shapes)
 export interface ChordVoicing {
-  frets: (number | null)[]; // null = muted, 0 = open, 1+ = fret number
-  fingers: (number | null)[];
+  frets: (number | null)[];
   baseFret: number;
-  barre?: { fret: number; fromString: number; toString: number };
-  name: string;
+  label: string;
+  position: string;
 }
 
 export function getChordVoicings(root: number, chordKey: string): ChordVoicing[] {
-  const chordNotes = getChordNotes(root, chordKey);
-  const voicings: ChordVoicing[] = [];
+  const ch = CHORDS[chordKey];
+  if (!ch) return [];
+  const chordNotes = ch.intervals.map((iv: number) => (root + iv) % 12);
+  const chordSet = new Set(chordNotes);
+  const results: ChordVoicing[] = [];
+  const windows = [0, 2, 4, 5, 7, 9, 10, 12];
 
-  // Search for voicings in first 14 frets
-  const fretRange = 4;
-  for (let baseFret = 0; baseFret <= 10; baseFret++) {
-    const fretAssignments: (number | null)[] = new Array(6).fill(null);
-    let valid = true;
+  for (const startFret of windows) {
+    const endFret = startFret === 0 ? 4 : startFret + 4;
+    const frets: (number | null)[] = [];
     let rootFound = false;
-    let notesCovered = new Set<number>();
+    const covered = new Set<number>();
 
     for (let s = 5; s >= 0; s--) {
-      let bestFret: number | null = null;
-      for (let f = baseFret === 0 ? 0 : baseFret; f <= baseFret + fretRange; f++) {
+      let best: number | null = null;
+      for (let f = startFret === 0 ? 0 : startFret; f <= endFret; f++) {
         const n = (OPEN_STRINGS[s] + f) % 12;
-        if (chordNotes.includes(n)) {
-          if (bestFret === null) bestFret = f;
-          if (n === root && !rootFound) { bestFret = f; rootFound = true; break; }
+        if (chordSet.has(n)) {
+          if (best === null) best = f;
+          if (n === root && !rootFound && s >= 3) { best = f; rootFound = true; break; }
         }
       }
-      fretAssignments[s] = bestFret;
-      if (bestFret !== null) {
-        notesCovered.add((OPEN_STRINGS[s] + bestFret) % 12);
-      }
+      frets.push(best);
+      if (best !== null) covered.add((OPEN_STRINGS[s] + best) % 12);
     }
 
-    const chordSet = new Set(chordNotes);
-    const coveredAll = [...chordSet].every(n => notesCovered.has(n));
-    const usedStrings = fretAssignments.filter(f => f !== null).length;
+    if (![...chordSet].every(n => covered.has(n))) continue;
+    const usedStrings = frets.filter(f => f !== null).length;
+    if (usedStrings < Math.min(4, chordNotes.length)) continue;
+    if (!rootFound && chordNotes.length > 1) continue;
 
-    if (coveredAll && usedStrings >= Math.min(4, chordNotes.length) && rootFound) {
-      const nonNullFrets = fretAssignments.filter(f => f !== null && f > 0) as number[];
-      const minFret = nonNullFrets.length ? Math.min(...nonNullFrets) : 0;
-      const maxFret = nonNullFrets.length ? Math.max(...nonNullFrets) : 0;
-      if (maxFret - minFret <= fretRange) {
-        voicings.push({
-          frets: fretAssignments,
-          fingers: new Array(6).fill(null),
-          baseFret: baseFret === 0 ? 1 : baseFret,
-          name: `${NOTES[root]} ${chordKey}`,
-        });
-        if (voicings.length >= 3) break;
-      }
-    }
+    const pressed = frets.filter(f => f !== null && f > 0) as number[];
+    if (pressed.length > 0 && Math.max(...pressed) - Math.min(...pressed) > 4) continue;
+
+    const baseFret = pressed.length > 0 ? Math.min(...pressed) : 1;
+    const displayBase = startFret === 0 ? 1 : baseFret;
+
+    if (results.some(v => Math.abs(v.baseFret - displayBase) <= 1)) continue;
+
+    const isOpen = startFret === 0 && frets.some(f => f === 0);
+    const label = isOpen ? 'Open position' : `${displayBase}${displayBase === 1 ? 'st' : displayBase === 2 ? 'nd' : displayBase === 3 ? 'rd' : 'th'} fret`;
+    const position = isOpen ? 'Open' : displayBase <= 3 ? 'Low' : displayBase <= 7 ? 'Mid' : 'High';
+
+    results.push({ frets, baseFret: displayBase, label, position });
+    if (results.length >= 5) break;
   }
 
-  return voicings.slice(0, 3);
+  return results;
 }

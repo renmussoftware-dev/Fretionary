@@ -8,6 +8,7 @@ import Svg, { Circle, Line, Text as SvgText, G, Rect } from 'react-native-svg';
 import { COLORS, SPACE, RADIUS } from '../../src/constants/theme';
 import { NOTES, NOTE_DISPLAY, CHORDS, OPEN_STRINGS } from '../../src/constants/music';
 import { PROGRESSIONS, GENRES, type Progression } from '../../src/constants/progressions';
+import ChordBox from '../../src/components/ChordBox';
 import { useStore } from '../../src/store/useStore';
 
 type SubMode = 'common' | 'diatonic' | 'custom';
@@ -22,39 +23,6 @@ const DIATONIC_MAJOR = [
   { degree: 11, chordType: 'Diminished', numeral: 'vii\u00b0' },
 ];
 
-function buildVoicing(root: number, chordKey: string) {
-  const ch = CHORDS[chordKey];
-  if (!ch) return null;
-  const chordNotes = ch.intervals.map((iv: number) => (root + iv) % 12);
-  const chordSet = new Set(chordNotes);
-  for (let base = 0; base <= 9; base++) {
-    const frets: (number | null)[] = [];
-    let rootFound = false;
-    const covered = new Set<number>();
-    for (let s = 5; s >= 0; s--) {
-      let best: number | null = null;
-      const end = base === 0 ? 4 : base + 4;
-      for (let f = base === 0 ? 0 : base; f <= end; f++) {
-        const n = (OPEN_STRINGS[s] + f) % 12;
-        if (chordSet.has(n)) {
-          if (best === null) best = f;
-          if (n === root && !rootFound) { best = f; rootFound = true; break; }
-        }
-      }
-      frets.push(best);
-      if (best !== null) covered.add((OPEN_STRINGS[s] + best) % 12);
-    }
-    const coveredAll = [...chordSet].every((n: number) => covered.has(n));
-    const used = frets.filter(f => f !== null).length;
-    if (coveredAll && used >= Math.min(4, chordNotes.length) && rootFound) {
-      const nonNull = frets.filter(f => f !== null && f > 0) as number[];
-      const maxF = nonNull.length ? Math.max(...nonNull) : 0;
-      const minF = nonNull.length ? Math.min(...nonNull) : 0;
-      if (maxF - minF <= 4) return { frets, baseFret: base === 0 ? 1 : base };
-    }
-  }
-  return null;
-}
 
 // Fretboard constants
 const FBL = 28, FBT = 20, FBFW = 46, FBSH = 28, FBNW = 5, FBDR = 11, FBFRETS = 12, FBSTR = 6;
@@ -130,70 +98,18 @@ function ProgFretboard({ chordRoot, chordKey, animVal }: {
   );
 }
 
-// Mini chord box constants
-const BPL = 18, BPT = 22, BFH = 18, BSG = 15, BDR = 6, BF = 5, BS = 6;
-
 function MiniBox({ root, chordKey, numeral, active, onPress }: {
   root: number; chordKey: string; numeral: string; active: boolean; onPress: () => void;
 }) {
-  const v = buildVoicing(root, chordKey);
-  const svgW = BPL + (BS - 1) * BSG + 16;
-  const svgH = BPT + BF * BFH + 14;
-  function sx(s: number) { return BPL + s * BSG; }
-  function fy(f: number) { return BPT + f * BFH; }
   return (
-    <TouchableOpacity onPress={onPress} activeOpacity={0.75}
+    <TouchableOpacity onPress={onPress} activeOpacity={0.8}
       style={[styles.miniBox, active && styles.miniBoxActive]}>
       <Text style={[styles.miniNum, active && styles.miniNumActive]}>{numeral}</Text>
-      {v ? (
-        <Svg width={svgW} height={svgH} viewBox={`0 0 ${svgW} ${svgH}`}>
-          {v.baseFret > 1 && (
-            <SvgText x={BPL - 10} y={fy(1) + 3} fontSize={7} fill={COLORS.textMuted} textAnchor="middle">
-              {v.baseFret}fr
-            </SvgText>
-          )}
-          <Line x1={sx(0)} y1={fy(0)} x2={sx(BS - 1)} y2={fy(0)}
-            stroke={v.baseFret <= 1 ? '#888680' : '#2E2E38'} strokeWidth={v.baseFret <= 1 ? 4 : 1} />
-          {Array.from({ length: BF }, (_, i) => (
-            <Line key={i} x1={sx(0)} y1={fy(i + 1)} x2={sx(BS - 1)} y2={fy(i + 1)} stroke="#2E2E38" strokeWidth={0.7} />
-          ))}
-          {Array.from({ length: BS }, (_, s) => (
-            <Line key={s} x1={sx(s)} y1={fy(0)} x2={sx(s)} y2={fy(BF)} stroke="#3A3A46" strokeWidth={0.7 + (5 - s) * 0.12} />
-          ))}
-          {v.frets.map((f, s) => {
-            if (f === null) return (
-              <SvgText key={s} x={sx(s)} y={fy(0) - 4} textAnchor="middle" fontSize={7} fill={COLORS.textMuted}>x</SvgText>
-            );
-            if (f === 0) return (
-              <Circle key={s} cx={sx(s)} cy={fy(0) - 5} r={3.5} fill="none" stroke={COLORS.textMuted} strokeWidth={1} />
-            );
-            const row = f - v.baseFret + 1;
-            if (row < 1 || row > BF) return null;
-            const cy = fy(row) - BFH / 2;
-            const ni = (OPEN_STRINGS[s] + f) % 12;
-            const isRoot = ni === root;
-            return (
-              <G key={s}>
-                <Circle cx={sx(s)} cy={cy} r={BDR}
-                  fill={isRoot ? '#E8D44D' : active ? '#534AB7' : '#3A3A46'}
-                  stroke={isRoot ? '#C4A800' : active ? '#3C3489' : '#52525F'} strokeWidth={1} />
-                <SvgText x={sx(s)} y={cy + 2.5} textAnchor="middle" fontSize={5.5} fontWeight="600"
-                  fill={isRoot ? '#5C4400' : '#fff'}>{NOTES[ni]}</SvgText>
-              </G>
-            );
-          })}
-        </Svg>
-      ) : (
-        <View style={{ width: svgW, height: svgH, alignItems: 'center', justifyContent: 'center' }}>
-          <Text style={{ color: COLORS.textFaint, fontSize: 10 }}>—</Text>
-        </View>
-      )}
-      <Text style={[styles.miniName, active && styles.miniNameActive]} numberOfLines={1}>
-        {NOTES[root]}{chordKey === 'Major' ? '' : chordKey === 'Minor' ? 'm' : ` ${chordKey}`}
-      </Text>
+      <ChordBox root={root} chordKey={chordKey} compact />
     </TouchableOpacity>
   );
 }
+
 
 export default function ProgressionsScreen() {
   const { root, setRoot } = useStore();
