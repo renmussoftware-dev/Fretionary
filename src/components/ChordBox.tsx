@@ -100,7 +100,7 @@ export default function ChordBox({ root, chordKey, compact = false }: Props) {
           />
         ))}
 
-        {/* Dots + open/muted markers */}
+        {/* Dots + open/muted markers — s=0=low E (frets[0]), s=5=high e (frets[5]) */}
         {voicing.frets.map((f, s) => {
           if (f === null) {
             return (
@@ -130,7 +130,7 @@ export default function ChordBox({ root, chordKey, compact = false }: Props) {
           if (fretRow < 1 || fretRow > FRETS_SHOWN) return null;
 
           const cy = fy(fretRow) - fh / 2;
-          const ni = (OPEN_STRINGS[s] + f) % 12;
+          const ni = (OPEN_STRINGS[5 - s] + f) % 12;
           const isRoot = ni === root;
           const intv = (ni - root + 12) % 12;
           const chIv = ch?.intervals.map((i: number) => i % 12) ?? [];
@@ -168,7 +168,7 @@ export default function ChordBox({ root, chordKey, compact = false }: Props) {
         })}
 
         {/* String name labels at bottom */}
-        {!compact && ['e', 'B', 'G', 'D', 'A', 'E'].map((name, s) => (
+        {!compact && ['E', 'A', 'D', 'G', 'B', 'e'].map((name, s) => (
           <SvgText key={s}
             x={sx(s)} y={svgH - 3}
             textAnchor="middle" fontSize={9} fill={COLORS.textFaint}
