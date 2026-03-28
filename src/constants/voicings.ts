@@ -97,7 +97,7 @@ export const VOICING_TEMPLATES: Record<string, VoicingTemplate[]> = {
   // ── Major 7 ──────────────────────────────────────────────────────────
   'Major 7': [
     // Emaj7 shape barre
-    { frets: [0, 2, 1, 1, 0, 0], rootString: 0, strings: 6, span: 2, label: 'Emaj7 shape', position: 'low' },
+    { frets: [0, null, 1, 1, 0, 0], rootString: 0, strings: 5, span: 1, label: 'Emaj7 shape', position: 'low' },
     // Jazz maj7: A root, 4 strings
     { frets: [null, 0, 2, 1, 2, null], rootString: 1, strings: 4, span: 2, label: 'Jazz maj7', position: 'mid' },
     // High jazz maj7: D root
