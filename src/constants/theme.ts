@@ -1,5 +1,5 @@
-// Nodi — guitar theory, everywhere on the neck
-export const APP_NAME = 'Nodi';
+// Fretionary — guitar theory, everywhere on the neck
+export const APP_NAME = 'Fretionary';
 
 import { Dimensions } from 'react-native';
 

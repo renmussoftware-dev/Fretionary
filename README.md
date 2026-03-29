@@ -1,8 +1,8 @@
-# Nodi
+# Fretionary
 
 A guitar learning app for iOS and Android. Interactive fretboard visualizer covering all major/minor scales, modes, chords, extended voicings, and the CAGED system.
 
-**Every note on the neck is a node. Nodi shows you all of them.**
+**The fretboard dictionary. Every scale, chord, and progression — everywhere on the neck.**
 
 Built with Expo (React Native) + TypeScript.
 
@@ -29,7 +29,7 @@ npx expo start --android   # requires Android Studio
 ## Project structure
 
 ```
-nodi/
+fretionary/
 ├── app/                        # expo-router screens
 │   ├── _layout.tsx             # Root layout (GestureHandler, StatusBar)
 │   └── (tabs)/
@@ -162,7 +162,7 @@ eas submit --platform android
 - **Bundle ID (iOS):** `com.renmussoftware.nodi`
 - **Package (Android):** `com.renmussoftware.nodi`
 - **Scheme:** `nodi`
-- **Slug:** `nodi`
+- **Slug:** `fretionary`
 
 ---
 
