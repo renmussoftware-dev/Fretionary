@@ -132,7 +132,28 @@ export default function ChordBox({ root, chordKey, compact = false }: Props) {
           }
 
           const fretRow = f - voicing.baseFret + 1;
-          if (fretRow < 1 || fretRow > FRETS_SHOWN) return null;
+          // Notes below baseFret (negative-offset strings) render as small colored circles
+          // above the nut line, similar to how open strings are shown
+          if (fretRow < 1) {
+            const ni2 = (OPEN_STRINGS[5 - s] + f) % 12;
+            const isRoot2 = ni2 === root;
+            const intv2 = (ni2 - root + 12) % 12;
+            const chIv2 = ch?.intervals.map((i: number) => i % 12) ?? [];
+            const ivPos2 = chIv2.indexOf(intv2);
+            let fill2 = '#3A3A46', stroke2 = '#52525F', text2 = '#C0BEB8';
+            if (isRoot2) { fill2='#E8D44D'; stroke2='#C4A800'; text2='#5C4400'; }
+            else if (ivPos2===1) { fill2='#E24B4A'; stroke2='#A32D2D'; text2='#fff'; }
+            else if (ivPos2===2) { fill2='#1D9E75'; stroke2='#0F6E56'; text2='#fff'; }
+            else if (ivPos2>=3) { fill2='#378ADD'; stroke2='#185FA5'; text2='#fff'; }
+            const aboveY = fy(0) - (compact ? 6 : 8);
+            return (
+              <G key={s}>
+                <Circle cx={sx(s)} cy={aboveY} r={compact ? 4 : 5} fill={fill2} stroke={stroke2} strokeWidth={1.5} />
+                {!compact && <SvgText x={sx(s)} y={aboveY+4} textAnchor="middle" fontSize={7} fontWeight="600" fill={text2}>{NOTES[ni2]}</SvgText>}
+              </G>
+            );
+          }
+          if (fretRow > FRETS_SHOWN) return null;
 
           const cy = fy(fretRow) - fh / 2;
           const ni = (OPEN_STRINGS[5 - s] + f) % 12;
