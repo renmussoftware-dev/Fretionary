@@ -36,8 +36,7 @@
     },
     "plugins": [
       "expo-router",
-      "expo-av",
-      "react-native-purchases"
+      "expo-av"
     ],
     "scheme": "fretionary",
     "experiments": {
