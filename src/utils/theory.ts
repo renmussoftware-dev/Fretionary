@@ -120,12 +120,10 @@ export function getChordVoicings(root: number, chordKey: string): ChordVoicing[]
   const results: ChordVoicing[] = [];
 
   for (const tmpl of templates) {
-    // Find the lowest fret for the root on the root string
-    // Try across the neck in 4 positions
     const rootStringOpen = OPEN_STRINGS[5 - tmpl.rootString];
     let rootFret: number | null = null;
 
-    // Find root fret: lowest position that gives a playable barre shape
+    // Find root fret on the template's root string
     for (let rf = 0; rf <= 12; rf++) {
       if ((rootStringOpen + rf) % 12 === root) {
         rootFret = rf;
@@ -135,27 +133,24 @@ export function getChordVoicings(root: number, chordKey: string): ChordVoicing[]
 
     if (rootFret === null) continue;
 
-    // Build absolute fret positions by adding rootFret to each template offset
+    // Build absolute fret positions — offsets can be negative (strings tuned
+    // above the root string may need frets below rootFret to voice the chord)
     const frets: (number | null)[] = tmpl.frets.map(f => {
       if (f === null) return null;
-      return rootFret! + f;
+      const abs = rootFret! + f;
+      return abs < 0 ? null : abs; // mute if goes below nut
     });
 
-    const baseFret = rootFret;
     const pressed = frets.filter(f => f !== null && f > 0) as number[];
     const displayBase = pressed.length > 0 ? Math.min(...pressed) : rootFret;
 
-    // Skip if shape goes above fret 12 (too high to be practical)
+    // Skip shapes that go above fret 12
     if (pressed.length > 0 && Math.max(...pressed) > 12) continue;
-
-    // For open shapes (rootFret=0) with open strings, keep as is
-    // For barre shapes, ensure minimum fret isn't 0 unless it's an open chord
-    // (some templates have 0s that become open strings — that's fine for rootFret=0)
 
     results.push({
       frets,
       baseFret: displayBase,
-      rootFret: baseFret,
+      rootFret,
       label: rootFret === 0 ? tmpl.label : `${tmpl.label} (${rootFret}fr)`,
       position: tmpl.position,
     });
