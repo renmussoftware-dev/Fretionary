@@ -13,7 +13,12 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.renmussoftware.nodi"
+      "bundleIdentifier": "com.renmussoftware.nodi",
+      "buildNumber": "1",
+      "infoPlist": {
+        "NSMicrophoneUsageDescription": "Fretionary uses the microphone for tuning features.",
+        "UIBackgroundModes": []
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -29,7 +34,9 @@
       "bundler": "metro"
     },
     "plugins": [
-      "expo-router"
+      "expo-router",
+      "expo-av",
+      "react-native-purchases"
     ],
     "scheme": "fretionary",
     "experiments": {
