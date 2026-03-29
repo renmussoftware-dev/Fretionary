@@ -2,7 +2,7 @@ import React, { useState, useRef } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Animated, Pressable } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { COLORS, SPACE, RADIUS } from '../../src/constants/theme';
-import { NOTES, NOTE_DISPLAY, SCALES } from '../../src/constants/music';
+import { NOTES, NOTE_DISPLAY, SCALES, COLORS as MUSIC_COLORS } from '../../src/constants/music';
 import { useStore } from '../../src/store/useStore';
 import { getScaleNotes } from '../../src/utils/theory';
 
@@ -76,12 +76,35 @@ export default function ScalesScreen() {
 
           <Text style={styles.subLabel}>Notes</Text>
           <View style={styles.noteGrid}>
-            {scaleNotes.map((ni, i) => (
-              <View key={i} style={[styles.noteBadge, ni === root && styles.rootBadge]}>
-                <Text style={[styles.noteBadgeNote, ni === root && styles.rootNote]}>{NOTES[ni]}</Text>
-                <Text style={[styles.noteBadgeDeg, ni === root && styles.rootDeg]}>{sc?.degrees[i]}</Text>
-              </View>
-            ))}
+            {scaleNotes.map((ni, i) => {
+              const intv = (ni - root + 12) % 12;
+              // Build semitone offsets from scale steps
+              let _cum = 0;
+              const _semitones: number[] = [0];
+              for (const _s of (sc?.steps ?? [])) { _cum += _s; _semitones.push(_cum % 12); }
+              const pos = _semitones.indexOf(intv);
+              // Color by scale degree position
+              let bg = COLORS.surfaceHigh, border = COLORS.border, noteClr = COLORS.text, degClr = COLORS.textMuted;
+              if (ni === root) {
+                bg = MUSIC_COLORS.root.fill; border = MUSIC_COLORS.root.stroke;
+                noteClr = MUSIC_COLORS.root.text; degClr = '#8B6800';
+              } else if (pos === 2) {
+                bg = MUSIC_COLORS.third.fill; border = MUSIC_COLORS.third.stroke;
+                noteClr = MUSIC_COLORS.third.text; degClr = 'rgba(255,255,255,0.7)';
+              } else if (pos === 4) {
+                bg = MUSIC_COLORS.fifth.fill; border = MUSIC_COLORS.fifth.stroke;
+                noteClr = MUSIC_COLORS.fifth.text; degClr = 'rgba(255,255,255,0.7)';
+              } else if (pos >= 6) {
+                bg = MUSIC_COLORS.extension.fill; border = MUSIC_COLORS.extension.stroke;
+                noteClr = MUSIC_COLORS.extension.text; degClr = 'rgba(255,255,255,0.7)';
+              }
+              return (
+                <View key={i} style={[styles.noteBadge, { backgroundColor: bg, borderColor: border }]}>
+                  <Text style={[styles.noteBadgeNote, { color: noteClr }]}>{NOTES[ni]}</Text>
+                  <Text style={[styles.noteBadgeDeg, { color: degClr }]}>{sc?.degrees[i]}</Text>
+                </View>
+              );
+            })}
           </View>
 
           <Text style={styles.subLabel}>Interval formula</Text>

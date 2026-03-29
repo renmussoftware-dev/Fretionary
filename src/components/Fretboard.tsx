@@ -87,6 +87,21 @@ export default function Fretboard() {
       if (pos >= 3) return { ...MUSIC_COLORS.extension, alpha };
     }
 
+    if (mode === 'scales') {
+      // Build cumulative semitone offsets from steps
+      const sc = SCALES[scaleKey];
+      const intv = (noteIdx - root + 12) % 12;
+      if (sc) {
+        let cum = 0;
+        const semitones = [0];
+        for (const s of sc.steps) { cum += s; semitones.push(cum % 12); }
+        const pos = semitones.indexOf(intv);
+        if (pos === 2) return { ...MUSIC_COLORS.third, alpha };    // 3rd degree
+        if (pos === 4) return { ...MUSIC_COLORS.fifth, alpha };    // 5th degree
+        if (pos >= 6) return { ...MUSIC_COLORS.extension, alpha }; // 7th degree
+      }
+    }
+
     if (mode === 'caged' && activeCaged) {
       const col = CAGED_COLORS[activeCaged];
       return { fill: col.fill, stroke: col.stroke, text: '#fff', alpha };
