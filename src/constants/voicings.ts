@@ -129,7 +129,7 @@ export const VOICING_TEMPLATES: Record<string, VoicingTemplate[]> = {
 
   // R b3 5 b7 9 — verified X31333
   'Minor 9': [
-    { frets:[null,0,-2,0,0,0], rootString:1, label:'Min9 (A root)', position:'mid' },
+    { frets:[null,0,-2,0,0,null], rootString:1, label:'Min9 (A root)', position:'mid' },
   ],
 
   // R 3 5 9 (no 7th) — verified X32033
