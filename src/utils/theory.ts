@@ -142,9 +142,7 @@ export function getChordVoicings(root: number, chordKey: string): ChordVoicing[]
     });
 
     const pressed = frets.filter(f => f !== null && f > 0) as number[];
-    // Use rootFret as the diagram base so the root is always in the window
-    // Notes below rootFret show as open-string markers above the diagram
-    const displayBase = rootFret > 0 ? rootFret : (pressed.length > 0 ? Math.min(...pressed) : 1);
+    const displayBase = pressed.length > 0 ? Math.min(...pressed) : rootFret;
 
     // Skip shapes that go above fret 12
     if (pressed.length > 0 && Math.max(...pressed) > 12) continue;
