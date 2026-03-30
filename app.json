@@ -36,15 +36,7 @@
     },
     "plugins": [
       "expo-router",
-      "expo-av",
-      [
-        "expo-build-properties",
-        {
-          "ios": {
-            "buildReactNativeFromSource": true
-          }
-        }
-      ]
+      "expo-av"
     ],
     "scheme": "fretionary",
     "experiments": {
