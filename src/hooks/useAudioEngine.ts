@@ -113,22 +113,38 @@ export function useAudioEngine() {
 
   useEffect(() => {
     async function loadAll() {
+      // Set audio mode first and wait for it to be fully active
       await Audio.setAudioModeAsync({
         playsInSilentModeIOS: true,
+        allowsRecordingIOS: false,
         staysActiveInBackground: false,
+        shouldDuckAndroid: true,
       });
 
+      // Small delay to let audio session fully activate on iPad
+      await new Promise(resolve => setTimeout(resolve, 100));
+
       const loaded: Record<string, Sound> = {};
-      await Promise.all(
-        Object.entries(AUDIO_FILES).map(async ([name, src]) => {
-          try {
-            const { sound } = await Audio.Sound.createAsync(src, { shouldPlay: false, volume: 1.0 });
-            loaded[name] = sound;
-          } catch (e) {
-            // skip missing files silently
-          }
-        })
-      );
+
+      // Load in small batches to avoid overwhelming iPad audio session
+      const entries = Object.entries(AUDIO_FILES);
+      const BATCH_SIZE = 10;
+      for (let i = 0; i < entries.length; i += BATCH_SIZE) {
+        const batch = entries.slice(i, i + BATCH_SIZE);
+        await Promise.all(
+          batch.map(async ([name, src]) => {
+            try {
+              const { sound } = await Audio.Sound.createAsync(
+                src,
+                { shouldPlay: false, volume: 1.0, progressUpdateIntervalMillis: 100 }
+              );
+              loaded[name] = sound;
+            } catch {
+              // skip missing files silently
+            }
+          })
+        );
+      }
       soundsRef.current = loaded;
       loadedRef.current = true;
     }
@@ -143,7 +159,22 @@ export function useAudioEngine() {
 
   const playMidi = useCallback(async (midi: number) => {
     const name = midiToFilename(midi);
-    const sound = soundsRef.current[name];
+    let sound = soundsRef.current[name];
+
+    // If sound wasn't loaded (iPad race condition), try loading it now
+    if (!sound && AUDIO_FILES[name]) {
+      try {
+        await Audio.setAudioModeAsync({ playsInSilentModeIOS: true, allowsRecordingIOS: false, staysActiveInBackground: false });
+        const { sound: newSound } = await Audio.Sound.createAsync(
+          AUDIO_FILES[name], { shouldPlay: false, volume: 1.0 }
+        );
+        soundsRef.current[name] = newSound;
+        sound = newSound;
+      } catch {
+        return;
+      }
+    }
+
     if (!sound) return;
     try {
       await sound.setPositionAsync(0);
