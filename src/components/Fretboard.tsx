@@ -5,7 +5,7 @@ import Svg, {
 } from 'react-native-svg';
 import {
   OPEN_STRINGS, STRING_NAMES, NOTES, SCALES, CHORDS,
-  CAGED_COLORS, POSITION_COLORS, COLORS as MUSIC_COLORS,
+  CAGED_COLORS, CAGED_ORDER, POSITION_COLORS, COLORS as MUSIC_COLORS,
 } from '../constants/music';
 import { COLORS, SCREEN_W } from '../constants/theme';
 import {
@@ -109,6 +109,17 @@ export default function Fretboard() {
     if (mode === 'caged' && activeCaged) {
       const col = CAGED_COLORS[activeCaged];
       return { fill: col.fill, stroke: col.stroke, text: '#fff', alpha };
+    }
+
+    // CAGED "All" mode — color each note by which shape's fret range it falls in
+    if (mode === 'caged' && !activeCaged) {
+      for (const shape of CAGED_ORDER) {
+        const range = getCagedFretRange(root, shape as any);
+        if (fret >= range.start && fret <= range.end) {
+          const col = CAGED_COLORS[shape];
+          return { fill: col.fill, stroke: col.stroke, text: '#fff', alpha: 1 };
+        }
+      }
     }
 
     return { ...MUSIC_COLORS.scaleTone, alpha };
