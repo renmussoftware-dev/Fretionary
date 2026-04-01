@@ -26,11 +26,12 @@ export default function ChordBox({ root, chordKey, compact = false }: Props) {
 
   // Scale full-size dimensions based on available width
   const scale = compact ? 1 : isTablet ? Math.min(2.2, (screenW * 0.55) / 160) : 1;
-  const PAD_L = Math.round(44 * scale);  // extra left room for fret number marker
-  const PAD_T = Math.round(44 * scale);  // extra top padding so markers above nut aren't clipped
+  const PAD_L = Math.round(52 * scale);  // enough room for fret number + dot radius on left
+  const PAD_T = Math.round(44 * scale);
   const FRET_H = Math.round(28 * scale);
   const STR_GAP = Math.round(24 * scale);
   const DOT_R = Math.round(10 * scale);
+  const PAD_R = Math.round((DOT_R + 8) * scale); // right padding scales with dot size
   const [voicingIdx, setVoicingIdx] = useState(0);
   const voicings = getChordVoicings(root, chordKey);
 
@@ -52,7 +53,7 @@ export default function ChordBox({ root, chordKey, compact = false }: Props) {
   const sg = compact ? C_STR_GAP : STR_GAP;
   const dr = compact ? C_DOT_R : DOT_R;
 
-  const svgW = pl + (STRINGS - 1) * sg + (compact ? 16 : 20);
+  const svgW = pl + (STRINGS - 1) * sg + (compact ? 16 : PAD_R);
   const svgH = pt + FRETS_SHOWN * fh + (compact ? 12 : 16);
 
   function sx(s: number) { return pl + s * sg; }
@@ -253,7 +254,7 @@ const styles = StyleSheet.create({
   empty:          { padding: SPACE.lg, alignItems: 'center' },
   emptyText:      { fontSize: 11, color: COLORS.textFaint },
 
-  nav:            { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 4, justifyContent: 'space-between' },
+  nav:            { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 4, justifyContent: 'center' },
   compactNav:     { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 3 },
   navBtn:         { width: 28, height: 28, borderRadius: 14, borderWidth: 1, borderColor: COLORS.border, alignItems: 'center', justifyContent: 'center', backgroundColor: COLORS.surfaceHigh },
   navBtnCompact:  { width: 18, height: 18, borderRadius: 9 },
@@ -269,7 +270,7 @@ const styles = StyleSheet.create({
   dotActive:      { backgroundColor: COLORS.accent, borderColor: COLORS.accent },
 
   pillRow:        { flexDirection: 'row', gap: 5, paddingHorizontal: 4, marginTop: 6 },
-  pillRowWrap:    { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 8, paddingHorizontal: 4 },
+  pillRowWrap:    { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 8, paddingHorizontal: 4, justifyContent: 'center' },
   pill:           { height: 30, paddingHorizontal: 14, paddingVertical: 0, borderRadius: 15, borderWidth: 1, borderColor: COLORS.border, backgroundColor: COLORS.surfaceHigh, alignItems: 'center', justifyContent: 'center' },
   pillActive:     { backgroundColor: COLORS.accent, borderColor: COLORS.accent },
   pillText:       { fontSize: 11, fontWeight: '500', color: COLORS.textMuted, lineHeight: 14 },
