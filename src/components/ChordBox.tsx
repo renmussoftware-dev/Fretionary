@@ -248,7 +248,7 @@ export default function ChordBox({ root, chordKey, compact = false }: Props) {
 }
 
 const styles = StyleSheet.create({
-  wrap:           { alignItems: 'center' },
+  wrap:           { alignItems: 'center', width: '100%' },
   compactWrap:    { alignItems: 'center' },
   empty:          { padding: SPACE.lg, alignItems: 'center' },
   emptyText:      { fontSize: 11, color: COLORS.textFaint },
@@ -269,7 +269,7 @@ const styles = StyleSheet.create({
   dotActive:      { backgroundColor: COLORS.accent, borderColor: COLORS.accent },
 
   pillRow:        { flexDirection: 'row', gap: 5, paddingHorizontal: 4, marginTop: 6 },
-  pillRowWrap:    { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 8, justifyContent: 'center', paddingHorizontal: 8 },
+  pillRowWrap:    { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 8, justifyContent: 'center', paddingHorizontal: 8, width: '100%' },
   pill:           { height: 30, paddingHorizontal: 14, paddingVertical: 0, borderRadius: 15, borderWidth: 1, borderColor: COLORS.border, backgroundColor: COLORS.surfaceHigh, alignItems: 'center', justifyContent: 'center' },
   pillActive:     { backgroundColor: COLORS.accent, borderColor: COLORS.accent },
   pillText:       { fontSize: 11, fontWeight: '500', color: COLORS.textMuted, lineHeight: 14 },
