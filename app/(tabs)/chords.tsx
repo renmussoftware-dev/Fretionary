@@ -1,7 +1,7 @@
 import React, { useState, useRef } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity, StyleSheet,
-  Animated, Pressable, useWindowDimensions,
+  Animated, Pressable, useWindowDimensions, PanResponder,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import ChordBox from '../../src/components/ChordBox';
@@ -21,7 +21,7 @@ const CAT_MAP: Record<string, string> = {
 const DRAWER_W = 220;
 
 export default function ChordsScreen() {
-  const { width: screenW } = useWindowDimensions();
+  const { width: screenW, height: screenH } = useWindowDimensions();
   const isTablet = screenW >= 768;
   const { root, setRoot } = useStore();
   const { isPro, requirePro } = useProGate();
@@ -31,6 +31,27 @@ export default function ChordsScreen() {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const drawerAnim = useRef(new Animated.Value(0)).current;
   const scrimAnim = useRef(new Animated.Value(0)).current;
+
+  // Draggable toggle pill
+  const [pillY, setPillY] = useState(0.4);  // fraction of screen height
+  const pillDragY = useRef(0);
+  const panResponder = useRef(PanResponder.create({
+    onStartShouldSetPanResponder: () => true,
+    onMoveShouldSetPanResponder: (_, gs) => Math.abs(gs.dy) > 5,
+    onPanResponderGrant: (_, gs) => {
+      pillDragY.current = 0;
+    },
+    onPanResponderMove: (_, gs) => {
+      pillDragY.current = gs.dy;
+    },
+    onPanResponderRelease: (_, gs) => {
+      setPillY(prev => {
+        const newFrac = prev + gs.dy / screenH;
+        return Math.max(0.1, Math.min(0.85, newFrac));
+      });
+      pillDragY.current = 0;
+    },
+  })).current;
 
   function openDrawer() {
     setDrawerOpen(true);
@@ -196,12 +217,18 @@ export default function ChordsScreen() {
           </ScrollView>
         </Animated.View>
 
-        {/* Toggle pill */}
-        <Animated.View style={[styles.toggleWrap, { transform: [{ translateX: toggleX }] }]}>
-          <TouchableOpacity onPress={toggleDrawer} style={styles.togglePill} activeOpacity={0.8}>
-            <Text style={styles.toggleArrow}>{drawerOpen ? '‹' : '›'}</Text>
-            <Text style={styles.toggleLabel}>LIST</Text>
-          </TouchableOpacity>
+        {/* Toggle pill — draggable vertically */}
+        <Animated.View style={[
+          styles.toggleWrap,
+          { top: `${pillY * 100}%`, transform: [{ translateX: toggleX }] },
+        ]}>
+          <View {...panResponder.panHandlers}>
+            <TouchableOpacity onPress={toggleDrawer} style={styles.togglePill} activeOpacity={0.8}>
+              <Text style={styles.toggleDragHint}>⋮</Text>
+              <Text style={styles.toggleArrow}>{drawerOpen ? '‹' : '›'}</Text>
+              <Text style={styles.toggleLabel}>LIST</Text>
+            </TouchableOpacity>
+          </View>
         </Animated.View>
       </View>
     </SafeAreaView>
@@ -257,8 +284,9 @@ const styles = StyleSheet.create({
   chordNameActive: { color: COLORS.accent },
   chordIntervals: { fontSize: 11, color: COLORS.textMuted },
 
-  toggleWrap:   { position: 'absolute', left: 0, top: '40%', zIndex: 30 },
-  togglePill:   { backgroundColor: COLORS.surfaceHigh, borderTopRightRadius: 20, borderBottomRightRadius: 20, borderWidth: 1, borderLeftWidth: 0, borderColor: COLORS.borderLight, paddingVertical: 14, paddingLeft: 6, paddingRight: 10, alignItems: 'center', gap: 4 },
+  toggleWrap:   { position: 'absolute', left: 0, zIndex: 30, marginTop: -40 },
+  togglePill:   { backgroundColor: COLORS.surfaceHigh, borderTopRightRadius: 20, borderBottomRightRadius: 20, borderWidth: 1, borderLeftWidth: 0, borderColor: COLORS.borderLight, paddingVertical: 10, paddingLeft: 4, paddingRight: 10, alignItems: 'center', gap: 2 },
+  toggleDragHint: { fontSize: 12, color: COLORS.textFaint, lineHeight: 14 },
   toggleArrow:  { fontSize: 16, color: COLORS.text, fontWeight: '600', lineHeight: 18 },
   toggleLabel:  { fontSize: 9, fontWeight: '700', color: COLORS.textMuted, letterSpacing: 1.2 },
 });

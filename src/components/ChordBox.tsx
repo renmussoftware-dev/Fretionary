@@ -230,10 +230,9 @@ export default function ChordBox({ root, chordKey, compact = false }: Props) {
         </View>
       )}
 
-      {/* Neck position pills — full size only */}
+      {/* Neck position pills — full size only, centered */}
       {!compact && voicings.length > 1 && (
-        <ScrollView horizontal showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.pillRow}>
+        <View style={styles.pillRowWrap}>
           {voicings.map((v, i) => (
             <TouchableOpacity key={i} onPress={() => setVoicingIdx(i)} activeOpacity={0.7}
               style={[styles.pill, i === safeIdx && styles.pillActive]}>
@@ -242,7 +241,7 @@ export default function ChordBox({ root, chordKey, compact = false }: Props) {
               </Text>
             </TouchableOpacity>
           ))}
-        </ScrollView>
+        </View>
       )}
     </View>
   );
@@ -270,6 +269,7 @@ const styles = StyleSheet.create({
   dotActive:      { backgroundColor: COLORS.accent, borderColor: COLORS.accent },
 
   pillRow:        { flexDirection: 'row', gap: 5, paddingHorizontal: 4, marginTop: 6 },
+  pillRowWrap:    { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 8, justifyContent: 'center', paddingHorizontal: 8 },
   pill:           { height: 30, paddingHorizontal: 14, paddingVertical: 0, borderRadius: 15, borderWidth: 1, borderColor: COLORS.border, backgroundColor: COLORS.surfaceHigh, alignItems: 'center', justifyContent: 'center' },
   pillActive:     { backgroundColor: COLORS.accent, borderColor: COLORS.accent },
   pillText:       { fontSize: 11, fontWeight: '500', color: COLORS.textMuted, lineHeight: 14 },
