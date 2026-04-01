@@ -3,7 +3,7 @@ import Purchases, { LOG_LEVEL, PurchasesPackage, CustomerInfo } from 'react-nati
 import { Platform } from 'react-native';
 
 const REVENUECAT_API_KEY_IOS = 'appl_RISKMtoBkVaaMekfALDreNUNBRd'; // appl_...
-const ENTITLEMENT_ID = 'pro';
+const ENTITLEMENT_ID = 'Renmus Software LLC Pro';
 
 export interface PurchaseState {
   isLoading: boolean;
