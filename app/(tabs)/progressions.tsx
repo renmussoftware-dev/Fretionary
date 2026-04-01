@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity, StyleSheet,
-  Animated, Modal, Pressable, useWindowDimensions,
+  Animated, Modal, Pressable, useWindowDimensions, PanResponder,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Circle, Line, Text as SvgText, G, Rect } from 'react-native-svg';
@@ -121,7 +121,7 @@ function MiniBox({ root, chordKey, numeral, active, onPress }: {
 
 
 export default function ProgressionsScreen() {
-  const { width: screenW } = useWindowDimensions();
+  const { width: screenW, height: screenH } = useWindowDimensions();
   const isTablet = screenW >= 768;
   const { root, setRoot } = useStore();
   const { isPro, requirePro } = useProGate();
@@ -139,6 +139,30 @@ export default function ProgressionsScreen() {
   const fadeAnim = useRef(new Animated.Value(1)).current;
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const { playChord, playProgression, stopProgression } = useAudioEngine();
+
+  // Draggable LIST pill
+  const pillOffset = useRef(new Animated.Value(0)).current;
+  const pillBase   = useRef(0);
+  const didDrag    = useRef(false);
+  const progPanResponder = useRef(PanResponder.create({
+    onStartShouldSetPanResponder: () => true,
+    onPanResponderGrant: () => {
+      didDrag.current = false;
+      pillOffset.setOffset(pillBase.current);
+      pillOffset.setValue(0);
+    },
+    onPanResponderMove: (_, gs) => {
+      if (Math.abs(gs.dy) > 4) didDrag.current = true;
+      pillOffset.setValue(gs.dy);
+    },
+    onPanResponderRelease: (_, gs) => {
+      pillOffset.flattenOffset();
+      const clamped = Math.max(0, Math.min(screenH * 0.82, pillBase.current + gs.dy));
+      pillBase.current = clamped;
+      Animated.spring(pillOffset, { toValue: clamped, useNativeDriver: true, bounciness: 0, speed: 20 }).start();
+      if (!didDrag.current) drawerOpen ? closeDrawer() : openDrawer();
+    },
+  })).current;
 
   const activeProg: Progression = subMode === 'custom'
     ? {
@@ -450,11 +474,15 @@ export default function ProgressionsScreen() {
         </Animated.View>
 
         {/* Toggle pill */}
-        <Animated.View style={[styles.toggleWrap, { transform: [{ translateX: toggleX }] }]}>
-          <TouchableOpacity onPress={() => drawerOpen ? closeDrawer() : openDrawer()} style={styles.togglePill} activeOpacity={0.8}>
+        <Animated.View
+          style={[styles.toggleWrap, { transform: [{ translateX: toggleX }, { translateY: pillOffset }] }]}
+          {...progPanResponder.panHandlers}
+        >
+          <View style={styles.togglePill}>
+            <Text style={styles.toggleDots}>⋮</Text>
             <Text style={styles.toggleArrow}>{drawerOpen ? '‹' : '›'}</Text>
             <Text style={styles.toggleLabel}>LIST</Text>
-          </TouchableOpacity>
+          </View>
         </Animated.View>
       </View>
 
@@ -519,8 +547,9 @@ const styles = StyleSheet.create({
   body:           { flex: 1 },
   scrim:          { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.45)', zIndex: 10 },
   drawer:         { position: 'absolute', left: 0, top: 0, bottom: 0, width: 200, backgroundColor: COLORS.surface, borderRightWidth: 1, borderRightColor: COLORS.border, zIndex: 20 },
-  toggleWrap:     { position: 'absolute', left: 0, top: '40%', zIndex: 30 },
+  toggleWrap:     { position: 'absolute', left: 0, top: '35%', zIndex: 30 },
   togglePill:     { backgroundColor: COLORS.surfaceHigh, borderTopRightRadius: 20, borderBottomRightRadius: 20, borderWidth: 1, borderLeftWidth: 0, borderColor: COLORS.borderLight, paddingVertical: 14, paddingLeft: 6, paddingRight: 10, alignItems: 'center', gap: 4 },
+  toggleDots:     { fontSize: 13, color: COLORS.textFaint, lineHeight: 14, letterSpacing: -2 },
   toggleArrow:    { fontSize: 16, color: COLORS.text, fontWeight: '600', lineHeight: 18 },
   toggleLabel:    { fontSize: 9, fontWeight: '700', color: COLORS.textMuted, letterSpacing: 1.2 },
   genreRow:       { flexDirection: 'row', paddingHorizontal: SPACE.sm, paddingVertical: SPACE.xs, gap: 5 },

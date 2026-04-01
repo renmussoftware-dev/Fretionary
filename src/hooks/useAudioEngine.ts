@@ -189,12 +189,12 @@ export function useAudioEngine() {
     const notes = fretstToMidiNotes(frets);
     // Cancel any in-flight strum from a previous chord change
     const chordId = ++playChordIdRef.current;
-    // 30ms between strings — natural strum, gives iOS audio session breathing room
+    // 18ms between strings — natural strum feel
     notes.forEach((midi, i) => {
       setTimeout(() => {
         if (playChordIdRef.current !== chordId) return;
         playMidi(midi);
-      }, i * 30);
+      }, i * 18);
     });
   }, [playMidi]);
 
