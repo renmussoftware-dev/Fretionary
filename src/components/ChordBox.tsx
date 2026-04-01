@@ -188,7 +188,7 @@ export default function ChordBox({ root, chordKey, compact = false }: Props) {
 
       {/* Voicing navigator */}
       {voicings.length > 1 && (
-        <View style={compact ? styles.compactNav : styles.nav}>
+        <View style={[compact ? styles.compactNav : styles.nav, !compact && { width: svgW }]}>
           <TouchableOpacity
             onPress={() => setVoicingIdx(i => (i - 1 + voicings.length) % voicings.length)}
             style={[styles.navBtn, compact && styles.navBtnCompact]}
@@ -230,9 +230,9 @@ export default function ChordBox({ root, chordKey, compact = false }: Props) {
         </View>
       )}
 
-      {/* Neck position pills — full size only, centered */}
+      {/* Neck position pills — full size only, aligned with nav */}
       {!compact && voicings.length > 1 && (
-        <View style={styles.pillRowWrap}>
+        <View style={[styles.pillRowWrap, { width: svgW }]}>
           {voicings.map((v, i) => (
             <TouchableOpacity key={i} onPress={() => setVoicingIdx(i)} activeOpacity={0.7}
               style={[styles.pill, i === safeIdx && styles.pillActive]}>
@@ -248,12 +248,12 @@ export default function ChordBox({ root, chordKey, compact = false }: Props) {
 }
 
 const styles = StyleSheet.create({
-  wrap:           { alignItems: 'center', width: '100%' },
+  wrap:           { alignItems: 'center' },
   compactWrap:    { alignItems: 'center' },
   empty:          { padding: SPACE.lg, alignItems: 'center' },
   emptyText:      { fontSize: 11, color: COLORS.textFaint },
 
-  nav:            { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 4, width: '100%', justifyContent: 'center' },
+  nav:            { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 4, justifyContent: 'space-between' },
   compactNav:     { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 3 },
   navBtn:         { width: 28, height: 28, borderRadius: 14, borderWidth: 1, borderColor: COLORS.border, alignItems: 'center', justifyContent: 'center', backgroundColor: COLORS.surfaceHigh },
   navBtnCompact:  { width: 18, height: 18, borderRadius: 9 },
@@ -269,7 +269,7 @@ const styles = StyleSheet.create({
   dotActive:      { backgroundColor: COLORS.accent, borderColor: COLORS.accent },
 
   pillRow:        { flexDirection: 'row', gap: 5, paddingHorizontal: 4, marginTop: 6 },
-  pillRowWrap:    { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 8, justifyContent: 'center', paddingHorizontal: 8, width: '100%' },
+  pillRowWrap:    { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 8, paddingHorizontal: 4 },
   pill:           { height: 30, paddingHorizontal: 14, paddingVertical: 0, borderRadius: 15, borderWidth: 1, borderColor: COLORS.border, backgroundColor: COLORS.surfaceHigh, alignItems: 'center', justifyContent: 'center' },
   pillActive:     { backgroundColor: COLORS.accent, borderColor: COLORS.accent },
   pillText:       { fontSize: 11, fontWeight: '500', color: COLORS.textMuted, lineHeight: 14 },
