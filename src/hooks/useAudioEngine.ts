@@ -157,43 +157,45 @@ export function useAudioEngine() {
     };
   }, []);
 
+
+
+  const playChordIdRef = useRef(0);
+
   const playMidi = useCallback(async (midi: number) => {
     const name = midiToFilename(midi);
     let sound = soundsRef.current[name];
 
-    // If sound wasn't loaded (iPad race condition), try loading it now
     if (!sound && AUDIO_FILES[name]) {
       try {
-        await Audio.setAudioModeAsync({ playsInSilentModeIOS: true, allowsRecordingIOS: false, staysActiveInBackground: false });
         const { sound: newSound } = await Audio.Sound.createAsync(
           AUDIO_FILES[name], { shouldPlay: false, volume: 1.0 }
         );
         soundsRef.current[name] = newSound;
         sound = newSound;
-      } catch {
-        return;
-      }
+      } catch { return; }
     }
-
     if (!sound) return;
+
     try {
-      await sound.setPositionAsync(0);
-      await sound.playAsync();
+      // replayAsync is atomic — rewind + play in one call, avoids the
+      // setPositionAsync/playAsync race that drops notes on iOS
+      await sound.replayAsync({ positionMillis: 0, shouldPlay: true });
     } catch {
-      // ignore playback errors
+      try { await sound.stopAsync(); await sound.playFromPositionAsync(0); } catch { /* ignore */ }
     }
   }, []);
 
-  const playChord = useCallback(async (frets: (number | null)[]) => {
+  const playChord = useCallback((frets: (number | null)[]) => {
     const notes = fretstToMidiNotes(frets);
-    // Strum effect: slight delay between strings (low to high)
-    await Promise.all(
-      notes.map((midi, i) =>
-        new Promise<void>(resolve => {
-          setTimeout(() => { playMidi(midi).then(resolve); }, i * 18);
-        })
-      )
-    );
+    // Cancel any in-flight strum from a previous chord change
+    const chordId = ++playChordIdRef.current;
+    // 30ms between strings — natural strum, gives iOS audio session breathing room
+    notes.forEach((midi, i) => {
+      setTimeout(() => {
+        if (playChordIdRef.current !== chordId) return;
+        playMidi(midi);
+      }, i * 30);
+    });
   }, [playMidi]);
 
   const stopProgression = useCallback(() => {
