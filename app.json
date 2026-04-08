@@ -52,7 +52,7 @@
         }
       ],
       [
-        "react-native-purchases/app-plugin",
+        "react-native-purchases",
         {
           "useStoreKit2": true
         }
