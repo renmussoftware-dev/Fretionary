@@ -129,6 +129,16 @@ export const CHORDS: Record<string, ChordDef> = {
   'Minor 11':    { intervals:[0,3,7,10,14,17], intervalNames:['R','♭3','5','♭7','9','11'], category:'extended', description:'Modal jazz staple.' },
   'Dominant 13': { intervals:[0,4,7,10,14,17,21], intervalNames:['R','3','5','♭7','9','11','13'], category:'extended', description:'Full jazz dominant.' },
   'Major 13':    { intervals:[0,4,7,11,14,17,21], intervalNames:['R','3','5','7','9','11','13'],   category:'extended', description:'Maximum major extension.' },
+  'Minor 13':    { intervals:[0,3,7,10,14,17,21], intervalNames:['R','♭3','5','♭7','9','11','13'], category:'extended', description:'Full minor extension. Rich, complex jazz color.' },
+  'Minor Add9':  { intervals:[0,3,7,14],           intervalNames:['R','♭3','5','9'],               category:'triad',    description:'Minor triad with added 9th. Emotional and open.' },
+  'Add11':       { intervals:[0,4,7,17],           intervalNames:['R','3','5','11'],               category:'triad',    description:'Major triad with added 11th. Bright and expansive.' },
+  '6/9':         { intervals:[0,4,7,9,14],         intervalNames:['R','3','5','6','9'],            category:'extended', description:'No 7th. Lush jazz voicing, works as a tonic.' },
+  'Minor 6/9':   { intervals:[0,3,7,9,14],         intervalNames:['R','♭3','5','6','9'],           category:'extended', description:'Minor with 6th and 9th. Sophisticated jazz color.' },
+  'Dom 7♭5':     { intervals:[0,4,6,10],           intervalNames:['R','3','♭5','♭7'],             category:'seventh',  description:'Dominant with flat 5. Tense tritone sound.' },
+  'Dom 7♭9':     { intervals:[0,4,7,10,13],        intervalNames:['R','3','5','♭7','♭9'],         category:'extended', description:'Dark and tense. Classic jazz altered sound.' },
+  'Dom 7♯9':     { intervals:[0,4,7,10,15],        intervalNames:['R','3','5','♭7','♯9'],         category:'extended', description:'The Hendrix chord. Blues, funk and rock.' },
+  'Dom 7♯11':    { intervals:[0,4,7,10,18],        intervalNames:['R','3','5','♭7','♯11'],        category:'extended', description:'Lydian dominant. Jazz and fusion staple.' },
+  'Maj7♯11':     { intervals:[0,4,7,11,18],        intervalNames:['R','3','5','7','♯11'],         category:'seventh',  description:'Lydian major 7th. Dreamy and floating.' },
 };
 
 export interface CagedShape {

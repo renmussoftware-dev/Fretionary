@@ -166,4 +166,52 @@ export const VOICING_TEMPLATES: Record<string, VoicingTemplate[]> = {
   'Minor 13': [
     { frets:[null,0,2,0,1,2], rootString:1, label:'Min13 (A root)', position:'mid' },
   ],
+
+  // R b3 5 9 — minor triad + 9th
+  'Minor Add9': [
+    { frets:[null,0,2,0,1,0], rootString:1, label:'mAdd9 (A root)', position:'mid' },
+    { frets:[null,null,0,2,1,3], rootString:2, label:'mAdd9 (D root)', position:'high' },
+  ],
+
+  // R 3 5 11 — major triad + 11th
+  'Add11': [
+    { frets:[null,0,0,0,2,0], rootString:1, label:'Add11 (A root)', position:'mid' },
+  ],
+
+  // R 3 5 6 9 — no 7th
+  '6/9': [
+    { frets:[null,0,2,2,2,2], rootString:1, label:'6/9 (A root)', position:'mid' },
+    { frets:[null,null,0,2,0,2], rootString:2, label:'6/9 (D root)', position:'high' },
+  ],
+
+  // R b3 5 6 9
+  'Minor 6/9': [
+    { frets:[null,0,2,2,1,2], rootString:1, label:'m6/9 (A root)', position:'mid' },
+  ],
+
+  // R 3 b5 b7
+  'Dom 7♭5': [
+    { frets:[null,1,2,1,2,null], rootString:1, label:'7b5 (A root)', position:'mid' },
+  ],
+
+  // R 3 5 b7 b9
+  'Dom 7♭9': [
+    { frets:[null,0,2,1,2,1], rootString:1, label:'7b9 (A root)', position:'mid' },
+  ],
+
+  // R 3 5 b7 #9 — Hendrix chord
+  'Dom 7♯9': [
+    { frets:[null,0,2,1,3,0], rootString:1, label:'7#9 (A root)', position:'mid' },
+  ],
+
+  // R 3 5 b7 #11
+  'Dom 7♯11': [
+    { frets:[null,0,2,1,2,3], rootString:1, label:'7#11 (A root)', position:'mid' },
+  ],
+
+  // R 3 5 7 #11 — Lydian chord
+  'Maj7♯11': [
+    { frets:[null,0,2,1,2,3], rootString:1, label:'Maj7#11 (A root)', position:'mid' },
+    { frets:[null,null,0,1,1,2], rootString:2, label:'Maj7#11 (D root)', position:'high' },
+  ],
 };
