@@ -46,7 +46,7 @@ export default function Fretboard() {
   }
   function strY(s: number) { return TOP_PAD + s * STR_H; }
 
-  const { root, scaleKey, chordKey, mode, labelMode, activePosition, activeCaged, tuningId } = useStore();
+  const { root, scaleKey, chordKey, mode, labelMode, activePosition, activeCaged, tuningId, customNotes } = useStore();
 
   // CAGED is defined by standard-tuning open shapes — force standard for that mode.
   const activeTuning = mode === 'caged' ? STANDARD_TUNING : getTuning(tuningId);
@@ -55,8 +55,9 @@ export default function Fretboard() {
 
   const activeNotes = useMemo(() => {
     if (mode === 'chords') return getChordNotes(root, chordKey);
+    if (mode === 'custom') return customNotes;
     return getScaleNotes(root, scaleKey);
-  }, [root, scaleKey, chordKey, mode]);
+  }, [root, scaleKey, chordKey, mode, customNotes]);
 
   const positions = useMemo(() =>
     mode === 'scales' ? getScalePositions(root, scaleKey, noteClasses) : [],
@@ -117,6 +118,14 @@ export default function Fretboard() {
         if (pos === 4) return { ...MUSIC_COLORS.fifth,     opacity, scale, isRoot: false };
         if (pos >= 6) return { ...MUSIC_COLORS.extension, opacity, scale, isRoot: false };
       }
+    }
+
+    if (mode === 'custom') {
+      // Color by interval relative to root — no scale context
+      const intv = (noteIdx - root + 12) % 12;
+      if (intv === 3 || intv === 4)   return { ...MUSIC_COLORS.third,     opacity, scale, isRoot: false }; // 3rd
+      if (intv === 7)                 return { ...MUSIC_COLORS.fifth,     opacity, scale, isRoot: false }; // 5th
+      if (intv === 10 || intv === 11) return { ...MUSIC_COLORS.extension, opacity, scale, isRoot: false }; // 7th
     }
 
     if (mode === 'caged' && activeCaged) {

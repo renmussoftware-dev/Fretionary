@@ -7,6 +7,7 @@ import InfoPanel from '../../src/components/InfoPanel';
 import PillSelector from '../../src/components/PillSelector';
 import { COLORS, SPACE, RADIUS, FONT_FAMILY } from '../../src/constants/theme';
 import {
+  NOTES, NOTE_DISPLAY,
   SCALES, CHORDS, CAGED_ORDER, CAGED_COLORS, CAGED_SHAPES,
   CAGED_SHAPE_TIPS, POSITION_COLORS,
 } from '../../src/constants/music';
@@ -32,6 +33,7 @@ export default function FretboardScreen() {
     chordKey, setChordKey, labelMode, setLabelMode,
     activePosition, setActivePosition,
     activeCaged, setActiveCaged,
+    customNotes, toggleCustomNote, clearCustomNotes,
   } = useStore();
 
   const positions = mode === 'scales' ? getScalePositions(root, scaleKey) : [];
@@ -108,6 +110,45 @@ export default function FretboardScreen() {
                 );
               })}
             </ScrollView>
+          </View>
+        )}
+        {/* Custom note picker */}
+        {mode === 'custom' && (
+          <View style={styles.section}>
+            <View style={styles.customHeader}>
+              <Text style={styles.sectionLabel}>Notes</Text>
+              {customNotes.length > 0 && (
+                <TouchableOpacity onPress={clearCustomNotes} activeOpacity={0.7} style={styles.clearBtn}>
+                  <Text style={styles.clearBtnText}>Clear</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.pillRow}>
+              {NOTES.map((note, i) => {
+                const selected = customNotes.includes(i);
+                const isRoot = i === root;
+                return (
+                  <TouchableOpacity key={note}
+                    onPress={() => toggleCustomNote(i)}
+                    style={[
+                      styles.pill,
+                      selected && (isRoot ? styles.pillRoot : styles.pillActive),
+                    ]}
+                    activeOpacity={0.7}>
+                    <Text style={[
+                      styles.pillText,
+                      selected && (isRoot ? styles.pillTextRoot : styles.pillTextActive),
+                    ]}>
+                      {NOTE_DISPLAY[note] || note}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
+            <Text style={styles.customHint}>
+              Tap notes to highlight them on the fretboard. Use the root selector above to set your key — the root note is colored differently when included.
+            </Text>
           </View>
         )}
         {/* Position selector */}
@@ -247,8 +288,41 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.accentSoft,
     borderColor: COLORS.accent,
   },
+  pillRoot: {
+    backgroundColor: '#E8D44D',
+    borderColor: '#C4A800',
+  },
+  pillTextRoot: {
+    color: '#5C4400',
+  },
   pillLocked: {
     opacity: 0.5,
+  },
+  customHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingRight: SPACE.lg,
+  },
+  clearBtn: {
+    paddingHorizontal: 10,
+    paddingVertical: 3,
+    borderRadius: RADIUS.full,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    backgroundColor: COLORS.bg,
+  },
+  clearBtnText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: COLORS.textMuted,
+  },
+  customHint: {
+    fontSize: 11,
+    color: COLORS.textFaint,
+    paddingHorizontal: SPACE.lg,
+    marginTop: SPACE.sm,
+    lineHeight: 16,
   },
   pillText: {
     fontSize: 13,

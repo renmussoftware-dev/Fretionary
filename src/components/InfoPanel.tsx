@@ -5,16 +5,19 @@ import { NOTES, SCALES, CHORDS } from '../constants/music';
 import { useStore } from '../store/useStore';
 import { getScaleNotes, getChordNotes } from '../utils/theory';
 
-export default function InfoPanel() {
-  const { root, scaleKey, chordKey, mode, activeCaged } = useStore();
+const INTERVAL_NAMES = ['R','♭2','2','♭3','3','4','♭5','5','♭6','6','♭7','7'];
 
-  const notes = mode === 'chords'
-    ? getChordNotes(root, chordKey)
-    : getScaleNotes(root, scaleKey);
+export default function InfoPanel() {
+  const { root, scaleKey, chordKey, mode, activeCaged, customNotes } = useStore();
+
+  let notes: number[];
+  if (mode === 'chords') notes = getChordNotes(root, chordKey);
+  else if (mode === 'custom') notes = customNotes;
+  else notes = getScaleNotes(root, scaleKey);
 
   // Spaces (instead of dots/multi-spaces) keep values short — important since
   // we now show all three columns side-by-side in a single panel row.
-  const notesStr = notes.map(n => NOTES[n]).join(' ');
+  const notesStr = notes.length > 0 ? notes.map(n => NOTES[n]).join(' ') : '—';
 
   let formula = '—';
   let degrees = '—';
@@ -39,6 +42,16 @@ export default function InfoPanel() {
     description = activeCaged
       ? `${activeCaged} shape highlighted on the neck`
       : 'Select a CAGED shape above';
+  } else if (mode === 'custom') {
+    formula = customNotes.length > 0
+      ? customNotes.map(n => INTERVAL_NAMES[(n - root + 12) % 12]).join(' ')
+      : '—';
+    degrees = `${customNotes.length} note${customNotes.length === 1 ? '' : 's'}`;
+    formulaLabel = 'Intervals';
+    degreesLabel = 'Count';
+    description = customNotes.length === 0
+      ? 'Tap notes below to build your own scale or chord shape.'
+      : `Custom selection in ${NOTES[root]}`;
   }
 
   return (

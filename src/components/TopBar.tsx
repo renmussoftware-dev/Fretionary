@@ -1,20 +1,32 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Animated } from 'react-native';
 import { COLORS, FONT_FAMILY, RADIUS, SPACE } from '../constants/theme';
-import { NOTES, NOTE_DISPLAY, SCALES, CHORDS } from '../constants/music';
+import { NOTES, NOTE_DISPLAY } from '../constants/music';
 import { useStore, type AppMode } from '../store/useStore';
+import { useProGate } from '../hooks/useProGate';
 import TuningPicker from './TuningPicker';
 import SavedSheet from './SavedSheet';
 
-const MODES: { label: string; value: AppMode }[] = [
+const MODES: { label: string; value: AppMode; pro?: boolean }[] = [
   { label: 'Scales', value: 'scales' },
   { label: 'Chords', value: 'chords' },
   { label: 'CAGED',  value: 'caged'  },
+  { label: 'Custom', value: 'custom', pro: true },
 ];
 
 // Sliding indicator inside a segmented control. Animates between mode pills
 // with a subtle shadow & inset highlight (matches the design's premium feel).
-function SegmentedControl({ value, onChange }: { value: AppMode; onChange: (m: AppMode) => void }) {
+function SegmentedControl({
+  value,
+  onChange,
+  isPro,
+  requirePro,
+}: {
+  value: AppMode;
+  onChange: (m: AppMode) => void;
+  isPro: boolean;
+  requirePro: (action: () => void) => void;
+}) {
   const idx = MODES.findIndex(m => m.value === value);
   const slide = useRef(new Animated.Value(idx)).current;
 
@@ -26,11 +38,10 @@ function SegmentedControl({ value, onChange }: { value: AppMode; onChange: (m: A
     }).start();
   }, [idx, slide]);
 
-  // Layout: outer track is padded by 3px; each segment is 1/3 of the inner area.
-  // We translate by % using interpolate.
+  // Each segment is 1/N of the inner area; translate by % using interpolate.
   const translateX = slide.interpolate({
-    inputRange: [0, 1, 2],
-    outputRange: ['0%', '100%', '200%'],
+    inputRange: MODES.map((_, i) => i),
+    outputRange: MODES.map((_, i) => `${(100 / MODES.length) * i}%`),
   });
 
   return (
@@ -41,18 +52,21 @@ function SegmentedControl({ value, onChange }: { value: AppMode; onChange: (m: A
           { width: `${100 / MODES.length}%`, transform: [{ translateX }] },
         ]}
       />
-      {MODES.map(m => (
-        <TouchableOpacity
-          key={m.value}
-          onPress={() => onChange(m.value)}
-          activeOpacity={0.7}
-          style={segStyles.segment}
-        >
-          <Text style={[segStyles.label, value === m.value && segStyles.labelActive]}>
-            {m.label}
-          </Text>
-        </TouchableOpacity>
-      ))}
+      {MODES.map(m => {
+        const locked = m.pro && !isPro;
+        return (
+          <TouchableOpacity
+            key={m.value}
+            onPress={() => locked ? requirePro(() => onChange(m.value)) : onChange(m.value)}
+            activeOpacity={0.7}
+            style={segStyles.segment}
+          >
+            <Text style={[segStyles.label, value === m.value && segStyles.labelActive]} numberOfLines={1}>
+              {locked ? '🔒 ' : ''}{m.label}
+            </Text>
+          </TouchableOpacity>
+        );
+      })}
     </View>
   );
 }
@@ -82,12 +96,12 @@ const segStyles = StyleSheet.create({
     elevation: 2,
   },
   segment: {
-    flex: 1, paddingVertical: 8,
+    flex: 1, paddingVertical: 8, paddingHorizontal: 4,
     alignItems: 'center', justifyContent: 'center',
     zIndex: 1,
   },
   label: {
-    fontSize: 13, fontWeight: '600',
+    fontSize: 12, fontWeight: '600',
     color: COLORS.textMuted,
     letterSpacing: 0.1,
   },
@@ -96,13 +110,16 @@ const segStyles = StyleSheet.create({
 
 export default function TopBar() {
   const { root, setRoot, scaleKey, chordKey, mode, setMode } = useStore();
+  const { isPro, requirePro } = useProGate();
   const [savedOpen, setSavedOpen] = useState(false);
 
   const titleSubject = mode === 'chords'
     ? `${NOTES[root]} ${chordKey}`
     : mode === 'caged'
       ? `${NOTES[root]} CAGED`
-      : `${NOTES[root]} ${scaleKey}`;
+      : mode === 'custom'
+        ? `${NOTES[root]} Custom`
+        : `${NOTES[root]} ${scaleKey}`;
 
   return (
     <View style={styles.wrap}>
@@ -124,7 +141,7 @@ export default function TopBar() {
 
       {/* Mode tabs + tuning picker */}
       <View style={styles.topRow}>
-        <SegmentedControl value={mode} onChange={setMode} />
+        <SegmentedControl value={mode} onChange={setMode} isPro={isPro} requirePro={requirePro} />
         <TuningPicker forcedStandard={mode === 'caged'} />
       </View>
 

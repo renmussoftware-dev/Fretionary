@@ -8,7 +8,7 @@ const REVIEW_MIN_ACTIONS = 3;
 const REVIEW_MIN_DAYS_INSTALLED = 2;
 const REVIEW_MIN_DAYS_SINCE_LAST = 60;
 
-export type AppMode = 'scales' | 'chords' | 'caged';
+export type AppMode = 'scales' | 'chords' | 'caged' | 'custom';
 export type LabelMode = 'name' | 'degree' | 'interval' | 'none';
 
 export type SavedItem =
@@ -41,6 +41,7 @@ interface AppState {
   showAllFrets: boolean;
   isPro: boolean;
   tuningId: string;
+  customNotes: number[];
 
   favorites: SavedItem[];
   recents: SavedItem[];
@@ -67,6 +68,9 @@ interface AppState {
   setShowAllFrets: (v: boolean) => void;
   setIsPro: (v: boolean) => void;
   setTuningId: (id: string) => void;
+  toggleCustomNote: (n: number) => void;
+  clearCustomNotes: () => void;
+  setCustomNotes: (notes: number[]) => void;
 
   toggleFavorite: (item: SavedItemInput) => void;
   isFavorite: (item: SavedItemInput) => boolean;
@@ -87,6 +91,7 @@ export const useStore = create<AppState>()(
       showAllFrets: false,
       isPro: false,
       tuningId: 'standard',
+      customNotes: [],
 
       favorites: [],
       recents: [],
@@ -136,6 +141,16 @@ export const useStore = create<AppState>()(
       setIsPro: (isPro) => set({ isPro }),
       setTuningId: (tuningId) => set({ tuningId }),
 
+      toggleCustomNote: (n) => {
+        const current = get().customNotes;
+        const next = current.includes(n)
+          ? current.filter(x => x !== n)
+          : [...current, n].sort((a, b) => a - b);
+        set({ customNotes: next });
+      },
+      clearCustomNotes: () => set({ customNotes: [] }),
+      setCustomNotes: (customNotes) => set({ customNotes }),
+
       toggleFavorite: (item) => {
         const k = itemKey(item);
         const current = get().favorites;
@@ -170,6 +185,7 @@ export const useStore = create<AppState>()(
         tuningId: s.tuningId,
         favorites: s.favorites,
         recents: s.recents,
+        customNotes: s.customNotes,
         installedAt: s.installedAt,
         positiveActionCount: s.positiveActionCount,
         lastPromptedAt: s.lastPromptedAt,
