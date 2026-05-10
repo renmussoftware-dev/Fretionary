@@ -96,12 +96,12 @@ const segStyles = StyleSheet.create({
     elevation: 2,
   },
   segment: {
-    flex: 1, paddingVertical: 8, paddingHorizontal: 4,
+    flex: 1, paddingVertical: 8,
     alignItems: 'center', justifyContent: 'center',
     zIndex: 1,
   },
   label: {
-    fontSize: 12, fontWeight: '600',
+    fontSize: 13, fontWeight: '600',
     color: COLORS.textMuted,
     letterSpacing: 0.1,
   },
@@ -123,12 +123,13 @@ export default function TopBar() {
 
   return (
     <View style={styles.wrap}>
-      {/* Eyebrow + current selection title */}
+      {/* Eyebrow + title, tuning picker, and saved button */}
       <View style={styles.titleRow}>
         <View style={{ flex: 1 }}>
           <Text style={styles.eyebrow}>Fretboard</Text>
           <Text style={styles.title} numberOfLines={1}>{titleSubject}</Text>
         </View>
+        <TuningPicker forcedStandard={mode === 'caged'} />
         <TouchableOpacity
           onPress={() => setSavedOpen(true)}
           activeOpacity={0.7}
@@ -139,10 +140,9 @@ export default function TopBar() {
         </TouchableOpacity>
       </View>
 
-      {/* Mode tabs + tuning picker */}
+      {/* Mode tabs — full width so all 4 fit */}
       <View style={styles.topRow}>
         <SegmentedControl value={mode} onChange={setMode} isPro={isPro} requirePro={requirePro} />
-        <TuningPicker forcedStandard={mode === 'caged'} />
       </View>
 
       {/* Root note selector */}
