@@ -243,10 +243,19 @@ export default function ProgressionsScreen() {
     });
   }
 
+  // Stable string key for the current chord sequence. Used as a useEffect dep
+  // so that playback only restarts when the actual chords change — not on
+  // every render. (activeProg is rebuilt as a fresh object literal each render
+  // in custom/examples modes, so depending on it directly tore down the audio
+  // engine after every onStep state update and stuck playback on chord 0.)
+  const sequenceKey = progRoots
+    .map((r, i) => `${r}:${activeProg.chordTypes[i] ?? 'Major'}`)
+    .join('|');
+
   useEffect(() => {
     if (intervalRef.current) clearInterval(intervalRef.current);
     if (!playing) { stopProgression(); return; }
-    if (count === 0) return;
+    if (sequenceKey.length === 0) return;
 
     const fretsList = getProgressionFrets();
     playProgression(
@@ -262,7 +271,8 @@ export default function ProgressionsScreen() {
       () => setPlaying(false),
     );
     return () => { stopProgression(); };
-  }, [playing, count, bpm, root, activeProg]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [playing, bpm, sequenceKey]);
 
   const DRAWER_W = 200;
 
