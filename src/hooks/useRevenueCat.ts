@@ -4,6 +4,7 @@ import { Platform } from 'react-native';
 import { useStore } from '../store/useStore';
 
 const REVENUECAT_API_KEY_IOS = 'appl_RISKMtoBkVaaMekfALDreNUNBRd';
+const REVENUECAT_API_KEY_ANDROID = 'goog_YTZzYwiWGFshnxkHZSAyNLckZQb';
 const ENTITLEMENT_ID = 'Renmus Software LLC Pro';
 
 export interface PurchaseState {
@@ -36,6 +37,8 @@ export function useRevenueCat() {
 
         if (Platform.OS === 'ios') {
           Purchases.configure({ apiKey: REVENUECAT_API_KEY_IOS });
+        } else if (Platform.OS === 'android') {
+          Purchases.configure({ apiKey: REVENUECAT_API_KEY_ANDROID });
         }
 
         const customerInfo = await Purchases.getCustomerInfo();

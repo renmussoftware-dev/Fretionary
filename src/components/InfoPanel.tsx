@@ -1,60 +1,64 @@
 import React from 'react';
-import { View, Text, StyleSheet, ScrollView } from 'react-native';
-import { COLORS, RADIUS, SPACE } from '../constants/theme';
+import { View, Text, StyleSheet } from 'react-native';
+import { COLORS, FONT_FAMILY, SPACE } from '../constants/theme';
 import { NOTES, SCALES, CHORDS } from '../constants/music';
 import { useStore } from '../store/useStore';
 import { getScaleNotes, getChordNotes } from '../utils/theory';
 
 export default function InfoPanel() {
-  const { root, scaleKey, chordKey, mode, activePosition, activeCaged } = useStore();
+  const { root, scaleKey, chordKey, mode, activeCaged } = useStore();
 
   const notes = mode === 'chords'
     ? getChordNotes(root, chordKey)
     : getScaleNotes(root, scaleKey);
 
-  const notesStr = notes.map(n => NOTES[n]).join('  ·  ');
+  // Spaces (instead of dots/multi-spaces) keep values short — important since
+  // we now show all three columns side-by-side in a single panel row.
+  const notesStr = notes.map(n => NOTES[n]).join(' ');
 
   let formula = '—';
   let degrees = '—';
   let description = '';
+  let formulaLabel = 'Formula';
+  let degreesLabel = 'Degrees';
 
   if (mode === 'scales') {
     const sc = SCALES[scaleKey];
     formula = sc?.formula || '—';
-    degrees = sc?.degrees.join('  ') || '—';
+    degrees = sc?.degrees.join(' ') || '—';
     description = sc?.description || '';
   } else if (mode === 'chords') {
     const ch = CHORDS[chordKey];
-    formula = ch?.intervalNames.join('  ') || '—';
+    formula = ch?.intervalNames.join(' ') || '—';
     degrees = ch?.description || '—';
-    description = '';
+    formulaLabel = 'Intervals';
+    degreesLabel = 'About';
   } else if (mode === 'caged') {
     formula = SCALES['Major']?.formula || '—';
-    degrees = SCALES['Major']?.degrees.join('  ') || '—';
+    degrees = SCALES['Major']?.degrees.join(' ') || '—';
     description = activeCaged
-      ? `${activeCaged} shape — root on ${['e','B','G','D','A','E'][0]} string`
+      ? `${activeCaged} shape highlighted on the neck`
       : 'Select a CAGED shape above';
   }
 
   return (
     <View style={styles.wrap}>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.cards}>
-        <View style={styles.card}>
-          <Text style={styles.cardLabel}>Notes</Text>
-          <Text style={styles.cardValue} numberOfLines={1}>{notesStr}</Text>
+      <View style={styles.row}>
+        <View style={[styles.col, { flex: 1.25 }]}>
+          <Text style={styles.label}>Notes</Text>
+          <Text style={styles.value} numberOfLines={2}>{notesStr}</Text>
         </View>
-        <View style={styles.card}>
-          <Text style={styles.cardLabel}>{mode === 'chords' ? 'Intervals' : 'Formula'}</Text>
-          <Text style={styles.cardValue} numberOfLines={1}>{formula}</Text>
+        <View style={[styles.col, styles.colDivider]}>
+          <Text style={styles.label}>{formulaLabel}</Text>
+          <Text style={styles.value} numberOfLines={2}>{formula}</Text>
         </View>
-        <View style={styles.card}>
-          <Text style={styles.cardLabel}>{mode === 'chords' ? 'Description' : 'Degrees'}</Text>
-          <Text style={styles.cardValue} numberOfLines={1}>{degrees}</Text>
+        <View style={[styles.col, styles.colDivider]}>
+          <Text style={styles.label}>{degreesLabel}</Text>
+          <Text style={styles.value} numberOfLines={2}>{degrees}</Text>
         </View>
-      </ScrollView>
+      </View>
       {description ? (
-        <Text style={styles.desc}>{description}</Text>
+        <Text style={styles.desc} numberOfLines={2}>{description}</Text>
       ) : null}
     </View>
   );
@@ -66,40 +70,41 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: COLORS.border,
     paddingVertical: SPACE.md,
-    gap: SPACE.sm,
-  },
-  cards: {
-    flexDirection: 'row',
     paddingHorizontal: SPACE.lg,
-    gap: 10,
+    gap: 8,
   },
-  card: {
-    backgroundColor: COLORS.surfaceHigh,
-    borderRadius: RADIUS.md,
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    minWidth: 120,
-    maxWidth: 200,
-    borderWidth: 1,
-    borderColor: COLORS.border,
+  row: {
+    flexDirection: 'row',
   },
-  cardLabel: {
-    fontSize: 10,
-    fontWeight: '500',
-    color: COLORS.textMuted,
-    letterSpacing: 0.6,
+  col: {
+    flex: 1,
+    paddingHorizontal: 8,
+  },
+  colDivider: {
+    borderLeftWidth: 1,
+    borderLeftColor: COLORS.border,
+  },
+  label: {
+    fontSize: 9,
+    fontWeight: '600',
+    color: COLORS.textFaint,
+    letterSpacing: 1.0,
     textTransform: 'uppercase',
-    marginBottom: 3,
+    marginBottom: 4,
+    fontFamily: FONT_FAMILY.mono,
   },
-  cardValue: {
-    fontSize: 12,
+  value: {
+    fontSize: 11,
     fontWeight: '500',
     color: COLORS.text,
+    fontFamily: FONT_FAMILY.mono,
+    letterSpacing: 0,
+    lineHeight: 15,
   },
   desc: {
     fontSize: 12,
     color: COLORS.textMuted,
-    paddingHorizontal: SPACE.lg,
     lineHeight: 18,
+    paddingHorizontal: 12,
   },
 });

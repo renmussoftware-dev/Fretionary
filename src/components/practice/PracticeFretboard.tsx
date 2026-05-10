@@ -23,7 +23,7 @@ interface Props {
 }
 
 const KIND_COLORS = {
-  target:  { fill: '#534AB7', stroke: '#3C3489', text: '#fff' },
+  target:  { fill: '#6E60D9', stroke: '#4F3FBA', text: '#fff' },
   correct: { fill: '#1D9E75', stroke: '#0F6E56', text: '#fff' },
   wrong:   { fill: '#E24B4A', stroke: '#A32D2D', text: '#fff' },
   pending: { fill: '#3A3A46', stroke: '#52525F', text: '#fff' },

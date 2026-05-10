@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, ScrollView,
-  ActivityIndicator, Alert, Linking,
+  ActivityIndicator, Alert, Linking, Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
@@ -56,7 +56,8 @@ export default function Paywall({ onClose, onSuccess }: Props) {
         }}]
       );
     } else {
-      Alert.alert('No Purchases Found', 'No previous purchases were found for this Apple ID.');
+      const account = Platform.OS === 'ios' ? 'Apple ID' : 'Google account';
+      Alert.alert('No Purchases Found', `No previous purchases were found for this ${account}.`);
     }
   }
 
@@ -203,7 +204,9 @@ export default function Paywall({ onClose, onSuccess }: Props) {
         </TouchableOpacity>
 
         <Text style={styles.legal}>
-          Fretionary Pro — Monthly or Annual auto-renewable subscription. Payment will be charged to your Apple ID at confirmation of purchase. Subscriptions automatically renew unless auto-renew is turned off at least 24 hours before the end of the current period. Your account will be charged for renewal within 24 hours prior to the end of the current period. Manage or cancel subscriptions in your App Store account settings after purchase.
+          {Platform.OS === 'ios'
+            ? 'Fretionary Pro — Monthly or Annual auto-renewable subscription. Payment will be charged to your Apple ID at confirmation of purchase. Subscriptions automatically renew unless auto-renew is turned off at least 24 hours before the end of the current period. Your account will be charged for renewal within 24 hours prior to the end of the current period. Manage or cancel subscriptions in your App Store account settings after purchase.'
+            : 'Fretionary Pro — Monthly or Annual auto-renewing subscription. Payment will be charged to your Google account at confirmation of purchase. Subscriptions automatically renew unless cancelled at least 24 hours before the end of the current period. Manage or cancel subscriptions in the Google Play Store under Subscriptions after purchase.'}
         </Text>
 
         <View style={styles.legalLinks}>
@@ -211,7 +214,11 @@ export default function Paywall({ onClose, onSuccess }: Props) {
             <Text style={styles.legalLink}>Privacy Policy</Text>
           </TouchableOpacity>
           <Text style={styles.legalDot}> · </Text>
-          <TouchableOpacity onPress={() => Linking.openURL('https://www.apple.com/legal/internet-services/itunes/dev/stdeula/')}>
+          <TouchableOpacity onPress={() => Linking.openURL(
+            Platform.OS === 'ios'
+              ? 'https://www.apple.com/legal/internet-services/itunes/dev/stdeula/'
+              : 'https://fretionary.com/terms'
+          )}>
             <Text style={styles.legalLink}>Terms of Use</Text>
           </TouchableOpacity>
         </View>

@@ -4,17 +4,15 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
-import { COLORS, RADIUS, SPACE } from '../../src/constants/theme';
+import { COLORS, FONT_FAMILY, RADIUS, SPACE } from '../../src/constants/theme';
 import Metronome from '../../src/components/Metronome';
 import Guide from '../../src/components/Guide';
-import Practice from '../../src/components/practice/Practice';
 import { useProGate } from '../../src/hooks/useProGate';
 
-type ToolMode = 'guide' | 'practice' | 'metronome';
+type ToolMode = 'guide' | 'metronome';
 
 const TOOLS: { mode: ToolMode; label: string; sub: string }[] = [
-  { mode: 'guide',     label: 'Guide',     sub: 'Features' },
-  { mode: 'practice',  label: 'Practice',  sub: 'Fretboard drills' },
+  { mode: 'guide',     label: 'Guide',     sub: 'Features & what\u2019s free' },
   { mode: 'metronome', label: 'Metronome', sub: 'BPM & time sig' },
 ];
 
@@ -43,14 +41,16 @@ export default function ToolsScreen() {
 
   let body: React.ReactNode;
   if (mode === 'guide')           body = <Guide />;
-  else if (mode === 'practice')   body = <Practice />;
   else if (!isPro)                body = <ProUpsell />;
   else                            body = <Metronome />;
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
       <View style={styles.header}>
-        <Text style={styles.title}>Tools</Text>
+        <View>
+          <Text style={styles.eyebrow}>Workshop</Text>
+          <Text style={styles.title}>Tools</Text>
+        </View>
         <View style={styles.tabs}>
           {TOOLS.map(t => (
             <TouchableOpacity
@@ -86,19 +86,25 @@ const styles = StyleSheet.create({
     paddingTop: SPACE.md, paddingBottom: SPACE.md, paddingHorizontal: SPACE.lg,
     gap: SPACE.md,
   },
-  title: { fontSize: 22, fontWeight: '700', color: COLORS.text },
+  eyebrow: {
+    fontSize: 11, fontWeight: '500',
+    color: COLORS.textMuted, letterSpacing: 0.4,
+    marginBottom: 1,
+  },
+  title: { fontSize: 24, fontWeight: '700', color: COLORS.text, letterSpacing: -0.4 },
 
   tabs: {
-    flexDirection: 'row', gap: 8,
-    backgroundColor: COLORS.bg, borderRadius: RADIUS.md, padding: 3,
+    flexDirection: 'row', gap: 4,
+    backgroundColor: COLORS.surface,
+    borderRadius: RADIUS.md, padding: 3,
     borderWidth: 1, borderColor: COLORS.border,
   },
   tab: {
     flex: 1, paddingVertical: 8, paddingHorizontal: 6,
-    alignItems: 'center', borderRadius: RADIUS.sm,
+    alignItems: 'center', borderRadius: 7,
   },
-  tabActive: { backgroundColor: COLORS.surfaceHigh },
-  tabText: { fontSize: 13, fontWeight: '600', color: COLORS.textMuted },
+  tabActive: { backgroundColor: COLORS.surfaceActive },
+  tabText: { fontSize: 13, fontWeight: '600', color: COLORS.textMuted, letterSpacing: 0.1 },
   tabTextActive: { color: COLORS.text },
   tabSub: { fontSize: 9, color: COLORS.textFaint, marginTop: 2 },
   tabSubActive: { color: COLORS.textMuted },

@@ -4,7 +4,7 @@ import {
 } from 'react-native';
 import { Audio } from 'expo-av';
 import { Sound } from 'expo-av/build/Audio';
-import { COLORS, RADIUS, SPACE } from '../constants/theme';
+import { COLORS, FONT_FAMILY, RADIUS, SPACE } from '../constants/theme';
 
 interface TimeSig { name: string; beats: number; }
 
@@ -141,22 +141,31 @@ export default function Metronome() {
 
   return (
     <View style={styles.wrap}>
-      {/* BPM display */}
+      {/* Hero BPM card — TEMPO label + giant mono number + beat dots */}
       <View style={styles.bpmCard}>
-        <Animated.View style={[
-          styles.pulseRing,
-          {
-            opacity: pulseAnim.interpolate({ inputRange: [0, 1], outputRange: [0, 0.6] }),
-            transform: [{
-              scale: pulseAnim.interpolate({ inputRange: [0, 1], outputRange: [0.9, 1.15] }),
-            }],
-          },
-        ]} />
+        <Text style={styles.bpmEyebrow}>Tempo</Text>
         <Text style={styles.bpmValue}>{bpm}</Text>
         <Text style={styles.bpmLabel}>BPM</Text>
+
+        <View style={styles.beatRow}>
+          {Array.from({ length: sig.beats }, (_, i) => {
+            const isCurrent = running && i === beatIdx;
+            const isAccent = i === 0;
+            return (
+              <View
+                key={i}
+                style={[
+                  styles.beatDot,
+                  isAccent && styles.beatDotAccent,
+                  isCurrent && (isAccent ? styles.beatDotAccentLit : styles.beatDotLit),
+                ]}
+              />
+            );
+          })}
+        </View>
       </View>
 
-      {/* BPM controls */}
+      {/* BPM step controls — fine-grained adjust + tap tempo */}
       <View style={styles.bpmRow}>
         <TouchableOpacity onPress={() => bumpBpm(-5)} activeOpacity={0.7} style={styles.bpmStep}>
           <Text style={styles.bpmStepTxt}>−5</Text>
@@ -176,7 +185,7 @@ export default function Metronome() {
       </View>
 
       {/* Time signature */}
-      <Text style={styles.secLabel}>TIME SIGNATURE</Text>
+      <Text style={styles.secLabel}>Time signature</Text>
       <View style={styles.sigRow}>
         {TIME_SIGS.map((s, i) => (
           <TouchableOpacity
@@ -190,108 +199,146 @@ export default function Metronome() {
         ))}
       </View>
 
-      {/* Beat dots */}
-      <Text style={styles.secLabel}>BEAT</Text>
-      <View style={styles.beatRow}>
-        {Array.from({ length: sig.beats }, (_, i) => {
-          const isCurrent = running && i === beatIdx;
-          const isAccent = i === 0;
-          return (
-            <View
-              key={i}
-              style={[
-                styles.beatDot,
-                isAccent && styles.beatDotAccent,
-                isCurrent && (isAccent ? styles.beatDotAccentLit : styles.beatDotLit),
-              ]}
-            />
-          );
-        })}
-      </View>
-
-      {/* Start / stop */}
-      <TouchableOpacity
-        activeOpacity={0.8}
-        onPress={() => setRunning(v => !v)}
-        style={[styles.mainBtn, running && styles.mainBtnStop]}
-      >
-        <Text style={[styles.mainBtnText, running && styles.mainBtnTextStop]}>
-          {running ? '■ Stop' : '▶ Start'}
-        </Text>
-      </TouchableOpacity>
+      {/* Glowing accent play circle */}
+      <Animated.View style={{
+        transform: [{
+          scale: pulseAnim.interpolate({ inputRange: [0, 1], outputRange: [1, 1.06] }),
+        }],
+      }}>
+        <TouchableOpacity
+          activeOpacity={0.85}
+          onPress={() => setRunning(v => !v)}
+          style={[styles.playCircle, running && styles.playCircleOn]}
+        >
+          <Text style={styles.playGlyph}>{running ? '■' : '▶'}</Text>
+        </TouchableOpacity>
+      </Animated.View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  wrap: { paddingHorizontal: SPACE.lg, paddingVertical: SPACE.md, alignItems: 'center' },
+  wrap: { paddingHorizontal: SPACE.lg, paddingTop: SPACE.lg, alignItems: 'center' },
 
+  // Hero BPM card — large rounded panel with mono number + beat dots
   bpmCard: {
-    width: 200, height: 200, borderRadius: 100,
+    alignSelf: 'stretch',
     backgroundColor: COLORS.surface,
-    borderWidth: 2, borderColor: COLORS.border,
-    alignItems: 'center', justifyContent: 'center',
-    marginBottom: SPACE.lg, position: 'relative',
-  },
-  pulseRing: {
-    ...StyleSheet.absoluteFillObject,
-    borderRadius: 100, borderWidth: 4, borderColor: COLORS.accent,
-  },
-  bpmValue: { fontSize: 64, fontWeight: '700', color: COLORS.text, lineHeight: 70 },
-  bpmLabel: { fontSize: 11, fontWeight: '600', color: COLORS.textMuted, letterSpacing: 1.5, marginTop: -4 },
-
-  bpmRow: {
-    flexDirection: 'row', gap: 8, alignItems: 'center', marginBottom: SPACE.lg,
-  },
-  bpmStep: {
-    width: 44, height: 36, borderRadius: RADIUS.md,
-    borderWidth: 1, borderColor: COLORS.border, backgroundColor: COLORS.surfaceHigh,
-    alignItems: 'center', justifyContent: 'center',
-  },
-  bpmStepTxt: { fontSize: 13, fontWeight: '600', color: COLORS.text },
-  tapBtn: {
-    width: 56, height: 36, borderRadius: RADIUS.md,
-    borderWidth: 1, borderColor: COLORS.accent, backgroundColor: COLORS.accentLight,
-    alignItems: 'center', justifyContent: 'center',
-  },
-  tapTxt: { fontSize: 12, fontWeight: '700', color: COLORS.accent, letterSpacing: 1 },
-
-  secLabel: {
-    fontSize: 9, fontWeight: '700', color: COLORS.textFaint, letterSpacing: 0.8,
-    marginTop: SPACE.sm, marginBottom: SPACE.sm,
-  },
-
-  sigRow: {
-    flexDirection: 'row', gap: 6, justifyContent: 'center', flexWrap: 'wrap',
-    marginBottom: SPACE.sm,
-  },
-  sigPill: {
-    paddingHorizontal: 14, paddingVertical: 7, borderRadius: RADIUS.full,
-    borderWidth: 1, borderColor: COLORS.border, backgroundColor: COLORS.surface,
-  },
-  sigPillActive: { backgroundColor: COLORS.accent, borderColor: COLORS.accent },
-  sigText: { fontSize: 13, fontWeight: '600', color: COLORS.textMuted },
-  sigTextActive: { color: '#fff' },
-
-  beatRow: {
-    flexDirection: 'row', gap: 10, justifyContent: 'center',
+    borderWidth: 1, borderColor: COLORS.border,
+    borderRadius: RADIUS.xl,
+    paddingVertical: SPACE.xl,
+    paddingHorizontal: SPACE.lg,
+    alignItems: 'center',
     marginBottom: SPACE.lg,
   },
+  bpmEyebrow: {
+    fontSize: 10, fontWeight: '600',
+    color: COLORS.textFaint, letterSpacing: 1.6,
+    textTransform: 'uppercase',
+    marginBottom: 6,
+    fontFamily: FONT_FAMILY.mono,
+  },
+  bpmValue: {
+    fontSize: 88, fontWeight: '700', lineHeight: 92,
+    color: COLORS.text, letterSpacing: -3,
+    fontFamily: FONT_FAMILY.mono,
+  },
+  bpmLabel: {
+    fontSize: 12, fontWeight: '600',
+    color: COLORS.textMuted, letterSpacing: 0.5,
+    marginTop: 4,
+    fontFamily: FONT_FAMILY.mono,
+  },
+
+  // Beat dots, sit inside the BPM card
+  beatRow: {
+    flexDirection: 'row', gap: 10, justifyContent: 'center',
+    marginTop: SPACE.lg,
+  },
   beatDot: {
-    width: 16, height: 16, borderRadius: 8,
+    width: 14, height: 14, borderRadius: 7,
     backgroundColor: COLORS.surfaceHigh,
     borderWidth: 1, borderColor: COLORS.border,
   },
   beatDotAccent: { borderColor: COLORS.textMuted },
-  beatDotLit: { backgroundColor: COLORS.accent, borderColor: COLORS.accent },
-  beatDotAccentLit: { backgroundColor: '#E8D44D', borderColor: '#C4A800' },
-
-  mainBtn: {
-    paddingHorizontal: 36, paddingVertical: 12,
-    borderRadius: RADIUS.full, backgroundColor: COLORS.accent,
-    alignSelf: 'stretch', alignItems: 'center',
+  beatDotLit: {
+    backgroundColor: COLORS.accent, borderColor: COLORS.accent,
+    shadowColor: COLORS.accent,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.6, shadowRadius: 8,
+    elevation: 4,
   },
-  mainBtnStop: { backgroundColor: '#E24B4A' },
-  mainBtnText: { fontSize: 15, fontWeight: '700', color: '#fff' },
-  mainBtnTextStop: { color: '#fff' },
+  beatDotAccentLit: {
+    backgroundColor: '#E0CC58', borderColor: '#B49E2E',
+    shadowColor: '#E0CC58',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.6, shadowRadius: 8,
+    elevation: 4,
+  },
+
+  // BPM step controls + tap
+  bpmRow: {
+    flexDirection: 'row', gap: 8, alignItems: 'center', marginBottom: SPACE.lg,
+  },
+  bpmStep: {
+    width: 44, height: 38, borderRadius: RADIUS.md,
+    borderWidth: 1, borderColor: COLORS.border, backgroundColor: COLORS.surface,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  bpmStepTxt: {
+    fontSize: 13, fontWeight: '700', color: COLORS.text,
+    fontFamily: FONT_FAMILY.mono,
+  },
+  tapBtn: {
+    width: 60, height: 38, borderRadius: RADIUS.md,
+    borderWidth: 1, borderColor: COLORS.accent, backgroundColor: COLORS.accentSoft,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  tapTxt: {
+    fontSize: 12, fontWeight: '700', color: COLORS.accent, letterSpacing: 1.2,
+    fontFamily: FONT_FAMILY.mono,
+  },
+
+  // Section label (mono uppercase)
+  secLabel: {
+    fontSize: 10, fontWeight: '600',
+    color: COLORS.textFaint, letterSpacing: 1.2,
+    textTransform: 'uppercase',
+    marginBottom: SPACE.sm, marginTop: SPACE.sm,
+    fontFamily: FONT_FAMILY.mono,
+    alignSelf: 'flex-start',
+  },
+
+  // Time signature pills
+  sigRow: {
+    flexDirection: 'row', gap: 6, flexWrap: 'wrap',
+    marginBottom: SPACE.lg,
+    alignSelf: 'stretch', justifyContent: 'center',
+  },
+  sigPill: {
+    paddingHorizontal: 14, paddingVertical: 8,
+    borderRadius: RADIUS.full,
+    backgroundColor: COLORS.surface,
+    borderWidth: 1, borderColor: 'transparent',
+  },
+  sigPillActive: { backgroundColor: COLORS.accentSoft, borderColor: COLORS.accent },
+  sigText: {
+    fontSize: 13, fontWeight: '600', color: COLORS.textMuted,
+    fontFamily: FONT_FAMILY.mono, letterSpacing: 0.4,
+  },
+  sigTextActive: { color: COLORS.text },
+
+  // Big circular accent play button at the bottom
+  playCircle: {
+    width: 88, height: 88, borderRadius: 44,
+    backgroundColor: COLORS.accent,
+    alignItems: 'center', justifyContent: 'center',
+    marginTop: SPACE.lg,
+    shadowColor: COLORS.accent,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.5, shadowRadius: 18,
+    elevation: 10,
+  },
+  playCircleOn: { backgroundColor: '#D45846' },
+  playGlyph: { fontSize: 32, color: '#fff', fontWeight: '700', lineHeight: 36 },
 });

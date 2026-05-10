@@ -145,8 +145,26 @@ export function getChordVoicings(root: number, chordKey: string): ChordVoicing[]
       return abs < 0 ? null : abs; // mute if goes below nut
     });
 
+    // Skip a template when it can't actually be voiced for this root — i.e.
+    // any non-null offset would land below fret 0 and get force-muted, leaving
+    // a broken chord (e.g. a C-shape barre played at A would have most strings
+    // muted). Counts the would-be-muted strings; if >1 string is lost this way,
+    // the shape isn't usable for this root.
+    const lostToNegative = tmpl.frets.filter(f =>
+      f !== null && (rootFret! + f) < 0,
+    ).length;
+    if (lostToNegative > 1) continue;
+
     const pressed = frets.filter(f => f !== null && f > 0) as number[];
-    const displayBase = pressed.length > 0 ? Math.min(...pressed) : rootFret;
+    const hasOpenString = frets.some(f => f === 0);
+    // If any string rings open, we have to show the nut — pinning baseFret to
+    // 1 keeps fret 2 (and the open-string markers) where they belong.
+    // Otherwise, slide the diagram down to start at the lowest pressed fret.
+    const displayBase = hasOpenString
+      ? 1
+      : pressed.length > 0
+        ? Math.min(...pressed)
+        : rootFret;
 
     // Skip shapes that go above fret 12
     if (pressed.length > 0 && Math.max(...pressed) > 12) continue;

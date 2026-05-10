@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet } from 'react-native';
-import { COLORS, RADIUS, SPACE } from '../constants/theme';
-import { NOTES, NOTE_DISPLAY } from '../constants/music';
+import React, { useEffect, useRef, useState } from 'react';
+import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Animated } from 'react-native';
+import { COLORS, FONT_FAMILY, RADIUS, SPACE } from '../constants/theme';
+import { NOTES, NOTE_DISPLAY, SCALES, CHORDS } from '../constants/music';
 import { useStore, type AppMode } from '../store/useStore';
 import TuningPicker from './TuningPicker';
 import SavedSheet from './SavedSheet';
@@ -9,32 +9,109 @@ import SavedSheet from './SavedSheet';
 const MODES: { label: string; value: AppMode }[] = [
   { label: 'Scales', value: 'scales' },
   { label: 'Chords', value: 'chords' },
-  { label: 'CAGED', value: 'caged' },
+  { label: 'CAGED',  value: 'caged'  },
 ];
 
+// Sliding indicator inside a segmented control. Animates between mode pills
+// with a subtle shadow & inset highlight (matches the design's premium feel).
+function SegmentedControl({ value, onChange }: { value: AppMode; onChange: (m: AppMode) => void }) {
+  const idx = MODES.findIndex(m => m.value === value);
+  const slide = useRef(new Animated.Value(idx)).current;
+
+  useEffect(() => {
+    Animated.timing(slide, {
+      toValue: idx,
+      duration: 220,
+      useNativeDriver: false,
+    }).start();
+  }, [idx, slide]);
+
+  // Layout: outer track is padded by 3px; each segment is 1/3 of the inner area.
+  // We translate by % using interpolate.
+  const translateX = slide.interpolate({
+    inputRange: [0, 1, 2],
+    outputRange: ['0%', '100%', '200%'],
+  });
+
+  return (
+    <View style={segStyles.track}>
+      <Animated.View
+        style={[
+          segStyles.indicator,
+          { width: `${100 / MODES.length}%`, transform: [{ translateX }] },
+        ]}
+      />
+      {MODES.map(m => (
+        <TouchableOpacity
+          key={m.value}
+          onPress={() => onChange(m.value)}
+          activeOpacity={0.7}
+          style={segStyles.segment}
+        >
+          <Text style={[segStyles.label, value === m.value && segStyles.labelActive]}>
+            {m.label}
+          </Text>
+        </TouchableOpacity>
+      ))}
+    </View>
+  );
+}
+
+const segStyles = StyleSheet.create({
+  track: {
+    flex: 1,
+    flexDirection: 'row',
+    backgroundColor: COLORS.surface,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    padding: 3,
+    position: 'relative',
+    overflow: 'hidden',
+  },
+  indicator: {
+    position: 'absolute',
+    top: 3, bottom: 3, left: 3,
+    backgroundColor: COLORS.surfaceActive,
+    borderRadius: 9,
+    // subtle inset highlight + drop shadow
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 6,
+    elevation: 2,
+  },
+  segment: {
+    flex: 1, paddingVertical: 8,
+    alignItems: 'center', justifyContent: 'center',
+    zIndex: 1,
+  },
+  label: {
+    fontSize: 13, fontWeight: '600',
+    color: COLORS.textMuted,
+    letterSpacing: 0.1,
+  },
+  labelActive: { color: COLORS.text },
+});
+
 export default function TopBar() {
-  const { root, setRoot, mode, setMode } = useStore();
+  const { root, setRoot, scaleKey, chordKey, mode, setMode } = useStore();
   const [savedOpen, setSavedOpen] = useState(false);
+
+  const titleSubject = mode === 'chords'
+    ? `${NOTES[root]} ${chordKey}`
+    : mode === 'caged'
+      ? `${NOTES[root]} CAGED`
+      : `${NOTES[root]} ${scaleKey}`;
 
   return (
     <View style={styles.wrap}>
-      {/* Mode tabs + tuning picker */}
-      <View style={styles.topRow}>
-        <View style={styles.tabs}>
-          {MODES.map(m => (
-            <TouchableOpacity
-              key={m.value}
-              onPress={() => setMode(m.value)}
-              style={[styles.tab, mode === m.value && styles.tabActive]}
-              activeOpacity={0.7}
-            >
-              <Text style={[styles.tabText, mode === m.value && styles.tabTextActive]}>
-                {m.label}
-              </Text>
-            </TouchableOpacity>
-          ))}
+      {/* Eyebrow + current selection title */}
+      <View style={styles.titleRow}>
+        <View style={{ flex: 1 }}>
+          <Text style={styles.eyebrow}>Fretboard</Text>
+          <Text style={styles.title} numberOfLines={1}>{titleSubject}</Text>
         </View>
-        <TuningPicker forcedStandard={mode === 'caged'} />
         <TouchableOpacity
           onPress={() => setSavedOpen(true)}
           activeOpacity={0.7}
@@ -43,6 +120,12 @@ export default function TopBar() {
         >
           <Text style={styles.savedBtnText}>♥</Text>
         </TouchableOpacity>
+      </View>
+
+      {/* Mode tabs + tuning picker */}
+      <View style={styles.topRow}>
+        <SegmentedControl value={mode} onChange={setMode} />
+        <TuningPicker forcedStandard={mode === 'caged'} />
       </View>
 
       {/* Root note selector */}
@@ -76,44 +159,32 @@ const styles = StyleSheet.create({
     paddingBottom: SPACE.md,
     gap: SPACE.sm,
   },
+  titleRow: {
+    flexDirection: 'row', alignItems: 'center',
+    paddingHorizontal: SPACE.lg,
+    gap: SPACE.sm,
+  },
+  eyebrow: {
+    fontSize: 11, fontWeight: '500',
+    color: COLORS.textMuted, letterSpacing: 0.4,
+    marginBottom: 1,
+  },
+  title: {
+    fontSize: 17, fontWeight: '700',
+    color: COLORS.text, letterSpacing: -0.2,
+  },
+  savedBtn: {
+    width: 32, height: 32, borderRadius: 16,
+    borderWidth: 1, borderColor: COLORS.border,
+    backgroundColor: COLORS.surface,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  savedBtnText: { fontSize: 14, color: '#D45846', fontWeight: '700', lineHeight: 16 },
   topRow: {
     flexDirection: 'row',
     alignItems: 'center',
     marginHorizontal: SPACE.lg,
     gap: SPACE.sm,
-  },
-  savedBtn: {
-    width: 32, height: 32, borderRadius: 16,
-    borderWidth: 1, borderColor: COLORS.border,
-    backgroundColor: COLORS.bg,
-    alignItems: 'center', justifyContent: 'center',
-  },
-  savedBtnText: { fontSize: 14, color: '#E24B4A', fontWeight: '700', lineHeight: 16 },
-  tabs: {
-    flex: 1,
-    flexDirection: 'row',
-    backgroundColor: COLORS.bg,
-    borderRadius: RADIUS.md,
-    padding: 3,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-  },
-  tab: {
-    flex: 1,
-    paddingVertical: 7,
-    alignItems: 'center',
-    borderRadius: RADIUS.sm,
-  },
-  tabActive: {
-    backgroundColor: COLORS.surfaceHigh,
-  },
-  tabText: {
-    fontSize: 13,
-    fontWeight: '500',
-    color: COLORS.textMuted,
-  },
-  tabTextActive: {
-    color: COLORS.text,
   },
   noteRow: {
     flexDirection: 'row',
@@ -121,23 +192,25 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   notePill: {
-    paddingHorizontal: 10,
-    paddingVertical: 5,
+    paddingHorizontal: 11,
+    paddingVertical: 6,
     borderRadius: RADIUS.full,
+    backgroundColor: COLORS.surface,
     borderWidth: 1,
-    borderColor: COLORS.border,
-    backgroundColor: COLORS.bg,
+    borderColor: 'transparent',
   },
   notePillActive: {
-    backgroundColor: '#E8D44D',
-    borderColor: '#C4A800',
+    backgroundColor: COLORS.accentSoft,
+    borderColor: COLORS.accent,
   },
   noteText: {
-    fontSize: 12,
-    fontWeight: '500',
+    fontSize: 13, fontWeight: '500',
     color: COLORS.textMuted,
+    fontFamily: FONT_FAMILY.mono,
+    letterSpacing: 0.2,
   },
   noteTextActive: {
-    color: '#5C4400',
+    color: COLORS.text,
+    fontWeight: '700',
   },
 });

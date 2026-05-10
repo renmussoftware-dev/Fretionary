@@ -27,7 +27,7 @@ const SECTIONS: Section[] = [
     features: [
       { name: 'Scales mode',     desc: '14 scales — Major, modes, pentatonics, blues, harmonic/melodic minor, whole-tone, diminished.', badge: 'mixed' },
       { name: 'Chords mode',     desc: 'Light up any of 35 chord types across the entire neck.', badge: 'mixed' },
-      { name: 'CAGED mode',      desc: 'See where each of the 5 CAGED shapes lives for any key.', badge: 'mixed' },
+      { name: 'CAGED mode',      desc: 'See where each of the 5 CAGED shapes lives for any key — with shape detail, caret-fret indicator, and pedagogical tips.', badge: 'mixed' },
       { name: 'Position lock',   desc: 'Filter the fretboard to a single 5-fret position (Pos 1–5).', badge: 'pro' },
       { name: 'Note labels',     desc: 'Toggle between note name, scale degree, interval, or no label.', badge: 'free' },
     ],
@@ -44,16 +44,6 @@ const SECTIONS: Section[] = [
     ],
   },
   {
-    title: 'Scale Reference',
-    intro: 'Quick reference for every scale — notes, formula, degrees, category.',
-    navTo: '/scales',
-    navLabel: 'Open Scale Reference',
-    features: [
-      { name: 'All 14 scales',  desc: 'Filter by Major, Minor, Pentatonic, Modes, or Other.', badge: 'mixed' },
-      { name: 'Interval formula', desc: 'Whole-step / half-step pattern shown for each.', badge: 'free' },
-    ],
-  },
-  {
     title: 'Progressions',
     intro: 'Learn and play 22 common chord progressions across genres, build diatonic sequences, or write your own.',
     navTo: '/progressions',
@@ -66,19 +56,10 @@ const SECTIONS: Section[] = [
     ],
   },
   {
-    title: 'CAGED System',
-    intro: 'A full written guide to the 5 CAGED shapes — how they connect, where each root sits, and how to use them.',
-    navTo: '/caged',
-    navLabel: 'Open CAGED Guide',
-    features: [
-      { name: 'Shape detail',     desc: 'Per-shape root string, fret position, and tips.', badge: 'free' },
-      { name: 'Cycle diagram',    desc: 'Live diagram showing all 5 shapes for the current key.', badge: 'free' },
-      { name: 'Send to fretboard', desc: 'Jump to any shape on the interactive fretboard.', badge: 'free' },
-    ],
-  },
-  {
     title: 'Practice',
-    intro: 'Sharpen your fretboard knowledge with interactive drills on the Tools tab.',
+    intro: 'Sharpen your fretboard knowledge with interactive drills.',
+    navTo: '/practice',
+    navLabel: 'Open Practice',
     features: [
       { name: 'Name the Note', desc: 'A fret lights up — pick the right note from 7 (or 12) options.', badge: 'mixed' },
       { name: 'Find the Note', desc: 'Show me a target note — tap every position of it on the neck.', badge: 'pro' },
@@ -226,7 +207,7 @@ const styles = StyleSheet.create({
   badgeFreeText: { fontSize: 9, fontWeight: '800', color: '#1D9E75', letterSpacing: 0.4 },
   badgePro: { backgroundColor: 'rgba(232,212,77,0.15)', borderWidth: 1, borderColor: '#C4A800' },
   badgeProText: { fontSize: 9, fontWeight: '800', color: '#E8D44D', letterSpacing: 0.4 },
-  badgeMixed: { backgroundColor: 'rgba(83,74,183,0.18)', borderWidth: 1, borderColor: '#534AB7' },
+  badgeMixed: { backgroundColor: 'rgba(110,96,217,0.18)', borderWidth: 1, borderColor: '#6E60D9' },
   badgeMixedText: { fontSize: 9, fontWeight: '800', color: '#837AB7', letterSpacing: 0.4 },
 
   navBtn: {

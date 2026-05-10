@@ -5,9 +5,12 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Circle, Line, Text as SvgText, G, Rect } from 'react-native-svg';
-import { COLORS, SPACE, RADIUS } from '../../src/constants/theme';
+import { COLORS, SPACE, RADIUS, FONT_FAMILY } from '../../src/constants/theme';
 import { NOTES, NOTE_DISPLAY, CHORDS, OPEN_STRINGS } from '../../src/constants/music';
-import { PROGRESSIONS, GENRES, type Progression } from '../../src/constants/progressions';
+import {
+  PROGRESSIONS, GENRES, EXAMPLE_PROGRESSIONS,
+  type Progression, type ExampleProgression,
+} from '../../src/constants/progressions';
 import ChordBox from '../../src/components/ChordBox';
 import { useStore } from '../../src/store/useStore';
 import { useAudioEngine } from '../../src/hooks/useAudioEngine';
@@ -19,7 +22,7 @@ import StandardTuningNotice from '../../src/components/StandardTuningNotice';
 import HeartButton from '../../src/components/HeartButton';
 import SavedSheet from '../../src/components/SavedSheet';
 
-type SubMode = 'common' | 'diatonic' | 'custom';
+type SubMode = 'common' | 'diatonic' | 'custom' | 'examples';
 
 const DIATONIC_MAJOR = [
   { degree: 0,  chordType: 'Major',      numeral: 'I'    },
@@ -142,6 +145,7 @@ export default function ProgressionsScreen() {
   const [modalRoot, setModalRoot] = useState<number>(root); // 'pick any chord' picker root
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [savedOpen, setSavedOpen] = useState(false);
+  const [selectedExample, setSelectedExample] = useState<ExampleProgression | null>(EXAMPLE_PROGRESSIONS[0]);
 
   // Apply pending navigation from the Saved sheet
   useEffect(() => {
@@ -203,13 +207,27 @@ export default function ProgressionsScreen() {
         genre: 'Custom',
         description: '',
       }
-    : selectedProg;
+    : subMode === 'examples'
+      ? selectedExample
+        ? {
+            name: selectedExample.name,
+            // Concrete chord names in the "numeral" slot for display.
+            numerals: selectedExample.chords.map(c => NOTES[c.root]),
+            degrees: selectedExample.chords.map(() => 0),
+            chordTypes: selectedExample.chords.map(c => c.chordType),
+            genre: selectedExample.genre,
+            description: selectedExample.description,
+          }
+        : { name: '', numerals: [], degrees: [], chordTypes: [], genre: '', description: '' }
+      : selectedProg;
 
-  // Absolute root per step. Custom chords are stored absolutely; common /
+  // Absolute root per step. Custom + examples are stored absolutely; common /
   // diatonic progressions transpose with the page root.
   const progRoots: number[] = subMode === 'custom'
     ? customChords.map(c => c.root)
-    : selectedProg.degrees.map(d => (root + d) % 12);
+    : subMode === 'examples'
+      ? (selectedExample?.chords.map(c => c.root) ?? [])
+      : selectedProg.degrees.map(d => (root + d) % 12);
 
   const count = activeProg.degrees.length;
   const currentRoot = progRoots[activeIdx] ?? 0;
@@ -295,40 +313,46 @@ export default function ProgressionsScreen() {
     <SafeAreaView style={styles.safe} edges={['top']}>
       <View style={styles.header}>
         <View style={styles.headerTop}>
-          <Text style={styles.title}>Progressions</Text>
-          <TouchableOpacity onPress={() => setSavedOpen(true)} activeOpacity={0.7} style={styles.savedBtn}>
-            <Text style={styles.savedBtnText}>♥ Saved</Text>
-          </TouchableOpacity>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.eyebrow}>Builder</Text>
+            <Text style={styles.title}>Progressions</Text>
+          </View>
           <View style={styles.bpmRow}>
             <TouchableOpacity onPress={() => setBpm(b => Math.max(40, b - 10))} style={styles.bpmBtn} activeOpacity={0.7}>
               <Text style={styles.bpmBtnTxt}>–</Text>
             </TouchableOpacity>
-            <Text style={styles.bpmTxt}>{bpm} bpm</Text>
+            <Text style={styles.bpmTxt}>{bpm} BPM</Text>
             <TouchableOpacity onPress={() => setBpm(b => Math.min(200, b + 10))} style={styles.bpmBtn} activeOpacity={0.7}>
               <Text style={styles.bpmBtnTxt}>+</Text>
             </TouchableOpacity>
           </View>
+          <TouchableOpacity onPress={() => setSavedOpen(true)} activeOpacity={0.7} style={styles.savedBtn}>
+            <Text style={styles.savedBtnText}>♥</Text>
+          </TouchableOpacity>
         </View>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.noteRow}>
-          {NOTES.map((n, i) => (
-            <TouchableOpacity key={n} onPress={() => {
-                setRoot(i);
-                if (isNamedProg) {
-                  addRecent({ kind: 'progression', root: i, progName: selectedProg.name });
-                }
-              }}
-              style={[styles.notePill, root === i && styles.notePillActive]} activeOpacity={0.7}>
-              <Text style={[styles.noteText, root === i && styles.noteTextActive]}>{NOTE_DISPLAY[n] || n}</Text>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
+        {/* Root picker — hidden in examples mode since the example's key is fixed */}
+        {subMode !== 'examples' && (
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.noteRow}>
+            {NOTES.map((n, i) => (
+              <TouchableOpacity key={n} onPress={() => {
+                  setRoot(i);
+                  if (isNamedProg) {
+                    addRecent({ kind: 'progression', root: i, progName: selectedProg.name });
+                  }
+                }}
+                style={[styles.notePill, root === i && styles.notePillActive]} activeOpacity={0.7}>
+                <Text style={[styles.noteText, root === i && styles.noteTextActive]}>{NOTE_DISPLAY[n] || n}</Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        )}
         <View style={styles.subTabs}>
-          {(['common', 'diatonic', 'custom'] as SubMode[]).map(m => (
+          {(['common', 'diatonic', 'custom', 'examples'] as SubMode[]).map(m => (
             <TouchableOpacity key={m}
               onPress={() => { setSubMode(m); setActiveIdx(0); setPlaying(false); }}
               style={[styles.subTab, subMode === m && styles.subTabActive]} activeOpacity={0.7}>
               <Text style={[styles.subTabTxt, subMode === m && styles.subTabTxtActive]}>
-                {m === 'common' ? 'Common' : m === 'diatonic' ? 'Diatonic' : 'Custom'}
+                {m === 'common' ? 'Common' : m === 'diatonic' ? 'Diatonic' : m === 'custom' ? 'Custom' : 'Examples'}
               </Text>
             </TouchableOpacity>
           ))}
@@ -342,6 +366,7 @@ export default function ProgressionsScreen() {
             <StandardTuningNotice context="progressions" />
             {count > 0 ? (
               <>
+                <Text style={styles.secLabel}>Now playing</Text>
                 <View style={styles.activeCard}>
                   {isNamedProg && (
                     <View style={styles.activeCardHeart}>
@@ -351,12 +376,18 @@ export default function ProgressionsScreen() {
                       />
                     </View>
                   )}
-                  <Text style={styles.activeNum}>{currentNumeral}</Text>
+                  <View style={styles.activeCardTop}>
+                    <Text style={styles.activeProgTitle}>
+                      {subMode === 'examples'
+                        ? (selectedExample?.name ?? 'Examples')
+                        : isNamedProg ? selectedProg.name : 'Custom'}
+                    </Text>
+                    <Text style={styles.activeMeta}>
+                      Key of {subMode === 'examples' ? (selectedExample?.key ?? NOTES[root]) : NOTES[root]} · {bpm} BPM
+                    </Text>
+                  </View>
                   <Text style={styles.activeName}>{NOTES[currentRoot]} {currentType}</Text>
                   <Text style={styles.activeIntervals}>{CHORDS[currentType]?.intervalNames.join('  ·  ')}</Text>
-                  {isNamedProg && (
-                    <Text style={styles.activeProgName}>{selectedProg.name}</Text>
-                  )}
                 </View>
 
                 <View style={styles.fbWrap}>
@@ -365,19 +396,19 @@ export default function ProgressionsScreen() {
 
                 <View style={styles.ctrlRow}>
                   <TouchableOpacity onPress={() => goTo((activeIdx - 1 + count) % count)} style={styles.navBtn} activeOpacity={0.7}>
-                    <Text style={styles.navTxt}>{'<'}</Text>
+                    <Text style={styles.navTxt}>‹</Text>
                   </TouchableOpacity>
                   <TouchableOpacity onPress={() => {
                       if (!isPro) { requirePro(() => {}); return; }
                       setPlaying(v => !v);
                     }}
-                    style={[styles.playBtn, playing && styles.playBtnOn]} activeOpacity={0.7}>
-                    <Text style={[styles.playTxt, playing && styles.playTxtOn]}>
-                      {!isPro ? '🔒 Play' : playing ? 'Pause' : 'Play'}
+                    style={[styles.playCircle, playing && styles.playCircleOn]} activeOpacity={0.85}>
+                    <Text style={styles.playGlyph}>
+                      {!isPro ? '🔒' : playing ? '⏸' : '▶'}
                     </Text>
                   </TouchableOpacity>
                   <TouchableOpacity onPress={() => goTo((activeIdx + 1) % count)} style={styles.navBtn} activeOpacity={0.7}>
-                    <Text style={styles.navTxt}>{'>'}</Text>
+                    <Text style={styles.navTxt}>›</Text>
                   </TouchableOpacity>
                 </View>
 
@@ -529,6 +560,44 @@ export default function ProgressionsScreen() {
               </ScrollView>
             </View>
           )}
+          {drawerOpen && subMode === 'examples' && (
+            <>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.genreRow} style={{ maxHeight: 40 }}>
+                {GENRES.map(g => (
+                  <TouchableOpacity key={g} onPress={() => setGenre(g)}
+                    style={[styles.genrePill, genre === g && styles.genrePillActive]} activeOpacity={0.7}>
+                    <Text style={[styles.genreTxt, genre === g && styles.genreTxtActive]}>{g}</Text>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+              <ScrollView showsVerticalScrollIndicator={false}>
+                {EXAMPLE_PROGRESSIONS.filter(e => genre === 'All' || e.genre === genre).map(ex => {
+                  const active = selectedExample?.name === ex.name;
+                  return (
+                    <TouchableOpacity key={ex.name} onPress={() => {
+                        setSelectedExample(ex);
+                        setActiveIdx(0);
+                        setPlaying(false);
+                        closeDrawer();
+                      }}
+                      style={[styles.progItem, active && styles.progItemActive]} activeOpacity={0.7}>
+                      <Text style={[styles.progName, active && styles.progNameActive]} numberOfLines={1}>
+                        {ex.name}
+                      </Text>
+                      <View style={styles.progMeta}>
+                        <View style={styles.badge}><Text style={styles.badgeTxt}>{ex.genre}</Text></View>
+                        <Text style={styles.progNums} numberOfLines={1}>
+                          {ex.chords.map(c => NOTES[c.root]).slice(0, 4).join(' – ')}
+                        </Text>
+                      </View>
+                    </TouchableOpacity>
+                  );
+                })}
+                <View style={{ height: 40 }} />
+              </ScrollView>
+            </>
+          )}
         </Animated.View>
 
         {/* Toggle pill */}
@@ -607,26 +676,65 @@ export default function ProgressionsScreen() {
 
 const styles = StyleSheet.create({
   safe:           { flex: 1, backgroundColor: COLORS.bg },
-  header:         { backgroundColor: COLORS.surface, borderBottomWidth: 1, borderBottomColor: COLORS.border, paddingTop: SPACE.md, paddingBottom: SPACE.sm, gap: SPACE.sm },
-  headerTop:      { flexDirection: 'row', alignItems: 'center', paddingHorizontal: SPACE.lg },
-  title:          { fontSize: 18, fontWeight: '700', color: COLORS.text, flex: 1 },
+  header:         {
+                    backgroundColor: COLORS.surface,
+                    borderBottomWidth: 1, borderBottomColor: COLORS.border,
+                    paddingTop: SPACE.md, paddingBottom: SPACE.sm,
+                    gap: SPACE.sm,
+                  },
+  headerTop:      {
+                    flexDirection: 'row', alignItems: 'center',
+                    paddingHorizontal: SPACE.lg, gap: SPACE.sm,
+                  },
+  eyebrow:        {
+                    fontSize: 11, fontWeight: '500',
+                    color: COLORS.textMuted, letterSpacing: 0.4,
+                    marginBottom: 1,
+                  },
+  title:          { fontSize: 24, fontWeight: '700', color: COLORS.text, letterSpacing: -0.4 },
   bpmRow:         { flexDirection: 'row', alignItems: 'center', gap: 5 },
-  bpmBtn:         { width: 26, height: 26, borderRadius: 13, borderWidth: 1, borderColor: COLORS.border, backgroundColor: COLORS.surfaceHigh, alignItems: 'center', justifyContent: 'center' },
+  bpmBtn:         {
+                    width: 28, height: 28, borderRadius: 14,
+                    borderWidth: 1, borderColor: COLORS.border,
+                    backgroundColor: COLORS.surface,
+                    alignItems: 'center', justifyContent: 'center',
+                  },
   bpmBtnTxt:      { fontSize: 16, color: COLORS.text, lineHeight: 20 },
-  bpmTxt:         { fontSize: 12, fontWeight: '600', color: COLORS.textMuted, minWidth: 54, textAlign: 'center' },
+  bpmTxt:         {
+                    fontSize: 12, fontWeight: '700',
+                    color: COLORS.text, minWidth: 64, textAlign: 'center',
+                    fontFamily: FONT_FAMILY.mono, letterSpacing: 0.4,
+                  },
   noteRow:        { flexDirection: 'row', paddingHorizontal: SPACE.lg, gap: 6 },
-  notePill:       { paddingHorizontal: 10, paddingVertical: 5, borderRadius: RADIUS.full, borderWidth: 1, borderColor: COLORS.border, backgroundColor: COLORS.bg },
-  notePillActive: { backgroundColor: '#E8D44D', borderColor: '#C4A800' },
-  noteText:       { fontSize: 12, fontWeight: '500', color: COLORS.textMuted },
-  noteTextActive: { color: '#5C4400' },
-  subTabs:        { flexDirection: 'row', marginHorizontal: SPACE.lg, gap: 4, backgroundColor: COLORS.bg, borderRadius: RADIUS.md, padding: 3, borderWidth: 1, borderColor: COLORS.border },
-  subTab:         { flex: 1, paddingVertical: 6, alignItems: 'center', borderRadius: 6 },
-  subTabActive:   { backgroundColor: COLORS.surfaceHigh },
-  subTabTxt:      { fontSize: 12, fontWeight: '500', color: COLORS.textMuted },
+  notePill:       {
+                    paddingHorizontal: 11, paddingVertical: 6,
+                    borderRadius: RADIUS.full,
+                    backgroundColor: COLORS.surface,
+                    borderWidth: 1, borderColor: 'transparent',
+                  },
+  notePillActive: { backgroundColor: COLORS.accentSoft, borderColor: COLORS.accent },
+  noteText:       {
+                    fontSize: 13, fontWeight: '500',
+                    color: COLORS.textMuted,
+                    fontFamily: FONT_FAMILY.mono, letterSpacing: 0.2,
+                  },
+  noteTextActive: { color: COLORS.text, fontWeight: '700' },
+  // Sub-tabs — segmented surface with accent ring on active
+  subTabs:        {
+                    flexDirection: 'row',
+                    marginHorizontal: SPACE.lg, gap: 4,
+                    backgroundColor: COLORS.surface,
+                    borderRadius: RADIUS.md,
+                    padding: 3,
+                    borderWidth: 1, borderColor: COLORS.border,
+                  },
+  subTab:         { flex: 1, paddingVertical: 7, alignItems: 'center', borderRadius: 7 },
+  subTabActive:   { backgroundColor: COLORS.surfaceActive },
+  subTabTxt:      { fontSize: 12, fontWeight: '600', color: COLORS.textMuted, letterSpacing: 0.1 },
   subTabTxtActive:{ color: COLORS.text },
   body:           { flex: 1 },
   scrim:          { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.45)', zIndex: 10 },
-  drawer:         { position: 'absolute', left: 0, top: 0, bottom: 0, width: 200, backgroundColor: COLORS.surface, borderRightWidth: 1, borderRightColor: COLORS.border, zIndex: 20 },
+  drawer:         { position: 'absolute', left: 0, top: 0, bottom: 0, width: 200, backgroundColor: COLORS.bgElevated, borderRightWidth: 1, borderRightColor: COLORS.border, zIndex: 20 },
   toggleWrap:     { position: 'absolute', left: 0, top: '35%', zIndex: 30 },
   togglePill:     { backgroundColor: COLORS.surfaceHigh, borderTopRightRadius: 20, borderBottomRightRadius: 20, borderWidth: 1, borderLeftWidth: 0, borderColor: COLORS.borderLight, paddingVertical: 14, paddingLeft: 6, paddingRight: 10, alignItems: 'center', gap: 4 },
   toggleDots:     { fontSize: 13, color: COLORS.textFaint, lineHeight: 14, letterSpacing: -2 },
@@ -642,9 +750,9 @@ const styles = StyleSheet.create({
   progName:       { fontSize: 11, fontWeight: '600', color: COLORS.text, marginBottom: 3 },
   progNameActive: { color: COLORS.accent },
   progMeta:       { flexDirection: 'row', alignItems: 'center', gap: 5 },
-  badge:          { paddingHorizontal: 4, paddingVertical: 1, borderRadius: 3, backgroundColor: COLORS.surfaceHigh, borderWidth: 0.5, borderColor: COLORS.border },
-  badgeTxt:       { fontSize: 8, color: COLORS.textFaint, fontWeight: '500' },
-  progNums:       { fontSize: 9, color: COLORS.textFaint, flex: 1 },
+  badge:          { paddingHorizontal: 5, paddingVertical: 2, borderRadius: 4, backgroundColor: COLORS.surfaceHigh, borderWidth: 0.5, borderColor: COLORS.border },
+  badgeTxt:       { fontSize: 8, color: COLORS.textFaint, fontWeight: '700', letterSpacing: 0.6, textTransform: 'uppercase', fontFamily: FONT_FAMILY.mono },
+  progNums:       { fontSize: 9, color: COLORS.textFaint, flex: 1, fontFamily: FONT_FAMILY.mono },
   diatHeader:     { fontSize: 11, fontWeight: '600', color: COLORS.accent, padding: SPACE.md, borderBottomWidth: 1, borderBottomColor: COLORS.border },
   diatSubhead:    { fontSize: 10, fontWeight: '500', color: COLORS.textMuted, paddingHorizontal: SPACE.md, paddingTop: SPACE.md, paddingBottom: SPACE.xs, textTransform: 'uppercase', letterSpacing: 0.5 },
   diatRow:        { flexDirection: 'row', alignItems: 'center', gap: 8 },
@@ -658,26 +766,77 @@ const styles = StyleSheet.create({
   removeBtn:      { width: 22, height: 22, borderRadius: 11, backgroundColor: COLORS.surfaceHigh, alignItems: 'center', justifyContent: 'center' },
   removeTxt:      { fontSize: 9, color: COLORS.textMuted },
   right:          { flex: 1 },
-  activeCard:     { margin: SPACE.md, backgroundColor: COLORS.surface, borderRadius: RADIUS.lg, borderWidth: 1, borderColor: COLORS.accent, padding: SPACE.md, alignItems: 'center' },
-  activeCardHeart:{ position: 'absolute', top: 6, right: 6, zIndex: 2 },
-  activeNum:      { fontSize: 12, fontWeight: '600', color: COLORS.accent, letterSpacing: 1, marginBottom: 2 },
-  activeName:     { fontSize: 24, fontWeight: '700', color: COLORS.text, marginBottom: 3 },
-  activeIntervals:{ fontSize: 10, color: COLORS.textMuted, letterSpacing: 0.3 },
+  // Now-playing card — single mono numeral title + meta line + chord intervals
+  activeCard:     {
+                    marginHorizontal: SPACE.md, marginBottom: SPACE.md,
+                    backgroundColor: COLORS.surface,
+                    borderRadius: RADIUS.lg,
+                    borderWidth: 1, borderColor: COLORS.border,
+                    padding: SPACE.lg,
+                    alignItems: 'center',
+                  },
+  activeCardHeart:{ position: 'absolute', top: 8, right: 8, zIndex: 2 },
+  activeCardTop:  { alignItems: 'center', marginBottom: SPACE.sm },
+  activeProgTitle:{
+                    fontSize: 22, fontWeight: '700', color: COLORS.text,
+                    fontFamily: FONT_FAMILY.mono, letterSpacing: -0.3,
+                    marginBottom: 4,
+                  },
+  activeMeta:     {
+                    fontSize: 11, color: COLORS.textMuted,
+                    fontFamily: FONT_FAMILY.mono, letterSpacing: 0.3,
+                  },
+  activeName:     { fontSize: 24, fontWeight: '700', color: COLORS.text, marginTop: SPACE.sm },
+  activeIntervals:{ fontSize: 11, color: COLORS.textMuted, letterSpacing: 0.4, marginTop: 3 },
   activeProgName: { fontSize: 11, color: COLORS.textFaint, marginTop: 6, fontWeight: '600' },
-  savedBtn:       { paddingHorizontal: 10, paddingVertical: 5, borderRadius: RADIUS.full, borderWidth: 1, borderColor: COLORS.border, backgroundColor: COLORS.bg, marginRight: SPACE.sm },
-  savedBtnText:   { fontSize: 12, fontWeight: '600', color: COLORS.textMuted },
-  fbWrap:         { backgroundColor: COLORS.surface, borderTopWidth: 1, borderBottomWidth: 1, borderColor: COLORS.border, paddingVertical: SPACE.sm, marginBottom: SPACE.md, alignItems: 'center' },
-  ctrlRow:        { flexDirection: 'row', alignItems: 'center', paddingHorizontal: SPACE.md, gap: 8, marginBottom: SPACE.sm },
-  navBtn:         { width: 36, height: 36, borderRadius: 18, borderWidth: 1, borderColor: COLORS.border, backgroundColor: COLORS.surface, alignItems: 'center', justifyContent: 'center' },
-  navTxt:         { fontSize: 14, color: COLORS.textMuted, fontWeight: '600' },
-  playBtn:        { flex: 1, paddingVertical: 9, borderRadius: RADIUS.md, borderWidth: 1, borderColor: COLORS.border, backgroundColor: COLORS.surface, alignItems: 'center' },
-  playBtnOn:      { backgroundColor: COLORS.accent, borderColor: COLORS.accent },
-  playTxt:        { fontSize: 13, fontWeight: '600', color: COLORS.textMuted },
-  playTxtOn:      { color: '#fff' },
+  savedBtn:       {
+                    width: 32, height: 32, borderRadius: 16,
+                    borderWidth: 1, borderColor: COLORS.border,
+                    backgroundColor: COLORS.surface,
+                    alignItems: 'center', justifyContent: 'center',
+                  },
+  savedBtnText:   { fontSize: 14, color: '#D45846', fontWeight: '700', lineHeight: 16 },
+  fbWrap:         {
+                    backgroundColor: COLORS.surface,
+                    borderTopWidth: 1, borderBottomWidth: 1, borderColor: COLORS.border,
+                    paddingVertical: SPACE.sm, marginBottom: SPACE.md,
+                    alignItems: 'center',
+                  },
+  // Transport: side nav circles + glowing accent play circle
+  ctrlRow:        {
+                    flexDirection: 'row', alignItems: 'center',
+                    justifyContent: 'center', gap: 12,
+                    marginBottom: SPACE.lg,
+                  },
+  navBtn:         {
+                    width: 36, height: 36, borderRadius: 18,
+                    borderWidth: 1, borderColor: COLORS.border,
+                    backgroundColor: COLORS.surface,
+                    alignItems: 'center', justifyContent: 'center',
+                  },
+  navTxt:         { fontSize: 18, color: COLORS.textMuted, fontWeight: '600', lineHeight: 20 },
+  playCircle:     {
+                    width: 56, height: 56, borderRadius: 28,
+                    backgroundColor: COLORS.accent,
+                    alignItems: 'center', justifyContent: 'center',
+                    shadowColor: COLORS.accent,
+                    shadowOffset: { width: 0, height: 4 },
+                    shadowOpacity: 0.45,
+                    shadowRadius: 14,
+                    elevation: 6,
+                  },
+  playCircleOn:   { backgroundColor: '#D45846' },
+  playGlyph:      { fontSize: 20, color: '#fff', fontWeight: '700' },
   dots:           { flexDirection: 'row', justifyContent: 'center', gap: 6, marginBottom: SPACE.lg, flexWrap: 'wrap', paddingHorizontal: SPACE.md },
   dot:            { width: 8, height: 8, borderRadius: 4, backgroundColor: COLORS.surfaceHigh, borderWidth: 1, borderColor: COLORS.border },
   dotActive:      { backgroundColor: COLORS.accent, borderColor: COLORS.accent },
-  secLabel:       { fontSize: 10, fontWeight: '500', color: COLORS.textMuted, letterSpacing: 0.7, textTransform: 'uppercase', paddingHorizontal: SPACE.md, marginBottom: SPACE.sm },
+  secLabel:       {
+                    fontSize: 10, fontWeight: '600',
+                    color: COLORS.textFaint, letterSpacing: 1.2,
+                    textTransform: 'uppercase',
+                    paddingHorizontal: SPACE.md, marginTop: SPACE.md, marginBottom: SPACE.sm,
+                    fontFamily: FONT_FAMILY.mono,
+                  },
   boxRow:         { paddingHorizontal: SPACE.md, gap: 8, paddingBottom: SPACE.md },
   miniBox:        { alignItems: 'center', padding: 7, borderRadius: RADIUS.md, borderWidth: 1, borderColor: COLORS.border, backgroundColor: COLORS.surface, minWidth: 70 },
   miniBoxActive:  { borderColor: '#E8D44D', backgroundColor: COLORS.surfaceHigh },
@@ -691,7 +850,7 @@ const styles = StyleSheet.create({
   empty:          { flex: 1, alignItems: 'center', justifyContent: 'center', padding: SPACE.xxl },
   emptyTxt:       { fontSize: 13, color: COLORS.textFaint, textAlign: 'center', lineHeight: 20 },
   modalOverlay:   { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'flex-end' },
-  modalCard:      { backgroundColor: COLORS.surface, borderTopLeftRadius: 20, borderTopRightRadius: 20, maxHeight: '85%', paddingBottom: 30 },
+  modalCard:      { backgroundColor: COLORS.bgElevated, borderTopLeftRadius: 20, borderTopRightRadius: 20, maxHeight: '85%', paddingBottom: 30 },
   modalHdr:       { flexDirection: 'row', alignItems: 'center', padding: SPACE.lg, borderBottomWidth: 1, borderBottomColor: COLORS.border },
   modalTitle:     { flex: 1, fontSize: 16, fontWeight: '700', color: COLORS.text },
   modalClose:     { fontSize: 14, color: COLORS.accent, fontWeight: '600', padding: 4 },

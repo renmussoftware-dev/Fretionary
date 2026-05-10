@@ -12,10 +12,10 @@ interface Props {
 }
 
 const GOLD = '#E8D44D';
-const RED  = '#E24B4A';
-const GREEN = '#1D9E75';
-const BLUE  = '#378ADD';
-const PURPLE = '#534AB7';
+const RED    = '#D45846';
+const GREEN  = '#3FA08A';
+const BLUE   = '#5C8FCC';
+const PURPLE = '#6E60D9';
 
 // ── Mini fretboard illustration ──────────────────────────────────────────────
 function MiniFretboard({ dots }: { dots: { s: number; f: number; color: string; label: string }[] }) {
@@ -116,7 +116,7 @@ function MiniProgressions() {
       {chords.map((c, i) => (
         <View key={i} style={{
           width: 52, height: 52, borderRadius: 10,
-          backgroundColor: i === 0 ? colors[i] + '22' : '#1A1A1F',
+          backgroundColor: i === 0 ? colors[i] + '22' : 'rgba(255,255,255,0.04)',
           borderWidth: i === 0 ? 2 : 1,
           borderColor: i === 0 ? colors[i] : '#2E2E38',
           alignItems: 'center', justifyContent: 'center',

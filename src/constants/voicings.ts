@@ -15,9 +15,15 @@ export const VOICING_TEMPLATES: Record<string, VoicingTemplate[]> = {
 
   // R 3 5
   'Major': [
-    { frets:[0,2,2,1,0,0],       rootString:0, label:'E shape',  position:'low'  },
-    { frets:[null,0,2,2,2,0],    rootString:1, label:'A shape',  position:'mid'  },
-    { frets:[null,null,0,2,3,2], rootString:2, label:'D shape',  position:'high' },
+    { frets:[0,2,2,1,0,0],          rootString:0, label:'E shape',  position:'low'  },
+    { frets:[null,0,2,2,2,0],       rootString:1, label:'A shape',  position:'mid'  },
+    { frets:[null,null,0,2,3,2],    rootString:2, label:'D shape',  position:'high' },
+    // C-shape barre — open-C transposed (x32010 at C). Negatives are filtered
+    // for low roots (A/A#/B) where the shape isn't physically playable.
+    { frets:[null,0,-1,-3,-2,-3],   rootString:1, label:'C shape',  position:'mid'  },
+    // G-shape barre — open-G transposed (320003 at G). Wide stretch; only
+    // renders for roots where it fits on the neck (G and above).
+    { frets:[0,-1,-3,-3,-3,0],      rootString:0, label:'G shape',  position:'low'  },
   ],
 
   // R b3 5
@@ -57,6 +63,18 @@ export const VOICING_TEMPLATES: Record<string, VoicingTemplate[]> = {
   ],
 
   // ── Seventh Chords ────────────────────────────────────────────────────────
+
+  // R 4 5 b7 — sus4 with a dominant 7. Funk + modal jazz favorite.
+  'Dom 7sus4': [
+    // E shape — verified 020200: E=R, A=5, D=R, G=4, B=5, e=R
+    { frets:[0,2,0,2,0,0],       rootString:0, label:'E shape',  position:'low'  },
+    // A shape — verified X3503X→3 (C7sus4 at fret 3 = x.3.5.3.6.3)
+    // A=R, D=5, G=♭7, B=4, e=5
+    { frets:[null,0,2,0,3,0],    rootString:1, label:'A shape',  position:'mid'  },
+    // D shape — verified XX0213 (D7sus4 at fret 0)
+    // D=R, G=5, B=♭7, e=4
+    { frets:[null,null,0,2,1,3], rootString:2, label:'D shape',  position:'high' },
+  ],
 
   // R 3 5 b7
   'Dominant 7': [

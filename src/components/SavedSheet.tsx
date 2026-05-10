@@ -151,7 +151,7 @@ export default function SavedSheet({ visible, onClose }: Props) {
 const styles = StyleSheet.create({
   overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'flex-end' },
   sheet: {
-    backgroundColor: COLORS.surface,
+    backgroundColor: COLORS.bgElevated,
     borderTopLeftRadius: 20, borderTopRightRadius: 20,
     maxHeight: '85%', paddingBottom: 30,
   },

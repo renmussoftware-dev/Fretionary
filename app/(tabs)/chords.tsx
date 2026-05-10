@@ -5,8 +5,12 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import ChordBox from '../../src/components/ChordBox';
-import { COLORS, SPACE, RADIUS } from '../../src/constants/theme';
-import { NOTES, NOTE_DISPLAY, CHORDS } from '../../src/constants/music';
+import { COLORS, SPACE, RADIUS, FONT_FAMILY } from '../../src/constants/theme';
+import {
+  NOTES, NOTE_DISPLAY, CHORDS,
+  intervalLongName, categoryLabel, intervalColorBucket,
+  COLORS as MUSIC_COLORS,
+} from '../../src/constants/music';
 import { useStore } from '../../src/store/useStore';
 import { useAudioEngine } from '../../src/hooks/useAudioEngine';
 import { useProGate } from '../../src/hooks/useProGate';
@@ -141,7 +145,10 @@ export default function ChordsScreen() {
       {/* Header */}
       <View style={styles.header}>
         <View style={styles.titleRow}>
-          <Text style={styles.title}>Chord Library</Text>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.eyebrow}>Library</Text>
+            <Text style={styles.title}>Chords</Text>
+          </View>
           <TouchableOpacity onPress={() => setSavedOpen(true)} activeOpacity={0.7} style={styles.savedBtn}>
             <Text style={styles.savedBtnText}>♥ Saved</Text>
           </TouchableOpacity>
@@ -176,44 +183,57 @@ export default function ChordsScreen() {
           contentContainerStyle={styles.detailContent}
         >
           <StandardTuningNotice context="chord library" />
-          {/* Chord name + description */}
-          <View style={styles.titleHeart}>
-            <Text style={[styles.diagramTitle, isTablet && styles.diagramTitleTablet]}>
-              {NOTES[root]} {selectedChord}
-            </Text>
+
+          {/* Chord title block — category eyebrow + big title + heart */}
+          <View style={styles.detailTitleRow}>
+            <View style={{ flex: 1 }}>
+              {chord && <Text style={styles.detailEyebrow}>{categoryLabel(chord.category)}</Text>}
+              <Text style={[styles.detailTitle, isTablet && styles.detailTitleTablet]}>
+                {NOTES[root]} {selectedChord}
+              </Text>
+            </View>
             <HeartButton item={{ kind: 'chord', root, chordKey: selectedChord }} size="md" />
           </View>
-          <Text style={[styles.diagramDesc, isTablet && styles.diagramDescTablet]}>
-            {chord?.description}
-          </Text>
+          <Text style={styles.detailDesc}>{chord?.description}</Text>
 
-          {/* Chord diagram — centered, large */}
-          <View style={styles.boxWrap}>
+          {/* Chord diagram — wrapped in a framed surface card */}
+          <View style={styles.diagramCard}>
             <ChordBox root={root} chordKey={selectedChord} />
           </View>
 
-          {/* Interval pills — centered */}
-          <View style={styles.intervalsWrap}>
-            {chord?.intervalNames.map((name, i) => (
-              <View key={i} style={[
-                styles.intervalBadge,
-                isTablet && styles.intervalBadgeTablet,
-                i === 0 && styles.rootBadge,
-              ]}>
-                <Text style={[
-                  styles.intervalText,
-                  isTablet && styles.intervalTextTablet,
-                  i === 0 && styles.rootText,
-                ]}>{name}</Text>
-              </View>
-            ))}
-          </View>
-          <Text style={styles.intervalLabel}>Interval structure</Text>
+          {/* Interval structure — colored circle + long-form name per interval */}
+          {chord && (
+            <>
+              <Text style={styles.sectionLabel}>Interval structure</Text>
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.ivCardRow}
+              >
+                {chord.intervalNames.map((name, i) => {
+                  const bucket = intervalColorBucket(name);
+                  const palette =
+                    bucket === 'root' ? MUSIC_COLORS.root :
+                    bucket === 'third' ? MUSIC_COLORS.third :
+                    bucket === 'fifth' ? MUSIC_COLORS.fifth :
+                    MUSIC_COLORS.extension;
+                  return (
+                    <View key={i} style={styles.ivCard}>
+                      <View style={[styles.ivCircle, { backgroundColor: palette.fill, borderColor: palette.stroke }]}>
+                        <Text style={[styles.ivCircleText, { color: palette.text }]}>{name}</Text>
+                      </View>
+                      <Text style={styles.ivSub}>{intervalLongName(name)}</Text>
+                    </View>
+                  );
+                })}
+              </ScrollView>
+            </>
+          )}
 
           {/* Resolution suggestions */}
           {resolutions.length > 0 && (
-            <View style={styles.resWrap}>
-              <Text style={styles.resHeader}>OFTEN RESOLVES TO</Text>
+            <>
+              <Text style={styles.sectionLabel}>Often resolves to</Text>
               <ScrollView
                 horizontal
                 showsHorizontalScrollIndicator={false}
@@ -244,22 +264,7 @@ export default function ChordsScreen() {
                   );
                 })}
               </ScrollView>
-            </View>
-          )}
-
-          {/* Chord description card */}
-          {chord && (
-            <View style={styles.infoCard}>
-              <Text style={styles.infoCardLabel}>ABOUT THIS CHORD</Text>
-              <Text style={styles.infoCardText}>{chord.description}</Text>
-              <View style={styles.infoCardIntervals}>
-                {chord.intervalNames.map((name, i) => (
-                  <View key={i} style={styles.infoInterval}>
-                    <Text style={styles.infoIntervalName}>{name}</Text>
-                  </View>
-                ))}
-              </View>
-            </View>
+            </>
           )}
 
           <View style={{ height: 100 }} />
@@ -316,85 +321,144 @@ export default function ChordsScreen() {
 
 const styles = StyleSheet.create({
   safe:         { flex: 1, backgroundColor: COLORS.bg },
-  header:       { backgroundColor: COLORS.surface, borderBottomWidth: 1, borderBottomColor: COLORS.border, paddingTop: SPACE.md, paddingBottom: SPACE.md, gap: SPACE.sm },
-  title:        { fontSize: 18, fontWeight: '700', color: COLORS.text, marginBottom: 2 },
-  titleRow:     { flexDirection: 'row', alignItems: 'center', paddingHorizontal: SPACE.lg },
+  header:       {
+                  backgroundColor: COLORS.surface,
+                  borderBottomWidth: 1, borderBottomColor: COLORS.border,
+                  paddingTop: SPACE.md, paddingBottom: SPACE.md,
+                  gap: SPACE.sm,
+                },
+  titleRow:     {
+                  flexDirection: 'row', alignItems: 'center',
+                  paddingHorizontal: SPACE.lg,
+                  gap: SPACE.sm,
+                },
+  eyebrow:      {
+                  fontSize: 11, fontWeight: '500',
+                  color: COLORS.textMuted, letterSpacing: 0.4,
+                  marginBottom: 1,
+                },
+  title:        { fontSize: 24, fontWeight: '700', color: COLORS.text, letterSpacing: -0.4 },
   savedBtn:     {
-                  marginLeft: 'auto',
-                  paddingHorizontal: 10, paddingVertical: 5,
+                  paddingHorizontal: 12, paddingVertical: 6,
                   borderRadius: RADIUS.full,
                   borderWidth: 1, borderColor: COLORS.border,
-                  backgroundColor: COLORS.bg,
+                  backgroundColor: COLORS.surface,
                 },
   savedBtnText: { fontSize: 12, fontWeight: '600', color: COLORS.textMuted },
-  titleHeart:   {
-                  flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
-                  gap: 10, marginBottom: 6,
-                },
+
   noteRow:      { flexDirection: 'row', paddingHorizontal: SPACE.lg, gap: 6 },
-  notePill:     { paddingHorizontal: 10, paddingVertical: 5, borderRadius: RADIUS.full, borderWidth: 1, borderColor: COLORS.border, backgroundColor: COLORS.bg },
-  notePillActive: { backgroundColor: '#E8D44D', borderColor: '#C4A800' },
-  noteText:     { fontSize: 12, fontWeight: '500', color: COLORS.textMuted },
-  noteTextActive: { color: '#5C4400' },
+  notePill:     {
+                  paddingHorizontal: 11, paddingVertical: 6,
+                  borderRadius: RADIUS.full,
+                  backgroundColor: COLORS.surface,
+                  borderWidth: 1, borderColor: 'transparent',
+                },
+  notePillActive: { backgroundColor: COLORS.accentSoft, borderColor: COLORS.accent },
+  noteText:     {
+                  fontSize: 13, fontWeight: '500',
+                  color: COLORS.textMuted,
+                  fontFamily: FONT_FAMILY.mono,
+                  letterSpacing: 0.2,
+                },
+  noteTextActive: { color: COLORS.text, fontWeight: '700' },
+
+  // Category chips — surface fill, accent ring on active.
   catRow:       { flexDirection: 'row', paddingHorizontal: SPACE.lg, gap: 6 },
-  catPill:      { paddingHorizontal: 12, paddingVertical: 5, borderRadius: RADIUS.full, borderWidth: 1, borderColor: COLORS.border, backgroundColor: COLORS.bg },
-  catPillActive: { backgroundColor: COLORS.accent, borderColor: COLORS.accent },
-  catText:      { fontSize: 12, fontWeight: '500', color: COLORS.textMuted },
-  catTextActive: { color: '#fff' },
+  catPill:      {
+                  paddingHorizontal: 14, paddingVertical: 7,
+                  borderRadius: RADIUS.full,
+                  backgroundColor: COLORS.surface,
+                  borderWidth: 1, borderColor: 'transparent',
+                },
+  catPillActive: { backgroundColor: COLORS.accentSoft, borderColor: COLORS.accent },
+  catText:      { fontSize: 13, fontWeight: '500', color: COLORS.textMuted, letterSpacing: 0.1 },
+  catTextActive: { color: COLORS.text, fontWeight: '600' },
 
-  body:              { flex: 1, overflow: 'hidden' },
-  detailContent:     { alignItems: 'center', paddingTop: SPACE.xxl, paddingHorizontal: SPACE.xl },
+  body:          { flex: 1, overflow: 'hidden' },
+  detailContent: { paddingTop: SPACE.xl, paddingHorizontal: SPACE.lg, paddingBottom: SPACE.xl },
 
-  diagramTitle:      { fontSize: 32, fontWeight: '700', color: COLORS.text, marginBottom: 6, textAlign: 'center' },
-  diagramTitleTablet:{ fontSize: 48 },
-  diagramDesc:       { fontSize: 15, color: COLORS.textMuted, marginBottom: SPACE.xl, textAlign: 'center' },
-  diagramDescTablet: { fontSize: 20 },
+  // Detail title block — eyebrow + giant title + heart, baseline-aligned.
+  detailTitleRow:    {
+                       flexDirection: 'row',
+                       alignItems: 'flex-start',
+                       gap: SPACE.md,
+                       marginBottom: 8,
+                     },
+  detailEyebrow:     {
+                       fontSize: 11, fontWeight: '500',
+                       color: COLORS.textMuted, letterSpacing: 0.4,
+                       marginBottom: 4,
+                     },
+  detailTitle:       { fontSize: 36, fontWeight: '700', color: COLORS.text, letterSpacing: -1, lineHeight: 40 },
+  detailTitleTablet: { fontSize: 52, lineHeight: 56 },
+  detailDesc:        { fontSize: 14, color: COLORS.textMuted, lineHeight: 21, marginBottom: SPACE.xl },
 
-  boxWrap:      { alignItems: 'center', justifyContent: 'center', marginBottom: SPACE.xl },
+  // Framed surface card containing the chord diagram.
+  diagramCard:       {
+                       backgroundColor: COLORS.surface,
+                       borderWidth: 1, borderColor: COLORS.border,
+                       borderRadius: RADIUS.lg,
+                       padding: SPACE.lg,
+                       alignItems: 'center', justifyContent: 'center',
+                       marginBottom: SPACE.xl,
+                     },
 
-  intervalsWrap:    { flexDirection: 'row', flexWrap: 'wrap', gap: 10, justifyContent: 'center', marginBottom: 8 },
-  intervalBadge:    { paddingHorizontal: 16, paddingVertical: 8, borderRadius: RADIUS.full, backgroundColor: COLORS.surfaceHigh, borderWidth: 1, borderColor: COLORS.border },
-  intervalBadgeTablet: { paddingHorizontal: 22, paddingVertical: 12 },
-  rootBadge:        { backgroundColor: '#E8D44D', borderColor: '#C4A800' },
-  intervalText:     { fontSize: 16, fontWeight: '700', color: COLORS.textMuted },
-  intervalTextTablet: { fontSize: 22 },
-  rootText:         { color: '#5C4400' },
-  intervalLabel:    { fontSize: 12, color: COLORS.textFaint, letterSpacing: 0.5, marginBottom: SPACE.xl },
+  // Mono uppercase section label, matches the global treatment.
+  sectionLabel:      {
+                       fontSize: 10, fontWeight: '600',
+                       color: COLORS.textFaint, letterSpacing: 1.2,
+                       textTransform: 'uppercase',
+                       marginBottom: SPACE.sm,
+                       fontFamily: FONT_FAMILY.mono,
+                     },
 
-  resWrap:          { width: '100%', marginBottom: SPACE.md },
-  resHeader:        { fontSize: 10, fontWeight: '700', color: COLORS.textMuted, letterSpacing: 1.2, marginBottom: SPACE.sm },
-  resScrollContent: { gap: 10, paddingRight: 8 },
-  resCard:          {
-                      width: 220,
-                      padding: SPACE.md,
-                      borderRadius: RADIUS.md,
-                      borderWidth: 1, borderColor: COLORS.border,
-                      backgroundColor: COLORS.surface,
-                    },
-  resCardTop:       { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 6 },
-  resCardArrow:     { fontSize: 16, color: COLORS.accent, fontWeight: '700', lineHeight: 18 },
-  resCardName:      { fontSize: 15, fontWeight: '700', color: COLORS.text, flexShrink: 1 },
-  resCardLock:      { fontSize: 11, marginLeft: 'auto' },
-  resCardBadge:     {
-                      alignSelf: 'flex-start',
-                      paddingHorizontal: 8, paddingVertical: 3,
-                      borderRadius: RADIUS.full,
-                      backgroundColor: COLORS.surfaceHigh,
-                      borderWidth: 1, borderColor: COLORS.border,
-                      marginBottom: 8,
-                    },
-  resCardBadgeText: { fontSize: 10, fontWeight: '700', color: COLORS.textMuted, letterSpacing: 0.5 },
-  resCardWhy:       { fontSize: 11, color: COLORS.textMuted, lineHeight: 16 },
+  // Interval-structure cards
+  ivCardRow:         { gap: 8, paddingBottom: SPACE.xl },
+  ivCard:            {
+                       width: 96,
+                       backgroundColor: COLORS.surface,
+                       borderWidth: 1, borderColor: COLORS.border,
+                       borderRadius: RADIUS.md,
+                       paddingVertical: 12, paddingHorizontal: 8,
+                       alignItems: 'center', gap: 8,
+                     },
+  ivCircle:          {
+                       width: 30, height: 30, borderRadius: 15,
+                       borderWidth: 1,
+                       alignItems: 'center', justifyContent: 'center',
+                     },
+  ivCircleText:      { fontSize: 12, fontWeight: '700', fontFamily: FONT_FAMILY.mono },
+  ivSub:             { fontSize: 11, fontWeight: '500', color: COLORS.textMuted, textAlign: 'center' },
 
-  infoCard:         { width: '100%', backgroundColor: COLORS.surface, borderRadius: RADIUS.lg, borderWidth: 1, borderColor: COLORS.border, padding: SPACE.lg, marginTop: SPACE.sm },
-  infoCardLabel:    { fontSize: 10, fontWeight: '700', color: COLORS.textMuted, letterSpacing: 1.2, textTransform: 'uppercase', marginBottom: SPACE.sm },
-  infoCardText:     { fontSize: 15, color: COLORS.text, lineHeight: 22, marginBottom: SPACE.md },
-  infoCardIntervals:{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
-  infoInterval:     { paddingHorizontal: 10, paddingVertical: 4, backgroundColor: COLORS.surfaceHigh, borderRadius: RADIUS.sm, borderWidth: 1, borderColor: COLORS.border },
-  infoIntervalName: { fontSize: 12, fontWeight: '600', color: COLORS.textMuted },
+  // Resolution-suggestion cards
+  resScrollContent:  { gap: 10, paddingRight: 8, paddingBottom: SPACE.md },
+  resCard:           {
+                       width: 220,
+                       padding: SPACE.md,
+                       borderRadius: RADIUS.md,
+                       borderWidth: 1, borderColor: COLORS.border,
+                       backgroundColor: COLORS.surface,
+                     },
+  resCardTop:        { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8 },
+  resCardArrow:      { fontSize: 16, color: COLORS.accent, fontWeight: '700', lineHeight: 18 },
+  resCardName:       { fontSize: 15, fontWeight: '700', color: COLORS.text, flexShrink: 1 },
+  resCardLock:       { fontSize: 11, marginLeft: 'auto' },
+  resCardBadge:      {
+                       alignSelf: 'flex-start',
+                       paddingHorizontal: 8, paddingVertical: 3,
+                       borderRadius: RADIUS.full,
+                       backgroundColor: COLORS.accentSoft,
+                       marginBottom: 8,
+                     },
+  resCardBadgeText:  {
+                       fontSize: 10, fontWeight: '700',
+                       color: COLORS.text, letterSpacing: 0.5,
+                       fontFamily: FONT_FAMILY.mono,
+                     },
+  resCardWhy:        { fontSize: 11, color: COLORS.textMuted, lineHeight: 16 },
 
   scrim:        { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.45)', zIndex: 10 },
-  drawer:       { position: 'absolute', left: 0, top: 0, bottom: 0, width: DRAWER_W, backgroundColor: COLORS.surface, borderRightWidth: 1, borderRightColor: COLORS.border, zIndex: 20 },
+  drawer:       { position: 'absolute', left: 0, top: 0, bottom: 0, width: DRAWER_W, backgroundColor: COLORS.bgElevated, borderRightWidth: 1, borderRightColor: COLORS.border, zIndex: 20 },
   chordItem:    { paddingVertical: 12, paddingHorizontal: SPACE.md, borderBottomWidth: 1, borderBottomColor: COLORS.border },
   chordItemActive: { backgroundColor: COLORS.surfaceHigh },
   chordName:    { fontSize: 14, fontWeight: '600', color: COLORS.text, marginBottom: 2 },

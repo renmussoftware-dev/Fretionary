@@ -36,6 +36,12 @@
         "appleId": "renmussoftware@gmail.com",
         "ascAppId": "6761344883",
         "appleTeamId": "KHWB32323Q"
+      },
+      "android": {
+        "serviceAccountKeyPath": "./google-play-service-account.json",
+        "track": "internal",
+        "releaseStatus": "draft",
+        "changesNotSentForReview": false
       }
     }
   }

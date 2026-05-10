@@ -20,7 +20,9 @@ export default function TabLayout() {
       screenOptions={{
         headerShown: false,
         tabBarStyle: {
-          backgroundColor: COLORS.surface,
+          // Solid bgElevated — translucent surface tokens bleed the system
+          // tab bar's default white through on iOS.
+          backgroundColor: COLORS.bgElevated,
           borderTopColor: COLORS.border,
           borderTopWidth: 1,
           height: tabBarHeight,
@@ -53,25 +55,18 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
-        name="scales"
-        options={{
-          title: 'Scales',
-          tabBarIcon: ({ color }) => <ScaleIcon color={color} />,
-        }}
-      />
-      <Tabs.Screen
-        name="caged"
-        options={{
-          title: 'CAGED',
-          tabBarIcon: ({ color }) => <CagedIcon color={color} />,
-        }}
-      />
-      <Tabs.Screen
         name="progressions"
         options={{
           title: 'Chords',
           tabBarIcon: ({ color }) => <ProgressionsIcon color={color} />,
           tabBarLabel: 'Progressions',
+        }}
+      />
+      <Tabs.Screen
+        name="practice"
+        options={{
+          title: 'Practice',
+          tabBarIcon: ({ color }) => <PracticeIcon color={color} />,
         }}
       />
       <Tabs.Screen
@@ -105,22 +100,19 @@ function ChordIcon({ color }: { color: string }) {
   );
 }
 
-function ScaleIcon({ color }: { color: string }) {
+function PracticeIcon({ color }: { color: string }) {
+  // Concentric target — "drill / aim" semantics
   return (
-    <View style={{ width: 20, height: 14, flexDirection: 'row', alignItems: 'flex-end', gap: 2 }}>
-      {[4, 8, 6, 12, 10, 14, 11].map((h, i) => (
-        <View key={i} style={{ width: 2, height: h * 0.7, backgroundColor: color, borderRadius: 1 }} />
-      ))}
-    </View>
-  );
-}
-
-function CagedIcon({ color }: { color: string }) {
-  return (
-    <View style={{ flexDirection: 'row', gap: 2, alignItems: 'center' }}>
-      {['C','A','G'].map((l, i) => (
-        <View key={i} style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: color, opacity: 0.7 + i * 0.15 }} />
-      ))}
+    <View style={{ width: 18, height: 18, alignItems: 'center', justifyContent: 'center' }}>
+      <View style={{
+        width: 18, height: 18, borderRadius: 9,
+        borderWidth: 1.5, borderColor: color,
+      }} />
+      <View style={{
+        position: 'absolute',
+        width: 6, height: 6, borderRadius: 3,
+        backgroundColor: color,
+      }} />
     </View>
   );
 }
