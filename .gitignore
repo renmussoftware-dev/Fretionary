@@ -7,6 +7,11 @@ dist/
 ios/
 android/
 
+# Claude Code working state — worktrees and local-only project files.
+# Worktrees were getting committed as bare gitlinks, which broke the
+# Pages workflow's recursive-submodule checkout.
+.claude/worktrees/
+
 # Google Play service account (credential — never commit)
 google-play-service-account.json
 
