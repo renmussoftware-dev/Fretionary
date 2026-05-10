@@ -38,10 +38,12 @@ function SegmentedControl({
     }).start();
   }, [idx, slide]);
 
-  // Each segment is 1/N of the inner area; translate by % using interpolate.
+  // Each segment is 1/N of the track width. The indicator itself is also 1/N
+  // wide, so translating by 100% of the indicator's own width moves it exactly
+  // one segment over — hence outputs are 0%, 100%, 200%, ... per mode index.
   const translateX = slide.interpolate({
     inputRange: MODES.map((_, i) => i),
-    outputRange: MODES.map((_, i) => `${(100 / MODES.length) * i}%`),
+    outputRange: MODES.map((_, i) => `${100 * i}%`),
   });
 
   return (
