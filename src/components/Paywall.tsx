@@ -66,7 +66,7 @@ function showTrialFor(pkg: PurchasesPackage, eligibility: Record<string, INTRO_E
 export default function Paywall({ onClose, onSuccess }: Props) {
   const { isLoading, isPro, packages, eligibility, purchasePackage, restorePurchases } = useRevenueCat();
   const [purchasing, setPurchasing] = useState(false);
-  const [selectedIdx, setSelectedIdx] = useState(1); // Default to annual
+  const [selectedIdx, setSelectedIdx] = useState(0); // Default to monthly — the trial-eligible package
 
   // Sort packages: monthly, annual, lifetime
   const sorted = [...packages].sort((a, b) => {
