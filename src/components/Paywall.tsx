@@ -5,7 +5,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
-import { PACKAGE_TYPE } from 'react-native-purchases';
+import { PACKAGE_TYPE, INTRO_ELIGIBILITY_STATUS } from 'react-native-purchases';
 import type { PurchasesPackage } from 'react-native-purchases';
 import { COLORS, SPACE, RADIUS } from '../constants/theme';
 import { useRevenueCat } from '../hooks/useRevenueCat';
@@ -15,8 +15,56 @@ interface Props {
   onSuccess?: () => void;
 }
 
+/**
+ * Returns the trial length in days for a package, or 0 if none.
+ *
+ * iOS uses `product.introPrice` (free trial = price === 0).
+ * Android Billing v5+ exposes the trial as `product.defaultOption.freePhase`
+ * with an ISO-8601 billing period like "P7D" or "P1W". We parse both shapes
+ * so the same paywall code works on both stores.
+ */
+function getTrialDays(pkg: PurchasesPackage): number {
+  const product = pkg.product as any;
+
+  // iOS-style intro offer
+  const intro = product.introPrice;
+  if (intro && intro.price === 0 && intro.periodNumberOfUnits > 0) {
+    const n: number = intro.periodNumberOfUnits;
+    switch (intro.periodUnit) {
+      case 'DAY':   return n;
+      case 'WEEK':  return n * 7;
+      case 'MONTH': return n * 30;
+      case 'YEAR':  return n * 365;
+    }
+  }
+
+  // Android Google Play Billing v5+ default-offer free phase
+  const period: string | undefined = product.defaultOption?.freePhase?.billingPeriod;
+  if (period) {
+    const m = /^P(?:(\d+)Y)?(?:(\d+)M)?(?:(\d+)W)?(?:(\d+)D)?$/.exec(period);
+    if (m) {
+      const y = +(m[1] || 0), mo = +(m[2] || 0), w = +(m[3] || 0), d = +(m[4] || 0);
+      return y * 365 + mo * 30 + w * 7 + d;
+    }
+  }
+
+  return 0;
+}
+
+/**
+ * Whether to actually advertise a trial on this package. We don't promise a
+ * trial to users we know are ineligible (already used theirs). UNKNOWN status
+ * is treated leniently — same as eligible — so a transient network failure
+ * doesn't hide the offer from new users.
+ */
+function showTrialFor(pkg: PurchasesPackage, eligibility: Record<string, INTRO_ELIGIBILITY_STATUS>): boolean {
+  if (getTrialDays(pkg) === 0) return false;
+  const status = eligibility[pkg.product.identifier];
+  return status !== INTRO_ELIGIBILITY_STATUS.INTRO_ELIGIBILITY_STATUS_INELIGIBLE;
+}
+
 export default function Paywall({ onClose, onSuccess }: Props) {
-  const { isLoading, isPro, packages, purchasePackage, restorePurchases } = useRevenueCat();
+  const { isLoading, isPro, packages, eligibility, purchasePackage, restorePurchases } = useRevenueCat();
   const [purchasing, setPurchasing] = useState(false);
   const [selectedIdx, setSelectedIdx] = useState(1); // Default to annual
 
@@ -27,13 +75,19 @@ export default function Paywall({ onClose, onSuccess }: Props) {
   });
 
   async function handlePurchase(pkg: PurchasesPackage) {
+    const trialDays = showTrialFor(pkg, eligibility) ? getTrialDays(pkg) : 0;
     setPurchasing(true);
     const success = await purchasePackage(pkg);
     setPurchasing(false);
     if (success) {
+      const title = trialDays > 0 ? 'Your free trial has started! 🎸' : 'Welcome to Fretionary Pro! 🎸';
+      const account = Platform.OS === 'ios' ? 'Apple ID' : 'Google';
+      const body = trialDays > 0
+        ? `Full access for ${trialDays} days. Cancel anytime in your ${account} settings before the trial ends to avoid being charged.`
+        : 'You now have full access to all features.';
       Alert.alert(
-        'Welcome to Fretionary Pro! 🎸',
-        'You now have full access to all features.',
+        title,
+        body,
         [{ text: 'Let\'s go!', onPress: () => {
           onSuccess?.();
           router.back(); // dismiss paywall — global isPro already updated
@@ -62,8 +116,15 @@ export default function Paywall({ onClose, onSuccess }: Props) {
   }
 
   function getPackageLabel(pkg: PurchasesPackage) {
+    const trial = showTrialFor(pkg, eligibility);
+    const trialDays = trial ? getTrialDays(pkg) : 0;
     switch (pkg.packageType) {
-      case PACKAGE_TYPE.MONTHLY:  return { title: 'Monthly', badge: null, highlight: false };
+      case PACKAGE_TYPE.MONTHLY:
+        return {
+          title: 'Monthly',
+          badge: trial ? `${trialDays}-DAY FREE TRIAL` : null,
+          highlight: false,
+        };
       case PACKAGE_TYPE.ANNUAL:   return { title: 'Annual', badge: 'BEST VALUE', highlight: true };
       case PACKAGE_TYPE.LIFETIME: return { title: 'Lifetime', badge: 'ONE TIME', highlight: false };
       default:                    return { title: pkg.identifier, badge: null, highlight: false };
@@ -71,9 +132,12 @@ export default function Paywall({ onClose, onSuccess }: Props) {
   }
 
   function getFeatures(pkg: PurchasesPackage): string[] {
+    const trialDays = showTrialFor(pkg, eligibility) ? getTrialDays(pkg) : 0;
     switch (pkg.packageType) {
-      case PACKAGE_TYPE.MONTHLY:
-        return ['All 14 scales & modes', 'Full chord library (25 types)', 'All progressions', 'Real guitar audio'];
+      case PACKAGE_TYPE.MONTHLY: {
+        const base = ['All 14 scales & modes', 'Full chord library (25 types)', 'All progressions', 'Real guitar audio'];
+        return trialDays > 0 ? [`Free for ${trialDays} days, then auto-renews`, ...base] : base;
+      }
       case PACKAGE_TYPE.ANNUAL:
         return ['Everything in Monthly', 'Save 48% vs monthly', 'Diatonic chord explorer', 'Custom progression builder'];
       case PACKAGE_TYPE.LIFETIME:
@@ -121,7 +185,11 @@ export default function Paywall({ onClose, onSuccess }: Props) {
           </TouchableOpacity>
         )}
         <Text style={styles.headline}>Unlock the full neck.</Text>
-        <Text style={styles.subheadline}>All scales. All chords. Real guitar audio.</Text>
+        <Text style={styles.subheadline}>
+          {sorted.some(p => showTrialFor(p, eligibility))
+            ? 'Try it free for 7 days. All scales. All chords. Real guitar audio.'
+            : 'All scales. All chords. Real guitar audio.'}
+        </Text>
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
@@ -189,11 +257,18 @@ export default function Paywall({ onClose, onSuccess }: Props) {
           {purchasing
             ? <ActivityIndicator color="#1a1400" />
             : <Text style={styles.ctaText}>
-                {sorted[selectedIdx]?.packageType === PACKAGE_TYPE.LIFETIME
-                  ? 'Buy Lifetime Access'
-                  : sorted[selectedIdx]?.packageType === PACKAGE_TYPE.MONTHLY
-                  ? 'Subscribe Monthly'
-                  : 'Subscribe Annually'}
+                {(() => {
+                  const pkg = sorted[selectedIdx];
+                  if (!pkg) return 'Subscribe';
+                  if (showTrialFor(pkg, eligibility)) {
+                    const d = getTrialDays(pkg);
+                    return `Start ${d}-Day Free Trial`;
+                  }
+                  if (pkg.packageType === PACKAGE_TYPE.LIFETIME)  return 'Buy Lifetime Access';
+                  if (pkg.packageType === PACKAGE_TYPE.MONTHLY)   return 'Subscribe Monthly';
+                  if (pkg.packageType === PACKAGE_TYPE.ANNUAL)    return 'Subscribe Annually';
+                  return 'Subscribe';
+                })()}
               </Text>
           }
         </TouchableOpacity>
@@ -204,9 +279,15 @@ export default function Paywall({ onClose, onSuccess }: Props) {
         </TouchableOpacity>
 
         <Text style={styles.legal}>
-          {Platform.OS === 'ios'
-            ? 'Fretionary Pro — Monthly or Annual auto-renewable subscription. Payment will be charged to your Apple ID at confirmation of purchase. Subscriptions automatically renew unless auto-renew is turned off at least 24 hours before the end of the current period. Your account will be charged for renewal within 24 hours prior to the end of the current period. Manage or cancel subscriptions in your App Store account settings after purchase.'
-            : 'Fretionary Pro — Monthly or Annual auto-renewing subscription. Payment will be charged to your Google account at confirmation of purchase. Subscriptions automatically renew unless cancelled at least 24 hours before the end of the current period. Manage or cancel subscriptions in the Google Play Store under Subscriptions after purchase.'}
+          {(() => {
+            const hasTrial = sorted.some(p => showTrialFor(p, eligibility));
+            const trialSentence = hasTrial
+              ? ' Plans with a free trial are free for the trial period; the subscription then automatically converts to the standard recurring price unless cancelled at least 24 hours before the trial ends. No charge is made during the trial if cancelled in time.'
+              : '';
+            return Platform.OS === 'ios'
+              ? `Fretionary Pro — Monthly or Annual auto-renewable subscription.${trialSentence} Payment will be charged to your Apple ID at confirmation of purchase. Subscriptions automatically renew unless auto-renew is turned off at least 24 hours before the end of the current period. Your account will be charged for renewal within 24 hours prior to the end of the current period. Manage or cancel subscriptions in your App Store account settings after purchase.`
+              : `Fretionary Pro — Monthly or Annual auto-renewing subscription.${trialSentence} Payment will be charged to your Google account at confirmation of purchase. Subscriptions automatically renew unless cancelled at least 24 hours before the end of the current period. Manage or cancel subscriptions in the Google Play Store under Subscriptions after purchase.`;
+          })()}
         </Text>
 
         <View style={styles.legalLinks}>

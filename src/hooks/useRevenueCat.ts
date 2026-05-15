@@ -1,5 +1,10 @@
 import { useEffect, useState } from 'react';
-import Purchases, { LOG_LEVEL, PurchasesPackage, CustomerInfo } from 'react-native-purchases';
+import Purchases, {
+  LOG_LEVEL,
+  PurchasesPackage,
+  CustomerInfo,
+  INTRO_ELIGIBILITY_STATUS,
+} from 'react-native-purchases';
 import { Platform } from 'react-native';
 import { useStore } from '../store/useStore';
 
@@ -12,6 +17,13 @@ export interface PurchaseState {
   isPro: boolean;
   packages: PurchasesPackage[];
   customerInfo: CustomerInfo | null;
+  /**
+   * Per-product trial/intro-offer eligibility. Keyed by store product
+   * identifier. Falsy/missing entries should be treated as "unknown" — paywall
+   * UI is lenient and still shows trial copy when unknown so a transient
+   * network issue doesn't hide the offer from new users.
+   */
+  eligibility: Record<string, INTRO_ELIGIBILITY_STATUS>;
 }
 
 export function useRevenueCat() {
@@ -21,6 +33,7 @@ export function useRevenueCat() {
     isPro: false,
     packages: [],
     customerInfo: null,
+    eligibility: {},
   });
 
   function updatePro(isPro: boolean, customerInfo: CustomerInfo) {
@@ -46,8 +59,25 @@ export function useRevenueCat() {
         const offerings = await Purchases.getOfferings();
         const packages = offerings.current?.availablePackages ?? [];
 
+        // Eligibility — used to gate "free trial" copy in the paywall so that
+        // users who've already used their intro offer don't see a misleading
+        // promise. Defensive: if this fails or returns nothing, the paywall
+        // falls back to showing trial copy anyway.
+        let eligibility: Record<string, INTRO_ELIGIBILITY_STATUS> = {};
+        try {
+          const productIds = packages.map(p => p.product.identifier);
+          if (productIds.length > 0) {
+            const map = await Purchases.checkTrialOrIntroductoryPriceEligibility(productIds);
+            eligibility = Object.fromEntries(
+              Object.entries(map).map(([id, info]) => [id, info.status]),
+            );
+          }
+        } catch (e) {
+          console.warn('Eligibility check failed:', e);
+        }
+
         setIsPro(isPro);
-        setState({ isLoading: false, isPro, packages, customerInfo });
+        setState({ isLoading: false, isPro, packages, customerInfo, eligibility });
       } catch (e) {
         console.warn('RevenueCat init error:', e);
         setState(s => ({ ...s, isLoading: false }));
