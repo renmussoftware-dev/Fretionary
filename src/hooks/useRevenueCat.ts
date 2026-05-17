@@ -7,6 +7,7 @@ import Purchases, {
 } from 'react-native-purchases';
 import { Platform } from 'react-native';
 import { useStore } from '../store/useStore';
+import { linkFacebookAnonymousIDToRevenueCat } from '../utils/analytics';
 
 const REVENUECAT_API_KEY_IOS = 'appl_RISKMtoBkVaaMekfALDreNUNBRd';
 const REVENUECAT_API_KEY_ANDROID = 'goog_YTZzYwiWGFshnxkHZSAyNLckZQb';
@@ -53,6 +54,13 @@ export function useRevenueCat() {
         } else if (Platform.OS === 'android') {
           Purchases.configure({ apiKey: REVENUECAT_API_KEY_ANDROID });
         }
+
+        // Pass the Facebook SDK's anonymous ID through so RevenueCat can
+        // tag the server-side subscription events it forwards to Meta with
+        // the same install identifier as our SDK funnel events. Improves
+        // match rate dramatically for users who decline ATT. Fire-and-forget
+        // — we don't want this to delay paywall package loading.
+        linkFacebookAnonymousIDToRevenueCat();
 
         const customerInfo = await Purchases.getCustomerInfo();
         const isPro = customerInfo.entitlements.active[ENTITLEMENT_ID] !== undefined;
