@@ -13,6 +13,7 @@ import {
   JetBrainsMono_700Bold,
 } from '@expo-google-fonts/jetbrains-mono';
 import Onboarding from '../src/components/Onboarding';
+import { initAnalytics, maybePromptATT, logTutorialComplete } from '../src/utils/analytics';
 
 const ONBOARDING_KEY = 'fretionary_onboarded_v1';
 
@@ -36,13 +37,32 @@ export default function RootLayout() {
       shouldDuckAndroid: true,
     }).catch(() => {});
 
+    // Initialize Meta SDK (syncs advertiser-tracking with current ATT status —
+    // does NOT prompt). Safe to call before ATT decision; we re-sync after.
+    initAnalytics();
+
     // Check if onboarding has been completed
     AsyncStorage.getItem(ONBOARDING_KEY).then(val => {
       setShowOnboarding(val === null);
     }).catch(() => setShowOnboarding(false));
   }, []);
 
+  // For existing users who already completed onboarding before the SDK
+  // shipped, prompt ATT on first launch of the new app version. New users
+  // hit this same code path via finishOnboarding(). maybePromptATT is
+  // single-flight + idempotent so calling it from both places is safe.
+  useEffect(() => {
+    if (showOnboarding === false) {
+      maybePromptATT();
+    }
+  }, [showOnboarding]);
+
   async function finishOnboarding() {
+    // Prompt ATT now — user has just seen the value, this is the natural
+    // moment per Apple's guidance. Then log the tutorial-completion funnel
+    // event before transitioning to the main app.
+    await maybePromptATT();
+    logTutorialComplete();
     await AsyncStorage.setItem(ONBOARDING_KEY, 'done').catch(() => {});
     setShowOnboarding(false);
   }

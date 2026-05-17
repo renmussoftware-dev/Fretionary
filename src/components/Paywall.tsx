@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, ScrollView,
   ActivityIndicator, Alert, Linking, Platform,
@@ -9,6 +9,7 @@ import { PACKAGE_TYPE, INTRO_ELIGIBILITY_STATUS } from 'react-native-purchases';
 import type { PurchasesPackage } from 'react-native-purchases';
 import { COLORS, SPACE, RADIUS } from '../constants/theme';
 import { useRevenueCat } from '../hooks/useRevenueCat';
+import { logPaywallView, logInitiateCheckout } from '../utils/analytics';
 
 interface Props {
   onClose?: () => void;
@@ -68,6 +69,13 @@ export default function Paywall({ onClose, onSuccess }: Props) {
   const [purchasing, setPurchasing] = useState(false);
   const [selectedIdx, setSelectedIdx] = useState(0); // Default to monthly — the trial-eligible package
 
+  // Fire Meta ViewedContent funnel event the first time the paywall mounts
+  // for this user session. Pairs with the server-side StartTrial/Subscribe
+  // events that RevenueCat sends after a successful purchase.
+  useEffect(() => {
+    logPaywallView();
+  }, []);
+
   // Sort packages: monthly, annual, lifetime
   const sorted = [...packages].sort((a, b) => {
     const order = [PACKAGE_TYPE.MONTHLY, PACKAGE_TYPE.ANNUAL, PACKAGE_TYPE.LIFETIME];
@@ -76,6 +84,15 @@ export default function Paywall({ onClose, onSuccess }: Props) {
 
   async function handlePurchase(pkg: PurchasesPackage) {
     const trialDays = showTrialFor(pkg, eligibility) ? getTrialDays(pkg) : 0;
+    // Fire Meta InitiatedCheckout BEFORE the StoreKit/Play sheet appears — if
+    // the user cancels at the system sheet we still want Meta to know they
+    // intended to convert. The revenue event itself comes from RevenueCat.
+    logInitiateCheckout({
+      productId: pkg.product.identifier,
+      price: pkg.product.price,
+      currency: pkg.product.currencyCode,
+      packageType: String(pkg.packageType).toLowerCase(),
+    });
     setPurchasing(true);
     const success = await purchasePackage(pkg);
     setPurchasing(false);

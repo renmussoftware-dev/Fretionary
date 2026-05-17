@@ -55,6 +55,19 @@
             "minSdkVersion": 24
           }
         }
+      ],
+      [
+        "react-native-fbsdk-next",
+        {
+          "appID": "2237808463714897",
+          "clientToken": "1c3dee33c98a644a3b9abc7af6260b34",
+          "displayName": "Fretionary",
+          "scheme": "fb2237808463714897",
+          "advertiserIDCollectionEnabled": true,
+          "autoLogAppEventsEnabled": true,
+          "isAutoInitEnabled": true,
+          "iosUserTrackingPermission": "Allow Fretionary to use your activity to help us improve and personalize ads. This helps keep the app free and the Pro tier affordable."
+        }
       ]
     ],
     "scheme": "fretionary",

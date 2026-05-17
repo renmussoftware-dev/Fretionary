@@ -1,0 +1,156 @@
+/**
+ * Meta (Facebook) SDK wrapper for ad-campaign attribution.
+ *
+ * Responsibilities:
+ *  - Initialize the Facebook SDK (auto-init is on in app.json, this just
+ *    syncs advertiser-tracking with the ATT result).
+ *  - Single-flight ATT (App Tracking Transparency) prompt — show it once
+ *    per install, persisted in AsyncStorage so it survives app launches.
+ *  - Wrap the standard funnel events (tutorial complete, paywall view,
+ *    initiate checkout) so callers don't import the SDK directly.
+ *
+ * Event source-of-truth split:
+ *  - Purchase-related events (StartTrial, Subscribe, Renewal, Cancellation)
+ *    flow to Meta from RevenueCat server-side. Do NOT fire them here as
+ *    well — that would double-count.
+ *  - Funnel events (tutorial completion, paywall view, initiate checkout)
+ *    are client-only and live here.
+ */
+
+import { Platform } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import {
+  AppEventsLogger,
+  Settings,
+} from 'react-native-fbsdk-next';
+import {
+  requestTrackingPermissionsAsync,
+  getTrackingPermissionsAsync,
+} from 'expo-tracking-transparency';
+
+const ATT_PROMPTED_KEY = 'fretionary_att_prompted_v1';
+
+let initialized = false;
+let attRequestInFlight: Promise<void> | null = null;
+
+/**
+ * Initialize the Facebook SDK and sync advertiser-tracking flag with the
+ * user's current ATT status. Safe to call multiple times — only runs once.
+ *
+ * The SDK has `isAutoInitEnabled: true` in app.json so it has already
+ * initialized itself by the time JS runs. We just need to tell it the
+ * advertiser-tracking status before it sends any events.
+ */
+export async function initAnalytics(): Promise<void> {
+  if (initialized) return;
+  initialized = true;
+  try {
+    // iOS: set advertiser tracking based on current ATT status (whatever it
+    // is — we haven't necessarily prompted yet). The SDK will respect this.
+    // Android: setAdvertiserTrackingEnabled is a no-op but safe to call.
+    if (Platform.OS === 'ios') {
+      const { status } = await getTrackingPermissionsAsync();
+      await Settings.setAdvertiserTrackingEnabled(status === 'granted');
+    } else {
+      await Settings.setAdvertiserTrackingEnabled(true);
+    }
+  } catch (e) {
+    if (__DEV__) console.warn('[analytics] init error:', e);
+  }
+}
+
+/**
+ * Prompt the user for App Tracking Transparency permission, once per install.
+ * Persists a flag in AsyncStorage so we never prompt twice. Should be called
+ * at a natural "you've experienced value" moment (end of onboarding for new
+ * users; first launch of this app version for existing users).
+ *
+ * After the user responds, syncs the result back to the Facebook SDK via
+ * Settings.setAdvertiserTrackingEnabled. On Android this is a no-op.
+ */
+export async function maybePromptATT(): Promise<void> {
+  // Single-flight — if a concurrent caller is already prompting, just await
+  // the same promise instead of stacking system dialogs.
+  if (attRequestInFlight) return attRequestInFlight;
+
+  attRequestInFlight = (async () => {
+    try {
+      const prompted = await AsyncStorage.getItem(ATT_PROMPTED_KEY);
+      if (prompted) return;
+
+      // ATT only exists on iOS 14.5+. expo-tracking-transparency returns
+      // 'unavailable' status on Android and older iOS, in which case there's
+      // nothing to do — Settings.setAdvertiserTrackingEnabled was already
+      // set during initAnalytics.
+      const { status, canAskAgain } = await getTrackingPermissionsAsync();
+      if (status === 'undetermined' && canAskAgain) {
+        const result = await requestTrackingPermissionsAsync();
+        if (Platform.OS === 'ios') {
+          await Settings.setAdvertiserTrackingEnabled(result.status === 'granted');
+        }
+      } else if (Platform.OS === 'ios') {
+        // Status already settled in some prior session — sync the SDK to it.
+        await Settings.setAdvertiserTrackingEnabled(status === 'granted');
+      }
+
+      await AsyncStorage.setItem(ATT_PROMPTED_KEY, '1');
+    } catch (e) {
+      if (__DEV__) console.warn('[analytics] ATT prompt error:', e);
+    } finally {
+      attRequestInFlight = null;
+    }
+  })();
+
+  return attRequestInFlight;
+}
+
+// ── Event helpers ────────────────────────────────────────────────────────────
+// All wrap AppEventsLogger.logEvent so callers stay decoupled from the SDK
+// and so we have one place to gate, mute, or rename events later.
+
+export function logTutorialComplete(): void {
+  try {
+    AppEventsLogger.logEvent(AppEventsLogger.AppEvents.CompletedTutorial);
+  } catch (e) {
+    if (__DEV__) console.warn('[analytics] logTutorialComplete error:', e);
+  }
+}
+
+/** Fires when the paywall mounts — Meta uses this for retargeting. */
+export function logPaywallView(): void {
+  try {
+    AppEventsLogger.logEvent(AppEventsLogger.AppEvents.ViewedContent, {
+      [AppEventsLogger.AppEventParams.ContentType]: 'paywall',
+      [AppEventsLogger.AppEventParams.ContentID]: 'fretionary_pro_paywall',
+    });
+  } catch (e) {
+    if (__DEV__) console.warn('[analytics] logPaywallView error:', e);
+  }
+}
+
+/**
+ * Fires when the user taps the paywall CTA — before the StoreKit/Play sheet
+ * appears. Pairs with the server-side StartTrial/Subscribe events that
+ * RevenueCat sends after the purchase completes, giving Meta the full funnel
+ * (paywall view → checkout intent → conversion).
+ */
+export function logInitiateCheckout(params: {
+  productId: string;
+  price: number;
+  currency: string;
+  packageType: string;
+}): void {
+  try {
+    AppEventsLogger.logEvent(
+      AppEventsLogger.AppEvents.InitiatedCheckout,
+      params.price,
+      {
+        [AppEventsLogger.AppEventParams.ContentID]: params.productId,
+        [AppEventsLogger.AppEventParams.ContentType]: params.packageType,
+        [AppEventsLogger.AppEventParams.Currency]: params.currency,
+      },
+    );
+  } catch (e) {
+    if (__DEV__) console.warn('[analytics] logInitiateCheckout error:', e);
+  }
+}

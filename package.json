@@ -25,6 +25,8 @@
     "expo-router": "~5.1.11",
     "expo-status-bar": "~2.0.1",
     "expo-store-review": "~9.0.9",
+    "expo-tracking-transparency": "~6.0.0",
+    "react-native-fbsdk-next": "^13.4.1",
     "react": "19.1.0",
     "react-dom": "19.1.0",
     "react-native": "0.81.5",
