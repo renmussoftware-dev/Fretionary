@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, ScrollView,
   ActivityIndicator, Alert, Linking, Platform,
@@ -67,7 +67,8 @@ function showTrialFor(pkg: PurchasesPackage, eligibility: Record<string, INTRO_E
 export default function Paywall({ onClose, onSuccess }: Props) {
   const { isLoading, isPro, packages, eligibility, purchasePackage, restorePurchases } = useRevenueCat();
   const [purchasing, setPurchasing] = useState(false);
-  const [selectedIdx, setSelectedIdx] = useState(0); // Default to monthly — the trial-eligible package
+  const [selectedIdx, setSelectedIdx] = useState(0);
+  const didInitSelection = useRef(false);
 
   // Fire Meta ViewedContent funnel event the first time the paywall mounts
   // for this user session. Pairs with the server-side StartTrial/Subscribe
@@ -81,6 +82,20 @@ export default function Paywall({ onClose, onSuccess }: Props) {
     const order = [PACKAGE_TYPE.MONTHLY, PACKAGE_TYPE.ANNUAL, PACKAGE_TYPE.LIFETIME];
     return order.indexOf(a.packageType) - order.indexOf(b.packageType);
   });
+
+  // Default the selected card to whichever package carries the free trial
+  // (so users land on the trial-eligible option), falling back to Annual,
+  // then the first package. Runs once after packages load; manual taps after
+  // that are respected. This makes the default follow the store config —
+  // move the trial between tiers and the default follows automatically.
+  useEffect(() => {
+    if (didInitSelection.current || sorted.length === 0) return;
+    didInitSelection.current = true;
+    const trialIdx = sorted.findIndex(p => showTrialFor(p, eligibility));
+    const annualIdx = sorted.findIndex(p => p.packageType === PACKAGE_TYPE.ANNUAL);
+    setSelectedIdx(trialIdx >= 0 ? trialIdx : annualIdx >= 0 ? annualIdx : 0);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sorted, eligibility]);
 
   async function handlePurchase(pkg: PurchasesPackage) {
     const trialDays = showTrialFor(pkg, eligibility) ? getTrialDays(pkg) : 0;
@@ -133,35 +148,36 @@ export default function Paywall({ onClose, onSuccess }: Props) {
   }
 
   function getPackageLabel(pkg: PurchasesPackage) {
-    const trial = showTrialFor(pkg, eligibility);
-    const trialDays = trial ? getTrialDays(pkg) : 0;
+    // Trial badge takes priority on whichever tier carries the offer — so the
+    // "N-DAY FREE TRIAL" chip follows the store config without code changes.
+    const trialDays = showTrialFor(pkg, eligibility) ? getTrialDays(pkg) : 0;
+    const trialBadge = trialDays > 0 ? `${trialDays}-DAY FREE TRIAL` : null;
     switch (pkg.packageType) {
-      case PACKAGE_TYPE.MONTHLY:
-        return {
-          title: 'Monthly',
-          badge: trial ? `${trialDays}-DAY FREE TRIAL` : null,
-          highlight: false,
-        };
-      case PACKAGE_TYPE.ANNUAL:   return { title: 'Annual', badge: 'BEST VALUE', highlight: true };
-      case PACKAGE_TYPE.LIFETIME: return { title: 'Lifetime', badge: 'ONE TIME', highlight: false };
-      default:                    return { title: pkg.identifier, badge: null, highlight: false };
+      case PACKAGE_TYPE.MONTHLY:  return { title: 'Monthly',  badge: trialBadge,             highlight: false };
+      case PACKAGE_TYPE.ANNUAL:   return { title: 'Annual',   badge: trialBadge ?? 'BEST VALUE', highlight: true };
+      case PACKAGE_TYPE.LIFETIME: return { title: 'Lifetime', badge: 'ONE TIME',             highlight: false };
+      default:                    return { title: pkg.identifier, badge: trialBadge, highlight: false };
     }
   }
 
   function getFeatures(pkg: PurchasesPackage): string[] {
     const trialDays = showTrialFor(pkg, eligibility) ? getTrialDays(pkg) : 0;
+    let base: string[];
     switch (pkg.packageType) {
-      case PACKAGE_TYPE.MONTHLY: {
-        const base = ['All 14 scales & modes', 'Full chord library (25 types)', 'All progressions', 'Real guitar audio'];
-        return trialDays > 0 ? [`Free for ${trialDays} days, then auto-renews`, ...base] : base;
-      }
+      case PACKAGE_TYPE.MONTHLY:
+        base = ['All 14 scales & modes', 'Full chord library (25 types)', 'All progressions', 'Real guitar audio'];
+        break;
       case PACKAGE_TYPE.ANNUAL:
-        return ['Everything in Monthly', 'Save 48% vs monthly', 'Diatonic chord explorer', 'Custom progression builder'];
+        base = ['Everything in Monthly', 'Save 48% vs monthly', 'Diatonic chord explorer', 'Custom progression builder'];
+        break;
       case PACKAGE_TYPE.LIFETIME:
-        return ['Everything in Annual', 'Pay once, own forever', 'All future updates', 'No recurring charge'];
+        base = ['Everything in Annual', 'Pay once, own forever', 'All future updates', 'No recurring charge'];
+        break;
       default:
-        return [];
+        base = [];
     }
+    // Prepend the trial bullet to whichever tier currently carries the trial.
+    return trialDays > 0 ? [`Free for ${trialDays} days, then auto-renews`, ...base] : base;
   }
 
   if (isLoading) {
