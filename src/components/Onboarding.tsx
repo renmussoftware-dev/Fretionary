@@ -147,7 +147,7 @@ const SLIDES = [
   {
     emoji: null,
     title: 'Chord Library',
-    subtitle: '25 chord types with real fingering shapes and audio. Tap any chord to play it.',
+    subtitle: '36 chord types with real fingering shapes and audio. Tap any chord to play it.',
     illustration: 'chord',
     accent: GOLD,
   },

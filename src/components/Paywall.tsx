@@ -165,7 +165,7 @@ export default function Paywall({ onClose, onSuccess }: Props) {
     let base: string[];
     switch (pkg.packageType) {
       case PACKAGE_TYPE.MONTHLY:
-        base = ['All 14 scales & modes', 'Full chord library (25 types)', 'All progressions', 'Real guitar audio'];
+        base = ['All 14 scales & modes', 'Full chord library (36 types)', 'All progressions', 'Real guitar audio'];
         break;
       case PACKAGE_TYPE.ANNUAL:
         base = ['Everything in Monthly', 'Save 48% vs monthly', 'Diatonic chord explorer', 'Custom progression builder'];

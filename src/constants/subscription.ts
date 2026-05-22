@@ -13,7 +13,7 @@ export const FREE_SCALES = new Set([
   'Blues',
 ]);
 
-// ── FREE CHORDS (8 of 25) ────────────────────────────────────────────────────
+// ── FREE CHORDS (8 of 36) ────────────────────────────────────────────────────
 export const FREE_CHORDS = new Set([
   'Major',
   'Minor',

@@ -26,7 +26,7 @@ const SECTIONS: Section[] = [
     navLabel: 'Open Fretboard',
     features: [
       { name: 'Scales mode',     desc: '14 scales — Major, modes, pentatonics, blues, harmonic/melodic minor, whole-tone, diminished.', badge: 'mixed' },
-      { name: 'Chords mode',     desc: 'Light up any of 35 chord types across the entire neck.', badge: 'mixed' },
+      { name: 'Chords mode',     desc: 'Light up any of 36 chord types across the entire neck.', badge: 'mixed' },
       { name: 'CAGED mode',      desc: 'See where each of the 5 CAGED shapes lives for any key — with shape detail, caret-fret indicator, and pedagogical tips.', badge: 'mixed' },
       { name: 'Position lock',   desc: 'Filter the fretboard to a single 5-fret position (Pos 1–5).', badge: 'pro' },
       { name: 'Note labels',     desc: 'Toggle between note name, scale degree, interval, or no label.', badge: 'free' },
