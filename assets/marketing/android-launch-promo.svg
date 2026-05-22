@@ -1,0 +1,111 @@
+<svg width="1200" height="630" viewBox="0 0 1200 630" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#17171b"/>
+      <stop offset="1" stop-color="#0a0a0b"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="50%" cy="18%" r="58%">
+      <stop offset="0" stop-color="#E8D44D" stop-opacity="0.16"/>
+      <stop offset="1" stop-color="#E8D44D" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="rootGlow" cx="50%" cy="50%" r="50%">
+      <stop offset="0" stop-color="#E8D44D" stop-opacity="0.5"/>
+      <stop offset="1" stop-color="#E8D44D" stop-opacity="0"/>
+    </radialGradient>
+    <style>
+      .mono { font-family: 'JetBrains Mono','DM Mono','Courier New',monospace; }
+      .sans { font-family: -apple-system,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif; }
+    </style>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1200" height="630" fill="url(#bg)"/>
+  <rect width="1200" height="630" fill="url(#glow)"/>
+
+  <!-- ── Fretboard motif (lower band) ───────────────────────────────── -->
+  <g>
+    <!-- inlay dots -->
+    <circle cx="317" cy="502" r="5" fill="#ffffff" opacity="0.05"/>
+    <circle cx="507" cy="502" r="5" fill="#ffffff" opacity="0.05"/>
+    <circle cx="697" cy="502" r="5" fill="#ffffff" opacity="0.05"/>
+    <circle cx="887" cy="502" r="5" fill="#ffffff" opacity="0.05"/>
+
+    <!-- frets -->
+    <g stroke="#ffffff" stroke-opacity="0.10" stroke-width="1">
+      <line x1="175" y1="418" x2="175" y2="586"/>
+      <line x1="270" y1="418" x2="270" y2="586"/>
+      <line x1="365" y1="418" x2="365" y2="586"/>
+      <line x1="460" y1="418" x2="460" y2="586"/>
+      <line x1="555" y1="418" x2="555" y2="586"/>
+      <line x1="650" y1="418" x2="650" y2="586"/>
+      <line x1="745" y1="418" x2="745" y2="586"/>
+      <line x1="840" y1="418" x2="840" y2="586"/>
+      <line x1="935" y1="418" x2="935" y2="586"/>
+      <line x1="1030" y1="418" x2="1030" y2="586"/>
+      <line x1="1125" y1="418" x2="1125" y2="586"/>
+    </g>
+
+    <!-- nut -->
+    <rect x="78" y="424" width="6" height="156" rx="3" fill="#888680" opacity="0.55"/>
+
+    <!-- strings (thin → thick, low opacity) -->
+    <g stroke="#f2f1ec" stroke-opacity="0.22">
+      <line x1="84" y1="430" x2="1125" y2="430" stroke-width="0.8"/>
+      <line x1="84" y1="459" x2="1125" y2="459" stroke-width="1.1"/>
+      <line x1="84" y1="488" x2="1125" y2="488" stroke-width="1.5"/>
+      <line x1="84" y1="517" x2="1125" y2="517" stroke-width="1.9"/>
+      <line x1="84" y1="546" x2="1125" y2="546" stroke-width="2.3"/>
+      <line x1="84" y1="575" x2="1125" y2="575" stroke-width="2.7"/>
+    </g>
+
+    <!-- colored note dots (the app's signature visual language) -->
+    <!-- root (gold) with soft glow + R label -->
+    <circle cx="222" cy="459" r="30" fill="url(#rootGlow)"/>
+    <circle cx="222" cy="459" r="16" fill="#E8D44D" stroke="#C4A800" stroke-width="2"/>
+    <text x="222" y="465" text-anchor="middle" class="sans" font-size="14" font-weight="700" fill="#5C4400">R</text>
+
+    <circle cx="317" cy="517" r="16" fill="#1D9E75" stroke="#0F6E56" stroke-width="2"/>
+    <text x="317" y="523" text-anchor="middle" class="sans" font-size="13" font-weight="700" fill="#ffffff">5</text>
+
+    <circle cx="412" cy="430" r="16" fill="#E24B4A" stroke="#A32D2D" stroke-width="2"/>
+    <text x="412" y="436" text-anchor="middle" class="sans" font-size="13" font-weight="700" fill="#ffffff">3</text>
+
+    <circle cx="507" cy="575" r="16" fill="#378ADD" stroke="#185FA5" stroke-width="2"/>
+    <text x="507" y="581" text-anchor="middle" class="sans" font-size="13" font-weight="700" fill="#ffffff">7</text>
+
+    <circle cx="602" cy="488" r="30" fill="url(#rootGlow)"/>
+    <circle cx="602" cy="488" r="16" fill="#E8D44D" stroke="#C4A800" stroke-width="2"/>
+    <text x="602" y="494" text-anchor="middle" class="sans" font-size="14" font-weight="700" fill="#5C4400">R</text>
+
+    <circle cx="697" cy="459" r="16" fill="#1D9E75" stroke="#0F6E56" stroke-width="2"/>
+    <text x="697" y="465" text-anchor="middle" class="sans" font-size="13" font-weight="700" fill="#ffffff">5</text>
+
+    <circle cx="792" cy="546" r="16" fill="#E24B4A" stroke="#A32D2D" stroke-width="2"/>
+    <text x="792" y="552" text-anchor="middle" class="sans" font-size="13" font-weight="700" fill="#ffffff">3</text>
+
+    <circle cx="887" cy="430" r="16" fill="#378ADD" stroke="#185FA5" stroke-width="2"/>
+    <text x="887" y="436" text-anchor="middle" class="sans" font-size="13" font-weight="700" fill="#ffffff">7</text>
+
+    <circle cx="982" cy="517" r="30" fill="url(#rootGlow)"/>
+    <circle cx="982" cy="517" r="16" fill="#E8D44D" stroke="#C4A800" stroke-width="2"/>
+    <text x="982" y="523" text-anchor="middle" class="sans" font-size="14" font-weight="700" fill="#5C4400">R</text>
+
+    <circle cx="1077" cy="488" r="16" fill="#1D9E75" stroke="#0F6E56" stroke-width="2"/>
+    <text x="1077" y="494" text-anchor="middle" class="sans" font-size="13" font-weight="700" fill="#ffffff">5</text>
+  </g>
+
+  <!-- ── Headline block ─────────────────────────────────────────────── -->
+  <text x="600" y="98" text-anchor="middle" class="mono" fill="#E8D44D" font-size="22" font-weight="600" letter-spacing="9">F R E T I O N A R Y</text>
+
+  <text x="600" y="190" text-anchor="middle" class="sans" fill="#f0ede8" font-size="62" font-weight="800" letter-spacing="-1">Now Available</text>
+  <text x="600" y="262" text-anchor="middle" class="sans" fill="#E8D44D" font-size="62" font-weight="800" letter-spacing="-1">on Android!</text>
+
+  <text x="600" y="312" text-anchor="middle" class="sans" fill="#b8b4ac" font-size="22" font-weight="500">Every note on the neck has a name.</text>
+
+  <!-- ── Google Play badge ──────────────────────────────────────────── -->
+  <g transform="translate(440, 344)">
+    <rect width="320" height="56" rx="28" fill="#E8D44D"/>
+    <path d="M22 16 L42 28 L22 40 Z" fill="#1a1400"/>
+    <text x="62" y="35" class="sans" font-size="18" font-weight="700" fill="#1a1400">Get it on Google Play</text>
+  </g>
+</svg>
