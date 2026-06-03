@@ -4,7 +4,7 @@ import {
   ActivityIndicator, Alert, Linking, Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { PACKAGE_TYPE, INTRO_ELIGIBILITY_STATUS } from 'react-native-purchases';
 import type { PurchasesPackage } from 'react-native-purchases';
 import { COLORS, SPACE, RADIUS } from '../constants/theme';
@@ -66,6 +66,12 @@ function showTrialFor(pkg: PurchasesPackage, eligibility: Record<string, INTRO_E
 
 export default function Paywall({ onClose, onSuccess }: Props) {
   const { isLoading, isPro, packages, eligibility, purchasePackage, restorePurchases } = useRevenueCat();
+  // `?context=proactive` is passed when the paywall is presented by the
+  // single-shot engagement trigger in _layout.tsx (rather than by the user
+  // tapping a Pro-gated feature). Softens the headline from "Unlock" wall
+  // to "Try Pro free" invitation — same screen, more inviting framing.
+  const { context } = useLocalSearchParams<{ context?: string }>();
+  const isProactive = context === 'proactive';
   const [purchasing, setPurchasing] = useState(false);
   const [selectedIdx, setSelectedIdx] = useState(0);
   const didInitSelection = useRef(false);
@@ -217,7 +223,11 @@ export default function Paywall({ onClose, onSuccess }: Props) {
             <Text style={styles.closeBtnText}>✕</Text>
           </TouchableOpacity>
         )}
-        <Text style={styles.headline}>Unlock the full neck.</Text>
+        <Text style={styles.headline}>
+          {isProactive && sorted.some(p => showTrialFor(p, eligibility))
+            ? 'Try Pro free for 7 days.'
+            : 'Unlock the full neck.'}
+        </Text>
         <Text style={styles.subheadline}>
           {sorted.some(p => showTrialFor(p, eligibility))
             ? 'Try it free for 7 days. All scales. All chords. Real guitar audio.'

@@ -1,4 +1,4 @@
-import { Stack } from 'expo-router';
+import { Stack, router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { StyleSheet, View } from 'react-native';
@@ -14,11 +14,22 @@ import {
 } from '@expo-google-fonts/jetbrains-mono';
 import Onboarding from '../src/components/Onboarding';
 import { initAnalytics, maybePromptATT, logTutorialComplete } from '../src/utils/analytics';
+import { useStore, TRIAL_PROMPT_MIN_ACTIONS } from '../src/store/useStore';
 
 const ONBOARDING_KEY = 'fretionary_onboarded_v1';
+const PROACTIVE_PAYWALL_DELAY_MS = 800;
 
 export default function RootLayout() {
   const [showOnboarding, setShowOnboarding] = useState<boolean | null>(null);
+
+  // Reactive store reads — when isPro flips after RevenueCat loads, the
+  // proactive-paywall effect re-evaluates and bails. positiveActionCount
+  // and trialPromptShownAt drive the show-once trigger.
+  const isPro = useStore(s => s.isPro);
+  const positiveActionCount = useStore(s => s.positiveActionCount);
+  const trialPromptShownAt = useStore(s => s.trialPromptShownAt);
+  const markTrialPromptShown = useStore(s => s.markTrialPromptShown);
+
   const [fontsLoaded] = useFonts({
     // Map all four weights to a single family alias matching FONT_FAMILY.mono
     // in theme.ts. RN picks the right weight via the `fontWeight` style.
@@ -56,6 +67,28 @@ export default function RootLayout() {
       maybePromptATT();
     }
   }, [showOnboarding]);
+
+  // Proactive trial paywall — fixes the install→trial bottleneck by surfacing
+  // the offer once after the user has shown real engagement (favorited
+  // TRIAL_PROMPT_MIN_ACTIONS items), instead of waiting for them to bump
+  // into a Pro-gated feature. Single-shot, persisted via trialPromptShownAt.
+  //
+  // Effect re-runs when isPro / positiveActionCount / trialPromptShownAt
+  // change. Cleanup clearTimeout debounces multiple state changes within
+  // the delay window so we never present the paywall twice. If RevenueCat
+  // resolves isPro=true mid-delay, the cleanup cancels the pending show.
+  useEffect(() => {
+    if (showOnboarding !== false) return;
+    if (isPro) return;
+    if (trialPromptShownAt !== null) return;
+    if (positiveActionCount < TRIAL_PROMPT_MIN_ACTIONS) return;
+
+    const t = setTimeout(() => {
+      markTrialPromptShown();
+      router.push('/paywall?context=proactive');
+    }, PROACTIVE_PAYWALL_DELAY_MS);
+    return () => clearTimeout(t);
+  }, [showOnboarding, isPro, positiveActionCount, trialPromptShownAt, markTrialPromptShown]);
 
   async function finishOnboarding() {
     // Prompt ATT now — user has just seen the value, this is the natural
