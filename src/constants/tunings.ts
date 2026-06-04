@@ -9,7 +9,7 @@ export interface Tuning {
   name: string;
   shortName: string;       // e.g. "STD", "Drop D" — fits in TopBar pill
   description: string;
-  category: 'standard' | 'drop' | 'open' | 'modal' | 'down';
+  category: 'standard' | 'drop' | 'open' | 'modal' | 'down' | 'experimental';
   midi: number[];          // length 6, low→high (string idx 0 = low E in audio engine)
   stringNames: string[];   // length 6, high→low (matches Fretboard SVG ordering)
 }
@@ -78,6 +78,15 @@ export const TUNINGS: Tuning[] = [
     category: 'open',
     midi: [40, 47, 52, 56, 59, 64],
     stringNames: ['e', 'B', 'G#', 'E', 'B', 'E'],
+  },
+  {
+    id: 'facgce',
+    name: 'FACGCE',
+    shortName: 'FACGCE',
+    description: 'F A C G C E — math rock tuning made famous by American Football. Ringing open voicings and unusual chord shapes.',
+    category: 'experimental',
+    midi: [41, 45, 48, 55, 60, 64],
+    stringNames: ['e', 'C', 'G', 'C', 'A', 'F'],
   },
   {
     id: 'half-step-down',
