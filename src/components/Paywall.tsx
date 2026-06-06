@@ -32,6 +32,8 @@ export default function Paywall({ onClose, onSuccess }: Props) {
   // Monetization model is monthly subscription + lifetime one-time purchase.
   // Filter out any other package types defensively — if Annual is still in
   // the RevenueCat offering during the transition, it won't render here.
+  // Monthly first (lower-commitment entry point), Lifetime second
+  // (featured with "BEST VALUE" badge for users ready to commit).
   const sorted = [...packages]
     .filter(p => p.packageType === PACKAGE_TYPE.MONTHLY || p.packageType === PACKAGE_TYPE.LIFETIME)
     .sort((a, b) => {
@@ -41,8 +43,9 @@ export default function Paywall({ onClose, onSuccess }: Props) {
 
   // Default the selected card to Monthly (lower commitment = better
   // conversion for low-conviction users). Lifetime is visually featured
-  // as the upsell. Runs once after packages load; manual taps after that
-  // are respected.
+  // via the "BEST VALUE" badge as a soft signal of the better long-term
+  // value, but we don't pre-select it — that would feel pushy. Runs once
+  // after packages load; manual taps after that are respected.
   useEffect(() => {
     if (didInitSelection.current || sorted.length === 0) return;
     didInitSelection.current = true;
