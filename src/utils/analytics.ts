@@ -10,7 +10,7 @@
  *    initiate checkout) so callers don't import the SDK directly.
  *
  * Event source-of-truth split:
- *  - Purchase-related events (StartTrial, Subscribe, Renewal, Cancellation)
+ *  - Purchase-related events (Subscribe, Renewal, Cancellation, Purchase)
  *    flow to Meta from RevenueCat server-side. Do NOT fire them here as
  *    well — that would double-count.
  *  - Funnel events (tutorial completion, paywall view, initiate checkout)
@@ -156,7 +156,7 @@ export function logPaywallView(): void {
 
 /**
  * Fires when the user taps the paywall CTA — before the StoreKit/Play sheet
- * appears. Pairs with the server-side StartTrial/Subscribe events that
+ * appears. Pairs with the server-side Subscribe/Purchase events that
  * RevenueCat sends after the purchase completes, giving Meta the full funnel
  * (paywall view → checkout intent → conversion).
  */

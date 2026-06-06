@@ -9,13 +9,13 @@ const REVIEW_MIN_DAYS_INSTALLED = 2;
 const REVIEW_MIN_DAYS_SINCE_LAST = 60;
 
 /**
- * Threshold for the proactive trial paywall. When a non-Pro user has favorited
- * this many items (a genuine engagement signal), present the trial offer once.
+ * Threshold for the proactive paywall. When a non-Pro user has favorited
+ * this many items (a genuine engagement signal), present the paywall once.
  * Reuses positiveActionCount — the same engagement counter that throttles the
  * App Store review prompt — because it correlates with users who've already
  * gotten value from the app and are likely to convert.
  */
-export const TRIAL_PROMPT_MIN_ACTIONS = 3;
+export const PAYWALL_PROMPT_MIN_ACTIONS = 3;
 
 export type AppMode = 'scales' | 'chords' | 'caged' | 'custom';
 export type LabelMode = 'name' | 'degree' | 'interval' | 'none';
@@ -62,11 +62,11 @@ interface AppState {
   lastPromptedAt: number | null;
   recordPositiveAction: () => void;
 
-  // Proactive trial-prompt state — persisted, single-shot per install. Set
-  // when the proactive paywall has been presented so we never present it
-  // twice. The trigger lives in app/_layout.tsx; this just persists the flag.
-  trialPromptShownAt: number | null;
-  markTrialPromptShown: () => void;
+  // Proactive paywall state — persisted, single-shot per install. Set when
+  // the proactive paywall has been presented so we never present it twice.
+  // The trigger lives in app/_layout.tsx; this just persists the flag.
+  paywallPromptShownAt: number | null;
+  markPaywallPromptShown: () => void;
 
   // Transient: set by the Saved sheet so a tab screen can apply its local
   // selection on next render. The screen clears it after consuming.
@@ -113,12 +113,12 @@ export const useStore = create<AppState>()(
       installedAt: 0,
       positiveActionCount: 0,
       lastPromptedAt: null,
-      trialPromptShownAt: null,
+      paywallPromptShownAt: null,
       pendingNav: null,
 
       setPendingNav: (pendingNav) => set({ pendingNav }),
 
-      markTrialPromptShown: () => set({ trialPromptShownAt: Date.now() }),
+      markPaywallPromptShown: () => set({ paywallPromptShownAt: Date.now() }),
 
       recordPositiveAction: () => {
         const now = Date.now();
@@ -207,7 +207,7 @@ export const useStore = create<AppState>()(
         installedAt: s.installedAt,
         positiveActionCount: s.positiveActionCount,
         lastPromptedAt: s.lastPromptedAt,
-        trialPromptShownAt: s.trialPromptShownAt,
+        paywallPromptShownAt: s.paywallPromptShownAt,
       }),
     },
   ),

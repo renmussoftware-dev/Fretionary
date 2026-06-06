@@ -4,8 +4,8 @@ import {
   ActivityIndicator, Alert, Linking, Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { router, useLocalSearchParams } from 'expo-router';
-import { PACKAGE_TYPE, INTRO_ELIGIBILITY_STATUS } from 'react-native-purchases';
+import { router } from 'expo-router';
+import { PACKAGE_TYPE } from 'react-native-purchases';
 import type { PurchasesPackage } from 'react-native-purchases';
 import { COLORS, SPACE, RADIUS } from '../constants/theme';
 import { useRevenueCat } from '../hooks/useRevenueCat';
@@ -16,95 +16,42 @@ interface Props {
   onSuccess?: () => void;
 }
 
-/**
- * Returns the trial length in days for a package, or 0 if none.
- *
- * iOS uses `product.introPrice` (free trial = price === 0).
- * Android Billing v5+ exposes the trial as `product.defaultOption.freePhase`
- * with an ISO-8601 billing period like "P7D" or "P1W". We parse both shapes
- * so the same paywall code works on both stores.
- */
-function getTrialDays(pkg: PurchasesPackage): number {
-  const product = pkg.product as any;
-
-  // iOS-style intro offer
-  const intro = product.introPrice;
-  if (intro && intro.price === 0 && intro.periodNumberOfUnits > 0) {
-    const n: number = intro.periodNumberOfUnits;
-    switch (intro.periodUnit) {
-      case 'DAY':   return n;
-      case 'WEEK':  return n * 7;
-      case 'MONTH': return n * 30;
-      case 'YEAR':  return n * 365;
-    }
-  }
-
-  // Android Google Play Billing v5+ default-offer free phase
-  const period: string | undefined = product.defaultOption?.freePhase?.billingPeriod;
-  if (period) {
-    const m = /^P(?:(\d+)Y)?(?:(\d+)M)?(?:(\d+)W)?(?:(\d+)D)?$/.exec(period);
-    if (m) {
-      const y = +(m[1] || 0), mo = +(m[2] || 0), w = +(m[3] || 0), d = +(m[4] || 0);
-      return y * 365 + mo * 30 + w * 7 + d;
-    }
-  }
-
-  return 0;
-}
-
-/**
- * Whether to actually advertise a trial on this package. We don't promise a
- * trial to users we know are ineligible (already used theirs). UNKNOWN status
- * is treated leniently — same as eligible — so a transient network failure
- * doesn't hide the offer from new users.
- */
-function showTrialFor(pkg: PurchasesPackage, eligibility: Record<string, INTRO_ELIGIBILITY_STATUS>): boolean {
-  if (getTrialDays(pkg) === 0) return false;
-  const status = eligibility[pkg.product.identifier];
-  return status !== INTRO_ELIGIBILITY_STATUS.INTRO_ELIGIBILITY_STATUS_INELIGIBLE;
-}
-
 export default function Paywall({ onClose, onSuccess }: Props) {
-  const { isLoading, isPro, packages, eligibility, purchasePackage, restorePurchases } = useRevenueCat();
-  // `?context=proactive` is passed when the paywall is presented by the
-  // single-shot engagement trigger in _layout.tsx (rather than by the user
-  // tapping a Pro-gated feature). Softens the headline from "Unlock" wall
-  // to "Try Pro free" invitation — same screen, more inviting framing.
-  const { context } = useLocalSearchParams<{ context?: string }>();
-  const isProactive = context === 'proactive';
+  const { isLoading, isPro, packages, purchasePackage, restorePurchases } = useRevenueCat();
   const [purchasing, setPurchasing] = useState(false);
   const [selectedIdx, setSelectedIdx] = useState(0);
   const didInitSelection = useRef(false);
 
   // Fire Meta ViewedContent funnel event the first time the paywall mounts
-  // for this user session. Pairs with the server-side StartTrial/Subscribe
+  // for this user session. Pairs with the server-side Subscribe/Purchase
   // events that RevenueCat sends after a successful purchase.
   useEffect(() => {
     logPaywallView();
   }, []);
 
-  // Sort packages: monthly, annual, lifetime
-  const sorted = [...packages].sort((a, b) => {
-    const order = [PACKAGE_TYPE.MONTHLY, PACKAGE_TYPE.ANNUAL, PACKAGE_TYPE.LIFETIME];
-    return order.indexOf(a.packageType) - order.indexOf(b.packageType);
-  });
+  // Monetization model is monthly subscription + lifetime one-time purchase.
+  // Filter out any other package types defensively — if Annual is still in
+  // the RevenueCat offering during the transition, it won't render here.
+  const sorted = [...packages]
+    .filter(p => p.packageType === PACKAGE_TYPE.MONTHLY || p.packageType === PACKAGE_TYPE.LIFETIME)
+    .sort((a, b) => {
+      const order = [PACKAGE_TYPE.MONTHLY, PACKAGE_TYPE.LIFETIME];
+      return order.indexOf(a.packageType) - order.indexOf(b.packageType);
+    });
 
-  // Default the selected card to whichever package carries the free trial
-  // (so users land on the trial-eligible option), falling back to Annual,
-  // then the first package. Runs once after packages load; manual taps after
-  // that are respected. This makes the default follow the store config —
-  // move the trial between tiers and the default follows automatically.
+  // Default the selected card to Monthly (lower commitment = better
+  // conversion for low-conviction users). Lifetime is visually featured
+  // as the upsell. Runs once after packages load; manual taps after that
+  // are respected.
   useEffect(() => {
     if (didInitSelection.current || sorted.length === 0) return;
     didInitSelection.current = true;
-    const trialIdx = sorted.findIndex(p => showTrialFor(p, eligibility));
-    const annualIdx = sorted.findIndex(p => p.packageType === PACKAGE_TYPE.ANNUAL);
-    setSelectedIdx(trialIdx >= 0 ? trialIdx : annualIdx >= 0 ? annualIdx : 0);
+    const monthlyIdx = sorted.findIndex(p => p.packageType === PACKAGE_TYPE.MONTHLY);
+    setSelectedIdx(monthlyIdx >= 0 ? monthlyIdx : 0);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sorted, eligibility]);
+  }, [sorted]);
 
   async function handlePurchase(pkg: PurchasesPackage) {
-    const trialDays = showTrialFor(pkg, eligibility) ? getTrialDays(pkg) : 0;
     // Fire Meta InitiatedCheckout BEFORE the StoreKit/Play sheet appears — if
     // the user cancels at the system sheet we still want Meta to know they
     // intended to convert. The revenue event itself comes from RevenueCat.
@@ -118,14 +65,9 @@ export default function Paywall({ onClose, onSuccess }: Props) {
     const success = await purchasePackage(pkg);
     setPurchasing(false);
     if (success) {
-      const title = trialDays > 0 ? 'Your free trial has started! 🎸' : 'Welcome to Fretionary Pro! 🎸';
-      const account = Platform.OS === 'ios' ? 'Apple ID' : 'Google';
-      const body = trialDays > 0
-        ? `Full access for ${trialDays} days. Cancel anytime in your ${account} settings before the trial ends to avoid being charged.`
-        : 'You now have full access to all features.';
       Alert.alert(
-        title,
-        body,
+        'Welcome to Fretionary Pro! 🎸',
+        'You now have full access to all features.',
         [{ text: 'Let\'s go!', onPress: () => {
           onSuccess?.();
           router.back(); // dismiss paywall — global isPro already updated
@@ -154,36 +96,33 @@ export default function Paywall({ onClose, onSuccess }: Props) {
   }
 
   function getPackageLabel(pkg: PurchasesPackage) {
-    // Trial badge takes priority on whichever tier carries the offer — so the
-    // "N-DAY FREE TRIAL" chip follows the store config without code changes.
-    const trialDays = showTrialFor(pkg, eligibility) ? getTrialDays(pkg) : 0;
-    const trialBadge = trialDays > 0 ? `${trialDays}-DAY FREE TRIAL` : null;
     switch (pkg.packageType) {
-      case PACKAGE_TYPE.MONTHLY:  return { title: 'Monthly',  badge: trialBadge,             highlight: false };
-      case PACKAGE_TYPE.ANNUAL:   return { title: 'Annual',   badge: trialBadge ?? 'BEST VALUE', highlight: true };
-      case PACKAGE_TYPE.LIFETIME: return { title: 'Lifetime', badge: 'ONE TIME',             highlight: false };
-      default:                    return { title: pkg.identifier, badge: trialBadge, highlight: false };
+      case PACKAGE_TYPE.MONTHLY:  return { title: 'Monthly',  badge: null,         highlight: false };
+      case PACKAGE_TYPE.LIFETIME: return { title: 'Lifetime', badge: 'BEST VALUE', highlight: true };
+      default:                    return { title: pkg.identifier, badge: null, highlight: false };
     }
   }
 
   function getFeatures(pkg: PurchasesPackage): string[] {
-    const trialDays = showTrialFor(pkg, eligibility) ? getTrialDays(pkg) : 0;
-    let base: string[];
     switch (pkg.packageType) {
       case PACKAGE_TYPE.MONTHLY:
-        base = ['All 14 scales & modes', 'Full chord library (36 types)', 'All progressions', 'Real guitar audio'];
-        break;
-      case PACKAGE_TYPE.ANNUAL:
-        base = ['Everything in Monthly', 'Save 48% vs monthly', 'Diatonic chord explorer', 'Custom progression builder'];
-        break;
+        return [
+          'All 14 scales & modes',
+          'Full chord library (36 types)',
+          'All progressions',
+          'Real guitar audio',
+          'Cancel anytime',
+        ];
       case PACKAGE_TYPE.LIFETIME:
-        base = ['Everything in Annual', 'Pay once, own forever', 'All future updates', 'No recurring charge'];
-        break;
+        return [
+          'Everything in Monthly',
+          'Pay once, own forever',
+          'All future updates',
+          'No recurring charge',
+        ];
       default:
-        base = [];
+        return [];
     }
-    // Prepend the trial bullet to whichever tier currently carries the trial.
-    return trialDays > 0 ? [`Free for ${trialDays} days, then auto-renews`, ...base] : base;
   }
 
   if (isLoading) {
@@ -223,16 +162,8 @@ export default function Paywall({ onClose, onSuccess }: Props) {
             <Text style={styles.closeBtnText}>✕</Text>
           </TouchableOpacity>
         )}
-        <Text style={styles.headline}>
-          {isProactive && sorted.some(p => showTrialFor(p, eligibility))
-            ? 'Try Pro free for 7 days.'
-            : 'Unlock the full neck.'}
-        </Text>
-        <Text style={styles.subheadline}>
-          {sorted.some(p => showTrialFor(p, eligibility))
-            ? 'Try it free for 7 days. All scales. All chords. Real guitar audio.'
-            : 'All scales. All chords. Real guitar audio.'}
-        </Text>
+        <Text style={styles.headline}>Unlock the full neck.</Text>
+        <Text style={styles.subheadline}>All scales. All chords. Real guitar audio.</Text>
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
@@ -264,9 +195,7 @@ export default function Paywall({ onClose, onSuccess }: Props) {
                       {pkg.product.priceString}
                     </Text>
                     <Text style={styles.pricePer}>
-                      {pkg.packageType === PACKAGE_TYPE.MONTHLY ? '/month'
-                        : pkg.packageType === PACKAGE_TYPE.ANNUAL ? '/year'
-                        : ' one time'}
+                      {pkg.packageType === PACKAGE_TYPE.MONTHLY ? '/month' : ' one time'}
                     </Text>
                   </View>
                 </View>
@@ -303,13 +232,8 @@ export default function Paywall({ onClose, onSuccess }: Props) {
                 {(() => {
                   const pkg = sorted[selectedIdx];
                   if (!pkg) return 'Subscribe';
-                  if (showTrialFor(pkg, eligibility)) {
-                    const d = getTrialDays(pkg);
-                    return `Start ${d}-Day Free Trial`;
-                  }
-                  if (pkg.packageType === PACKAGE_TYPE.LIFETIME)  return 'Buy Lifetime Access';
-                  if (pkg.packageType === PACKAGE_TYPE.MONTHLY)   return 'Subscribe Monthly';
-                  if (pkg.packageType === PACKAGE_TYPE.ANNUAL)    return 'Subscribe Annually';
+                  if (pkg.packageType === PACKAGE_TYPE.LIFETIME) return 'Buy Lifetime Access';
+                  if (pkg.packageType === PACKAGE_TYPE.MONTHLY)  return 'Subscribe Monthly';
                   return 'Subscribe';
                 })()}
               </Text>
@@ -322,15 +246,9 @@ export default function Paywall({ onClose, onSuccess }: Props) {
         </TouchableOpacity>
 
         <Text style={styles.legal}>
-          {(() => {
-            const hasTrial = sorted.some(p => showTrialFor(p, eligibility));
-            const trialSentence = hasTrial
-              ? ' Plans with a free trial are free for the trial period; the subscription then automatically converts to the standard recurring price unless cancelled at least 24 hours before the trial ends. No charge is made during the trial if cancelled in time.'
-              : '';
-            return Platform.OS === 'ios'
-              ? `Fretionary Pro — Monthly or Annual auto-renewable subscription.${trialSentence} Payment will be charged to your Apple ID at confirmation of purchase. Subscriptions automatically renew unless auto-renew is turned off at least 24 hours before the end of the current period. Your account will be charged for renewal within 24 hours prior to the end of the current period. Manage or cancel subscriptions in your App Store account settings after purchase.`
-              : `Fretionary Pro — Monthly or Annual auto-renewing subscription.${trialSentence} Payment will be charged to your Google account at confirmation of purchase. Subscriptions automatically renew unless cancelled at least 24 hours before the end of the current period. Manage or cancel subscriptions in the Google Play Store under Subscriptions after purchase.`;
-          })()}
+          {Platform.OS === 'ios'
+            ? 'Fretionary Pro — Monthly auto-renewable subscription or one-time Lifetime purchase. Payment will be charged to your Apple ID at confirmation of purchase. Monthly subscriptions automatically renew unless auto-renew is turned off at least 24 hours before the end of the current period. Your account will be charged for renewal within 24 hours prior to the end of the current period. Manage or cancel subscriptions in your App Store account settings after purchase.'
+            : 'Fretionary Pro — Monthly auto-renewing subscription or one-time Lifetime purchase. Payment will be charged to your Google account at confirmation of purchase. Monthly subscriptions automatically renew unless cancelled at least 24 hours before the end of the current period. Manage or cancel subscriptions in the Google Play Store under Subscriptions after purchase.'}
         </Text>
 
         <View style={styles.legalLinks}>

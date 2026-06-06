@@ -14,7 +14,7 @@ import {
 } from '@expo-google-fonts/jetbrains-mono';
 import Onboarding from '../src/components/Onboarding';
 import { initAnalytics, maybePromptATT, logTutorialComplete } from '../src/utils/analytics';
-import { useStore, TRIAL_PROMPT_MIN_ACTIONS } from '../src/store/useStore';
+import { useStore, PAYWALL_PROMPT_MIN_ACTIONS } from '../src/store/useStore';
 
 const ONBOARDING_KEY = 'fretionary_onboarded_v1';
 const PROACTIVE_PAYWALL_DELAY_MS = 800;
@@ -24,11 +24,11 @@ export default function RootLayout() {
 
   // Reactive store reads — when isPro flips after RevenueCat loads, the
   // proactive-paywall effect re-evaluates and bails. positiveActionCount
-  // and trialPromptShownAt drive the show-once trigger.
+  // and paywallPromptShownAt drive the show-once trigger.
   const isPro = useStore(s => s.isPro);
   const positiveActionCount = useStore(s => s.positiveActionCount);
-  const trialPromptShownAt = useStore(s => s.trialPromptShownAt);
-  const markTrialPromptShown = useStore(s => s.markTrialPromptShown);
+  const paywallPromptShownAt = useStore(s => s.paywallPromptShownAt);
+  const markPaywallPromptShown = useStore(s => s.markPaywallPromptShown);
 
   const [fontsLoaded] = useFonts({
     // Map all four weights to a single family alias matching FONT_FAMILY.mono
@@ -68,27 +68,29 @@ export default function RootLayout() {
     }
   }, [showOnboarding]);
 
-  // Proactive trial paywall — fixes the install→trial bottleneck by surfacing
-  // the offer once after the user has shown real engagement (favorited
-  // TRIAL_PROMPT_MIN_ACTIONS items), instead of waiting for them to bump
-  // into a Pro-gated feature. Single-shot, persisted via trialPromptShownAt.
+  // Proactive paywall — surface the offer once after the user has shown real
+  // engagement (favorited PAYWALL_PROMPT_MIN_ACTIONS items), instead of
+  // waiting for them to bump into a Pro-gated feature. Free-tier users who
+  // never trip a Pro gate otherwise never see the paywall at all, which was
+  // a major leak in the install→purchase funnel. Single-shot, persisted via
+  // paywallPromptShownAt.
   //
-  // Effect re-runs when isPro / positiveActionCount / trialPromptShownAt
+  // Effect re-runs when isPro / positiveActionCount / paywallPromptShownAt
   // change. Cleanup clearTimeout debounces multiple state changes within
   // the delay window so we never present the paywall twice. If RevenueCat
   // resolves isPro=true mid-delay, the cleanup cancels the pending show.
   useEffect(() => {
     if (showOnboarding !== false) return;
     if (isPro) return;
-    if (trialPromptShownAt !== null) return;
-    if (positiveActionCount < TRIAL_PROMPT_MIN_ACTIONS) return;
+    if (paywallPromptShownAt !== null) return;
+    if (positiveActionCount < PAYWALL_PROMPT_MIN_ACTIONS) return;
 
     const t = setTimeout(() => {
-      markTrialPromptShown();
-      router.push('/paywall?context=proactive');
+      markPaywallPromptShown();
+      router.push('/paywall');
     }, PROACTIVE_PAYWALL_DELAY_MS);
     return () => clearTimeout(t);
-  }, [showOnboarding, isPro, positiveActionCount, trialPromptShownAt, markTrialPromptShown]);
+  }, [showOnboarding, isPro, positiveActionCount, paywallPromptShownAt, markPaywallPromptShown]);
 
   async function finishOnboarding() {
     // Prompt ATT now — user has just seen the value, this is the natural
