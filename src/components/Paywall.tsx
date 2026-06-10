@@ -10,6 +10,8 @@ import type { PurchasesPackage } from 'react-native-purchases';
 import { COLORS, SPACE, RADIUS } from '../constants/theme';
 import { useRevenueCat } from '../hooks/useRevenueCat';
 import { logPaywallView, logInitiateCheckout } from '../utils/analytics';
+import { openSupportEmail } from '../utils/support';
+import { useStore } from '../store/useStore';
 
 interface Props {
   onClose?: () => void;
@@ -18,6 +20,7 @@ interface Props {
 
 export default function Paywall({ onClose, onSuccess }: Props) {
   const { isLoading, isPro, packages, purchasePackage, restorePurchases } = useRevenueCat();
+  const recordPositiveAction = useStore(s => s.recordPositiveAction);
   const [purchasing, setPurchasing] = useState(false);
   const [selectedIdx, setSelectedIdx] = useState(0);
   const didInitSelection = useRef(false);
@@ -68,6 +71,12 @@ export default function Paywall({ onClose, onSuccess }: Props) {
     const success = await purchasePackage(pkg);
     setPurchasing(false);
     if (success) {
+      // Successful purchase is a strong engagement signal — bump the counter
+      // so the system review prompt fires sooner on a subsequent launch
+      // (still subject to the install-age + last-prompted throttles in
+      // recordPositiveAction; we never prompt for a review *during* the
+      // celebration moment itself).
+      recordPositiveAction();
       Alert.alert(
         'Welcome to Fretionary Pro! 🎸',
         'You now have full access to all features.',
@@ -243,9 +252,15 @@ export default function Paywall({ onClose, onSuccess }: Props) {
           }
         </TouchableOpacity>
 
-        {/* Restore + legal */}
+        {/* Restore + support + legal */}
         <TouchableOpacity onPress={handleRestore} style={styles.restoreBtn} disabled={purchasing}>
           <Text style={styles.restoreText}>Restore Purchases</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity onPress={openSupportEmail} style={styles.supportLink} activeOpacity={0.7}>
+          <Text style={styles.supportLinkText}>
+            Questions? <Text style={styles.supportLinkAccent}>Contact support</Text>
+          </Text>
         </TouchableOpacity>
 
         <Text style={styles.legal}>
@@ -328,6 +343,10 @@ const styles = StyleSheet.create({
 
   restoreBtn:       { alignItems: 'center', paddingVertical: SPACE.sm },
   restoreText:      { color: COLORS.textMuted, fontSize: 13 },
+
+  supportLink:      { alignItems: 'center', paddingVertical: 4 },
+  supportLinkText:  { color: COLORS.textMuted, fontSize: 12 },
+  supportLinkAccent:{ color: COLORS.accent, fontWeight: '600' },
 
   legal:            { fontSize: 10, color: COLORS.textFaint, textAlign: 'center', lineHeight: 15, marginTop: SPACE.lg, paddingHorizontal: SPACE.md },
   legalLinks:       { flexDirection: 'row', justifyContent: 'center', marginTop: SPACE.sm },
