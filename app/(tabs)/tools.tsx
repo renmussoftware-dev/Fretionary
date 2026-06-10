@@ -1,20 +1,86 @@
 import React, { useState } from 'react';
 import {
-  View, Text, ScrollView, TouchableOpacity, StyleSheet,
+  View, Text, ScrollView, TouchableOpacity, StyleSheet, Linking, Platform, Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
+import Constants from 'expo-constants';
 import { COLORS, FONT_FAMILY, RADIUS, SPACE } from '../../src/constants/theme';
 import Metronome from '../../src/components/Metronome';
 import Guide from '../../src/components/Guide';
 import { useProGate } from '../../src/hooks/useProGate';
 
-type ToolMode = 'guide' | 'metronome';
+type ToolMode = 'guide' | 'metronome' | 'support';
 
 const TOOLS: { mode: ToolMode; label: string; sub: string }[] = [
   { mode: 'guide',     label: 'Guide',     sub: 'Features & what\u2019s free' },
   { mode: 'metronome', label: 'Metronome', sub: 'BPM & time sig' },
+  { mode: 'support',   label: 'Support',   sub: 'Bugs & feedback' },
 ];
+
+const SUPPORT_EMAIL = 'renmussoftware@gmail.com';
+
+/**
+ * Build a mailto: URL with device + app context pre-filled in the body, so
+ * bug reports come in already labeled with the version and platform \u2014 saves
+ * the back-and-forth of "what version are you on?" The user types their
+ * issue above the auto-filled context lines.
+ */
+function buildSupportMailto(): string {
+  const appVersion = Constants.expoConfig?.version ?? 'unknown';
+  const platform = Platform.OS;
+  const osVersion = String(Platform.Version);
+  const subject = 'Fretionary Support';
+  const body = [
+    '',
+    '',
+    '\u2014 \u2014 \u2014 \u2014 \u2014 \u2014 \u2014 \u2014 \u2014 \u2014 \u2014',
+    'Describe what you were doing and what went wrong above.',
+    '',
+    `App version: ${appVersion}`,
+    `Platform: ${platform} ${osVersion}`,
+  ].join('\n');
+  return `mailto:${SUPPORT_EMAIL}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+}
+
+async function openSupportEmail() {
+  const url = buildSupportMailto();
+  try {
+    const canOpen = await Linking.canOpenURL(url);
+    if (canOpen) {
+      Linking.openURL(url);
+      return;
+    }
+  } catch {
+    // fall through to fallback alert
+  }
+  // No mail app configured \u2014 show the address so the user can copy it.
+  Alert.alert(
+    'No email app found',
+    `Please email us at:\n\n${SUPPORT_EMAIL}\n\nInclude your device and app version if you're reporting a bug.`,
+    [{ text: 'OK' }],
+  );
+}
+
+function Support() {
+  return (
+    <View style={styles.supportWrap}>
+      <Text style={styles.supportEmoji}>\ud83d\udee0\ufe0f</Text>
+      <Text style={styles.supportTitle}>Need help?</Text>
+      <Text style={styles.supportDesc}>
+        Found a bug, stuck on a feature, or have an idea?{'\n'}We'd love to hear from you.
+      </Text>
+      <TouchableOpacity style={styles.supportBtn} onPress={openSupportEmail} activeOpacity={0.85}>
+        <Text style={styles.supportBtnText}>\u2709  Email Support</Text>
+      </TouchableOpacity>
+      <Text style={styles.supportEmailAddr}>{SUPPORT_EMAIL}</Text>
+      <Text style={styles.supportNote}>
+        We auto-include your app version and device info in the message so we can debug faster.
+        We typically respond within a day or two.
+      </Text>
+    </View>
+  );
+}
 
 function ProUpsell() {
   return (
@@ -40,9 +106,10 @@ export default function ToolsScreen() {
   const [mode, setMode] = useState<ToolMode>('guide');
 
   let body: React.ReactNode;
-  if (mode === 'guide')           body = <Guide />;
-  else if (!isPro)                body = <ProUpsell />;
-  else                            body = <Metronome />;
+  if (mode === 'guide')            body = <Guide />;
+  else if (mode === 'support')     body = <Support />;
+  else if (!isPro)                 body = <ProUpsell />;
+  else                             body = <Metronome />;
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
@@ -127,4 +194,29 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.accent,
   },
   upsellBtnText: { fontSize: 14, fontWeight: '700', color: '#fff' },
+
+  supportWrap: {
+    margin: SPACE.lg, padding: SPACE.xl, alignItems: 'center',
+    borderRadius: RADIUS.lg, borderWidth: 1, borderColor: COLORS.border,
+    backgroundColor: COLORS.surface,
+  },
+  supportEmoji:     { fontSize: 36, marginBottom: SPACE.md },
+  supportTitle:     { fontSize: 20, fontWeight: '700', color: COLORS.text, marginBottom: SPACE.sm },
+  supportDesc:      {
+    fontSize: 14, color: COLORS.textMuted, lineHeight: 20,
+    textAlign: 'center', marginBottom: SPACE.lg,
+  },
+  supportBtn: {
+    paddingHorizontal: 28, paddingVertical: 12, borderRadius: RADIUS.full,
+    backgroundColor: COLORS.accent, marginBottom: SPACE.md,
+  },
+  supportBtnText:   { fontSize: 14, fontWeight: '700', color: '#1a1400' },
+  supportEmailAddr: {
+    fontSize: 13, color: COLORS.textMuted, marginBottom: SPACE.lg,
+    fontFamily: FONT_FAMILY.mono, letterSpacing: 0.2,
+  },
+  supportNote: {
+    fontSize: 12, color: COLORS.textFaint, lineHeight: 18,
+    textAlign: 'center',
+  },
 });
