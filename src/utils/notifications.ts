@@ -18,6 +18,7 @@
 
 import * as Notifications from 'expo-notifications';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { getDailyPick } from './dailyPick';
 
 const STREAK_REMINDER_ID = 'fretionary-streak-protection';
 const PUSH_ASKED_KEY = 'fretionary_push_asked_v1';
@@ -105,12 +106,19 @@ export async function scheduleStreakReminder(currentStreak: number): Promise<voi
     if (currentStreak < 1) return;
     if (!(await currentPermissionGranted())) return;
 
+    // Compute tomorrow's daily pick so the notification body lands on a
+    // specific piece of content — much higher tap-through than a generic
+    // "open the app" reminder. By the time the notification fires (6pm
+    // tomorrow), the daily pick will have rolled over to the next day's.
+    const reminderDate = nextReminderDate();
+    const pick = getDailyPick(reminderDate);
+
     const title = currentStreak === 1
-      ? 'Keep your streak going!'
+      ? `Today's ${pick.type}: ${pick.fullName}`
       : `Don't break your ${currentStreak}-day streak`;
     const body = currentStreak === 1
-      ? 'Open Fretionary today to start a practice habit.'
-      : `Practice today to keep your ${currentStreak}-day streak alive.`;
+      ? `Tap to see ${pick.fullName} on the neck — and start your practice habit.`
+      : `Today's ${pick.type}: ${pick.fullName}. Tap to practice and keep your ${currentStreak}-day streak alive.`;
 
     await Notifications.scheduleNotificationAsync({
       identifier: STREAK_REMINDER_ID,
@@ -118,7 +126,7 @@ export async function scheduleStreakReminder(currentStreak: number): Promise<voi
       // Cast through unknown because expo-notifications trigger types have
       // shifted across versions — { date: Date } is accepted in the runtime
       // across SDK 50–54 even when the strictest types disagree.
-      trigger: { date: nextReminderDate() } as unknown as Notifications.NotificationTriggerInput,
+      trigger: { date: reminderDate } as unknown as Notifications.NotificationTriggerInput,
     });
   } catch (e) {
     if (__DEV__) console.warn('[notifications] schedule error', e);

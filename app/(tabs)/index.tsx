@@ -5,6 +5,7 @@ import Fretboard from '../../src/components/Fretboard';
 import TopBar from '../../src/components/TopBar';
 import InfoPanel from '../../src/components/InfoPanel';
 import PillSelector from '../../src/components/PillSelector';
+import DailyPickCard from '../../src/components/DailyPickCard';
 import { COLORS, SPACE, RADIUS, FONT_FAMILY } from '../../src/constants/theme';
 import {
   NOTES, NOTE_DISPLAY,
@@ -68,6 +69,11 @@ export default function FretboardScreen() {
 
   const controlsContent = (
     <>
+        {/* Daily Pick — top of the controls scroll so it's the first thing
+            the user sees below the fretboard. Rotates deterministically by
+            local date. Tapping it loads the pick into the fretboard. */}
+        <DailyPickCard />
+
         {/* Scale selector */}
         {mode === 'scales' && (
           <View style={styles.section}>
