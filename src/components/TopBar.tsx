@@ -112,6 +112,7 @@ const segStyles = StyleSheet.create({
 
 export default function TopBar() {
   const { root, setRoot, scaleKey, chordKey, mode, setMode } = useStore();
+  const currentStreak = useStore(s => s.currentStreak);
   const { isPro, requirePro } = useProGate();
   const [savedOpen, setSavedOpen] = useState(false);
 
@@ -131,6 +132,11 @@ export default function TopBar() {
           <Text style={styles.eyebrow}>Fretboard</Text>
           <Text style={styles.title} numberOfLines={1}>{titleSubject}</Text>
         </View>
+        {currentStreak > 0 && (
+          <View style={styles.streakChip}>
+            <Text style={styles.streakText}>🔥 {currentStreak}</Text>
+          </View>
+        )}
         <TuningPicker forcedStandard={mode === 'caged'} />
         <TouchableOpacity
           onPress={() => setSavedOpen(true)}
@@ -199,6 +205,20 @@ const styles = StyleSheet.create({
     alignItems: 'center', justifyContent: 'center',
   },
   savedBtnText: { fontSize: 14, color: '#D45846', fontWeight: '700', lineHeight: 16 },
+  streakChip: {
+    paddingHorizontal: 9,
+    paddingVertical: 4,
+    borderRadius: RADIUS.full,
+    backgroundColor: 'rgba(232,212,77,0.12)',
+    borderWidth: 1,
+    borderColor: 'rgba(232,212,77,0.35)',
+  },
+  streakText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#E8D44D',
+    letterSpacing: 0.2,
+  },
   topRow: {
     flexDirection: 'row',
     alignItems: 'center',

@@ -15,6 +15,7 @@ import {
 import Onboarding from '../src/components/Onboarding';
 import { initAnalytics, maybePromptATT, logTutorialComplete } from '../src/utils/analytics';
 import { useStore, PAYWALL_PROMPT_MIN_ACTIONS } from '../src/store/useStore';
+import { maybeRequestPushPermission, scheduleStreakReminder } from '../src/utils/notifications';
 
 const ONBOARDING_KEY = 'fretionary_onboarded_v1';
 const PROACTIVE_PAYWALL_DELAY_MS = 800;
@@ -29,6 +30,10 @@ export default function RootLayout() {
   const positiveActionCount = useStore(s => s.positiveActionCount);
   const paywallPromptShownAt = useStore(s => s.paywallPromptShownAt);
   const markPaywallPromptShown = useStore(s => s.markPaywallPromptShown);
+
+  // Streak + notification state
+  const currentStreak = useStore(s => s.currentStreak);
+  const recordActivity = useStore(s => s.recordActivity);
 
   const [fontsLoaded] = useFonts({
     // Map all four weights to a single family alias matching FONT_FAMILY.mono
@@ -67,6 +72,35 @@ export default function RootLayout() {
       maybePromptATT();
     }
   }, [showOnboarding]);
+
+  // Record a streak activity for today as soon as we're past onboarding. Any
+  // app open counts — we're trying to build a habit, not gate behind a
+  // specific action. recordActivity is a no-op on subsequent opens the same
+  // calendar day, so this is safe to call freely.
+  useEffect(() => {
+    if (showOnboarding === false) recordActivity();
+  }, [showOnboarding, recordActivity]);
+
+  // Push permission ask — gated on the same engagement signal as the proactive
+  // paywall (3 favorites). Single-shot via AsyncStorage flag inside the util,
+  // so this useEffect can fire freely. After permission resolves (granted or
+  // denied), we don't ask again.
+  useEffect(() => {
+    if (showOnboarding !== false) return;
+    if (positiveActionCount < PAYWALL_PROMPT_MIN_ACTIONS) return;
+    maybeRequestPushPermission();
+  }, [showOnboarding, positiveActionCount]);
+
+  // Streak reminder scheduling — every time we know the streak count (and
+  // therefore have permission), schedule a fresh local notification for
+  // tomorrow at 6pm. The util cancels any stale scheduled reminder before
+  // scheduling the new one, so opening the app multiple times in a day
+  // doesn't double-fire. Silently no-ops if permission isn't granted yet.
+  useEffect(() => {
+    if (showOnboarding !== false) return;
+    if (currentStreak < 1) return;
+    scheduleStreakReminder(currentStreak);
+  }, [showOnboarding, currentStreak]);
 
   // Proactive paywall — surface the offer once after the user has shown real
   // engagement (favorited PAYWALL_PROMPT_MIN_ACTIONS items), instead of
