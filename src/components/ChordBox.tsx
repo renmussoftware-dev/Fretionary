@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ScrollView, useWindowDimensions } from 'react-native';
 import Svg, { Circle, Line, Text as SvgText, G, Rect } from 'react-native-svg';
 import { COLORS, RADIUS, SPACE } from '../constants/theme';
-import { NOTES, CHORDS, OPEN_STRINGS } from '../constants/music';
+import { NOTES, CHORDS, OPEN_STRINGS, intervalColorBucket, COLORS as MUSIC_COLORS } from '../constants/music';
 import { getChordVoicings, type ChordVoicing } from '../utils/theory';
 
 interface Props {
@@ -140,24 +140,30 @@ export default function ChordBox({ root, chordKey, compact = false }: Props) {
 
           const cy = fy(fretRow) - fh / 2;
           const ni = (OPEN_STRINGS[5 - s] + f) % 12;
-          const isRoot = ni === root;
           const intv = (ni - root + 12) % 12;
+          // Color by the note's INTERVAL ROLE in the chord, not by its index
+          // in the intervals[] array. The pills above the diagram do this via
+          // intervalColorBucket(symbol); the diagram now matches so a "4" pill
+          // (blue) lines up with a blue dot on the neck, a "5" pill (green)
+          // with a green dot, etc.
           const chIv = ch?.intervals.map((i: number) => i % 12) ?? [];
           const ivPos = chIv.indexOf(intv);
+          const symbol = ivPos >= 0 ? ch?.intervalNames[ivPos] : undefined;
+          const bucket: 'root' | 'third' | 'fifth' | 'ext' | undefined =
+            ni === root ? 'root' :
+            symbol ? intervalColorBucket(symbol) :
+            undefined;
 
-          let fill = '#3A3A46';
-          let stroke = '#52525F';
-          let textColor = '#C0BEB8';
+          const palette =
+            bucket === 'root'  ? MUSIC_COLORS.root :
+            bucket === 'third' ? MUSIC_COLORS.third :
+            bucket === 'fifth' ? MUSIC_COLORS.fifth :
+            bucket === 'ext'   ? MUSIC_COLORS.extension :
+            { fill: '#3A3A46', stroke: '#52525F', text: '#C0BEB8' };
 
-          if (isRoot) {
-            fill = '#E8D44D'; stroke = '#C4A800'; textColor = '#5C4400';
-          } else if (ivPos === 1) {
-            fill = '#E24B4A'; stroke = '#A32D2D'; textColor = '#fff';
-          } else if (ivPos === 2) {
-            fill = '#1D9E75'; stroke = '#0F6E56'; textColor = '#fff';
-          } else if (ivPos >= 3) {
-            fill = '#378ADD'; stroke = '#185FA5'; textColor = '#fff';
-          }
+          const fill = palette.fill;
+          const stroke = palette.stroke;
+          const textColor = palette.text;
 
           return (
             <G key={s}>

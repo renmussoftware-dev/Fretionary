@@ -6,6 +6,7 @@ import Svg, {
 import {
   NOTES, SCALES, CHORDS,
   CAGED_COLORS, CAGED_ORDER, POSITION_COLORS, COLORS as MUSIC_COLORS,
+  intervalColorBucket,
 } from '../constants/music';
 import { COLORS, FONT_FAMILY } from '../constants/theme';
 import {
@@ -97,13 +98,22 @@ export default function Fretboard() {
     if (noteIdx === root) return { ...MUSIC_COLORS.root, opacity, scale, isRoot: true };
 
     if (mode === 'chords') {
+      // Color by the note's INTERVAL ROLE in the chord (matches the symbol-
+      // based pills shown beneath the chord in the chord library), not by
+      // its index in the intervals[] array. Previously a Sus4's 4th and a
+      // Power 5's 5th both got the "third" color because they were at
+      // intervals[1] — visually mismatching the pills.
       const ch = CHORDS[chordKey];
       const intv = (noteIdx - root + 12) % 12;
       const ci = ch.intervals.map(i => i % 12);
       const pos = ci.indexOf(intv);
-      if (pos === 1) return { ...MUSIC_COLORS.third,     opacity, scale, isRoot: false };
-      if (pos === 2) return { ...MUSIC_COLORS.fifth,     opacity, scale, isRoot: false };
-      if (pos >= 3) return { ...MUSIC_COLORS.extension, opacity, scale, isRoot: false };
+      const symbol = pos >= 0 ? ch.intervalNames[pos] : undefined;
+      if (symbol) {
+        const bucket = intervalColorBucket(symbol);
+        if (bucket === 'third') return { ...MUSIC_COLORS.third,     opacity, scale, isRoot: false };
+        if (bucket === 'fifth') return { ...MUSIC_COLORS.fifth,     opacity, scale, isRoot: false };
+        if (bucket === 'ext')   return { ...MUSIC_COLORS.extension, opacity, scale, isRoot: false };
+      }
     }
 
     if (mode === 'scales') {
