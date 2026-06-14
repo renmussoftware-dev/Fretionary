@@ -166,6 +166,25 @@ export function intervalColorBucket(symbol: string): 'root' | 'third' | 'fifth' 
   return 'ext';
 }
 
+/**
+ * Like intervalColorBucket but for scale-degree symbols. Differs in two
+ * places vs. the chord version:
+ *   - Root for scales is '1' (not 'R').
+ *   - Only 7ths route to 'ext'; 2nds, 4ths, and 6ths return 'tone' so they
+ *     render as scaleTone gray rather than ext blue. In chord context every
+ *     non-root/3rd/5th IS a structural tone (Sus4's 4 should be colored,
+ *     Major6's 6 should be colored); in scale context, 2/4/6 are passing
+ *     tones between chord-tone anchors and the convention is to leave them
+ *     uncolored so the 1-3-5-7 arpeggio reads through the scale.
+ */
+export function scaleDegreeColorBucket(symbol: string): 'root' | 'third' | 'fifth' | 'ext' | 'tone' {
+  if (symbol === '1' || symbol === 'R') return 'root';
+  if (symbol === '3' || symbol === '♭3') return 'third';
+  if (symbol === '5' || symbol === '♭5' || symbol === '♯5') return 'fifth';
+  if (symbol === '7' || symbol === '♭7' || symbol === '♭♭7') return 'ext';
+  return 'tone';
+}
+
 export const CHORDS: Record<string, ChordDef> = {
   'Major':       { intervals:[0,4,7],          intervalNames:['R','3','5'],             category:'triad',    description:'Bright and stable.' },
   'Minor':       { intervals:[0,3,7],          intervalNames:['R','♭3','5'],            category:'triad',    description:'Dark and emotive.' },

@@ -6,7 +6,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Circle, Line, Text as SvgText, G, Rect } from 'react-native-svg';
 import { COLORS, SPACE, RADIUS, FONT_FAMILY } from '../../src/constants/theme';
-import { NOTES, NOTE_DISPLAY, CHORDS, OPEN_STRINGS } from '../../src/constants/music';
+import { NOTES, NOTE_DISPLAY, CHORDS, OPEN_STRINGS, intervalColorBucket } from '../../src/constants/music';
 import {
   PROGRESSIONS, GENRES, EXAMPLE_PROGRESSIONS,
   type Progression, type ExampleProgression,
@@ -92,11 +92,16 @@ function ProgFretboard({ chordRoot, chordKey, animVal }: {
               const intv = (ni - chordRoot + 12) % 12;
               const chIv = ch?.intervals.map((i: number) => i % 12) ?? [];
               const pos = chIv.indexOf(intv);
+              // Color by interval ROLE (matches the symbol-colored pills),
+              // not by array index — same fix that landed in ChordBox.tsx
+              // and Fretboard.tsx chord mode.
+              const symbol = pos >= 0 ? ch?.intervalNames[pos] : undefined;
+              const bucket = ni === chordRoot ? 'root' : symbol ? intervalColorBucket(symbol) : undefined;
               let fill = '#3A3A46', stroke = '#52525F', tc = '#C0BEB8';
-              if (ni === chordRoot)  { fill = '#E8D44D'; stroke = '#C4A800'; tc = '#5C4400'; }
-              else if (pos === 1)   { fill = '#E24B4A'; stroke = '#A32D2D'; tc = '#fff'; }
-              else if (pos === 2)   { fill = '#1D9E75'; stroke = '#0F6E56'; tc = '#fff'; }
-              else if (pos >= 3)    { fill = '#378ADD'; stroke = '#185FA5'; tc = '#fff'; }
+              if (bucket === 'root')       { fill = '#E8D44D'; stroke = '#C4A800'; tc = '#5C4400'; }
+              else if (bucket === 'third') { fill = '#E24B4A'; stroke = '#A32D2D'; tc = '#fff'; }
+              else if (bucket === 'fifth') { fill = '#1D9E75'; stroke = '#0F6E56'; tc = '#fff'; }
+              else if (bucket === 'ext')   { fill = '#378ADD'; stroke = '#185FA5'; tc = '#fff'; }
               return (
                 <G key={`${s}-${f}`}>
                   <Circle cx={x} cy={y} r={FBDR} fill={fill} stroke={stroke} strokeWidth={1.5} />

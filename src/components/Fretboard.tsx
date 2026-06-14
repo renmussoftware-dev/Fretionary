@@ -6,7 +6,7 @@ import Svg, {
 import {
   NOTES, SCALES, CHORDS,
   CAGED_COLORS, CAGED_ORDER, POSITION_COLORS, COLORS as MUSIC_COLORS,
-  intervalColorBucket,
+  intervalColorBucket, scaleDegreeColorBucket,
 } from '../constants/music';
 import { COLORS, FONT_FAMILY } from '../constants/theme';
 import {
@@ -117,6 +117,15 @@ export default function Fretboard() {
     }
 
     if (mode === 'scales') {
+      // Color by the degree's INTERVAL ROLE (via scaleDegreeColorBucket),
+      // not by its position in the scale's degree list. The position-based
+      // rule worked for heptatonic scales (Major's degree[2] is always a
+      // 3rd, degree[4] is always a 5th) but mis-painted non-heptatonic
+      // scales: Pentatonic Minor's ♭3 sat at position 1 and went uncolored,
+      // its 4 sat at position 2 and was painted RED as if it were a third.
+      // Now: ♭3 → third red, 4 → scaleTone gray, 5 → fifth green, ♭7 →
+      // ext blue, with 2/4/6 staying gray so the 1-3-5-7 arpeggio still
+      // reads through the scale.
       const sc = SCALES[scaleKey];
       const intv = (noteIdx - root + 12) % 12;
       if (sc) {
@@ -124,9 +133,13 @@ export default function Fretboard() {
         const semitones = [0];
         for (const s of sc.steps) { cum += s; semitones.push(cum % 12); }
         const pos = semitones.indexOf(intv);
-        if (pos === 2) return { ...MUSIC_COLORS.third,     opacity, scale, isRoot: false };
-        if (pos === 4) return { ...MUSIC_COLORS.fifth,     opacity, scale, isRoot: false };
-        if (pos >= 6) return { ...MUSIC_COLORS.extension, opacity, scale, isRoot: false };
+        if (pos >= 0) {
+          const bucket = scaleDegreeColorBucket(sc.degrees[pos]);
+          if (bucket === 'third') return { ...MUSIC_COLORS.third,     opacity, scale, isRoot: false };
+          if (bucket === 'fifth') return { ...MUSIC_COLORS.fifth,     opacity, scale, isRoot: false };
+          if (bucket === 'ext')   return { ...MUSIC_COLORS.extension, opacity, scale, isRoot: false };
+          // 'tone' (2/4/6) intentionally falls through to scaleTone gray.
+        }
       }
     }
 
