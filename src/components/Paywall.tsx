@@ -191,7 +191,7 @@ export default function Paywall({ onClose, onSuccess }: Props) {
             return (
               <TouchableOpacity
                 key={pkg.identifier}
-                style={[styles.card, highlight && styles.cardHighlight, selected && styles.cardSelected]}
+                style={[styles.card, selected && styles.cardSelected]}
                 onPress={() => setSelectedIdx(i)}
                 activeOpacity={0.8}
               >
@@ -201,7 +201,15 @@ export default function Paywall({ onClose, onSuccess }: Props) {
                   </View>
                 )}
                 <View style={styles.cardTop}>
-                  <Text style={[styles.cardTitle, highlight && styles.cardTitleHighlight]}>{title}</Text>
+                  {/* Radio indicator + title share the left side. The radio is
+                      the unambiguous "this is selected" affordance — replaces
+                      the old tiny corner dot, which read as decoration. */}
+                  <View style={styles.titleRow}>
+                    <View style={[styles.radio, selected && styles.radioSelected]}>
+                      {selected && <View style={styles.radioDot} />}
+                    </View>
+                    <Text style={[styles.cardTitle, highlight && styles.cardTitleHighlight]}>{title}</Text>
+                  </View>
                   <View style={styles.priceWrap}>
                     <Text style={[styles.price, highlight && styles.priceHighlight]}>
                       {pkg.product.priceString}
@@ -218,9 +226,6 @@ export default function Paywall({ onClose, onSuccess }: Props) {
                     <Text style={styles.featureText}>{f}</Text>
                   </View>
                 ))}
-                {selected && (
-                  <View style={styles.selectedDot} />
-                )}
               </TouchableOpacity>
             );
           })
@@ -310,14 +315,23 @@ const styles = StyleSheet.create({
 
   noPackages:       { color: COLORS.textMuted, textAlign: 'center', padding: SPACE.xl, lineHeight: 22 },
 
-  card:             { backgroundColor: COLORS.surface, borderRadius: RADIUS.lg, borderWidth: 1.5, borderColor: COLORS.border, padding: SPACE.lg, marginBottom: SPACE.md, position: 'relative' },
-  cardHighlight:    { borderColor: COLORS.accent, backgroundColor: '#18160a' },
-  cardSelected:     { borderWidth: 2 },
+  // Default border is already 2px so selection toggles only color, not width
+  // (no layout shift when the user taps between cards).
+  card:             { backgroundColor: COLORS.surface, borderRadius: RADIUS.lg, borderWidth: 2, borderColor: COLORS.border, padding: SPACE.lg, marginBottom: SPACE.md, position: 'relative' },
+  // Selection is the single dominant visual signal — accent border + soft
+  // accent tint. Lifetime keeps the BEST VALUE badge and accent-colored
+  // title/price/checks as softer "recommended" cues, but no static border
+  // override (which used to outweigh the actual selection state).
+  cardSelected:     { borderColor: COLORS.accent, backgroundColor: COLORS.accentSoft },
 
   badge:            { position: 'absolute', top: -14, alignSelf: 'center', backgroundColor: COLORS.accent, paddingHorizontal: 12, paddingVertical: 3, borderRadius: 100 },
   badgeText:        { fontSize: 10, fontWeight: '800', color: '#1a1400', letterSpacing: 1 },
 
   cardTop:          { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: SPACE.md },
+  titleRow:         { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  radio:            { width: 20, height: 20, borderRadius: 10, borderWidth: 2, borderColor: COLORS.borderLight, alignItems: 'center', justifyContent: 'center' },
+  radioSelected:    { borderColor: COLORS.accent },
+  radioDot:         { width: 10, height: 10, borderRadius: 5, backgroundColor: COLORS.accent },
   cardTitle:        { fontSize: 18, fontWeight: '700', color: COLORS.text },
   cardTitleHighlight: { color: COLORS.accent },
   priceWrap:        { flexDirection: 'row', alignItems: 'baseline', gap: 3 },
@@ -331,8 +345,6 @@ const styles = StyleSheet.create({
   check:            { color: COLORS.textMuted, fontWeight: '700', fontSize: 13 },
   checkHighlight:   { color: COLORS.accent },
   featureText:      { fontSize: 13, color: COLORS.textMuted, flex: 1 },
-
-  selectedDot:      { position: 'absolute', top: 12, right: 12, width: 10, height: 10, borderRadius: 5, backgroundColor: COLORS.accent },
 
   freeNote:         { alignItems: 'center', paddingVertical: SPACE.md },
   freeNoteText:     { fontSize: 12, color: COLORS.textMuted },
