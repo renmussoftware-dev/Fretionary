@@ -13,7 +13,7 @@ import {
   CAGED_SHAPE_TIPS, POSITION_COLORS,
 } from '../../src/constants/music';
 import { useStore, SCALE_SPEED_MS, ScalePlaybackSpeed } from '../../src/store/useStore';
-import { getScalePositions, getCagedCaretFret } from '../../src/utils/theory';
+import { getScalePositions, getCagedCaretFret, identifyCustomSelection } from '../../src/utils/theory';
 import { useProGate } from '../../src/hooks/useProGate';
 import { useAudioEngine } from '../../src/hooks/useAudioEngine';
 import { isScaleFree, isChordFree } from '../../src/constants/subscription';
@@ -240,6 +240,49 @@ export default function FretboardScreen() {
                 );
               })}
             </ScrollView>
+
+            {/* Live identification — names whatever the user has picked.
+                2 notes: friendly interval name. 3+ notes: best chord match,
+                with each selected note's role (R / 3 / 5 / etc.) underneath.
+                Falls back to "No exact chord" so the user knows they're free-
+                improvising, not that the panel broke. Hidden for 0-1 notes
+                (the pills above already show that state plenty clearly). */}
+            {(() => {
+              const id = identifyCustomSelection(customNotes, root);
+              if (id.kind === 'none' || id.kind === 'note') return null;
+              return (
+                <View style={styles.identifyCard}>
+                  <Text style={styles.identifyLabel}>This is</Text>
+                  {id.kind === 'interval' && (
+                    <>
+                      <Text style={styles.identifyName}>{id.name}</Text>
+                      <Text style={styles.identifyDetail}>
+                        {NOTES[id.rootIdx]} → {NOTES[id.otherIdx]}
+                      </Text>
+                    </>
+                  )}
+                  {id.kind === 'chord' && (
+                    <>
+                      <Text style={styles.identifyName}>
+                        {NOTES[id.rootIdx]} {id.chordKey}
+                      </Text>
+                      <Text style={styles.identifyDetail}>
+                        {id.noteRoles.map(r => `${NOTES[r.note]} (${r.symbol})`).join(' · ')}
+                      </Text>
+                    </>
+                  )}
+                  {id.kind === 'noMatch' && (
+                    <>
+                      <Text style={styles.identifyName}>No exact chord</Text>
+                      <Text style={styles.identifyDetail}>
+                        {id.notes.slice().sort((a, b) => a - b).map(n => NOTES[n]).join(' · ')}
+                      </Text>
+                    </>
+                  )}
+                </View>
+              );
+            })()}
+
             <Text style={styles.customHint}>
               Tap notes to highlight them on the fretboard. Use the root selector above to set your key — the root note is colored differently when included.
             </Text>
@@ -468,6 +511,35 @@ const styles = StyleSheet.create({
     paddingHorizontal: SPACE.lg,
     marginTop: SPACE.sm,
     lineHeight: 16,
+  },
+  // Live identification card — sits below the note pills in Custom mode.
+  identifyCard: {
+    marginTop: SPACE.md,
+    marginHorizontal: SPACE.lg,
+    padding: SPACE.md,
+    backgroundColor: COLORS.surface,
+    borderRadius: RADIUS.md,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+  },
+  identifyLabel: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: COLORS.textMuted,
+    letterSpacing: 1,
+    textTransform: 'uppercase',
+    marginBottom: 4,
+  },
+  identifyName: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: COLORS.accent,
+  },
+  identifyDetail: {
+    marginTop: 4,
+    fontSize: 12,
+    color: COLORS.textMuted,
+    lineHeight: 17,
   },
   pillText: {
     fontSize: 13,

@@ -185,3 +185,88 @@ export function getChordVoicings(root: number, chordKey: string): ChordVoicing[]
 
   return results;
 }
+
+// ── Custom-tab note identifier ──────────────────────────────────────────────
+// Given a set of selected pitch classes and the user's chosen root, return
+// what those notes are *called*: a chord name, an interval, a single note, or
+// "no exact match." Lets a beginner reverse-engineer what they've stumbled
+// into on the fretboard.
+
+// Friendly long-form interval names, indexed by semitone distance (0-11).
+// Used for the 2-note "interval" identification path — beginners read
+// "Perfect 5th" faster than the symbolic "5".
+export const FRIENDLY_INTERVALS = [
+  'Root',         // 0
+  'Minor 2nd',    // 1
+  'Major 2nd',    // 2
+  'Minor 3rd',    // 3
+  'Major 3rd',    // 4
+  'Perfect 4th',  // 5
+  'Tritone',      // 6
+  'Perfect 5th',  // 7
+  'Minor 6th',    // 8
+  'Major 6th',    // 9
+  'Minor 7th',    // 10
+  'Major 7th',    // 11
+];
+
+export type Identification =
+  | { kind: 'none' }
+  | { kind: 'note';     idx: number }
+  | { kind: 'interval'; rootIdx: number; otherIdx: number; semitones: number; name: string }
+  | { kind: 'chord';    rootIdx: number; chordKey: string; noteRoles: { note: number; symbol: string }[] }
+  | { kind: 'noMatch';  notes: number[] };
+
+export function identifyCustomSelection(
+  notes: number[],
+  preferredRoot: number,
+): Identification {
+  if (notes.length === 0) return { kind: 'none' };
+  if (notes.length === 1) return { kind: 'note', idx: notes[0] };
+
+  if (notes.length === 2) {
+    // Use preferred root if it's one of the two; otherwise the lower pitch class.
+    const rootIdx = notes.includes(preferredRoot) ? preferredRoot : Math.min(...notes);
+    const otherIdx = notes.find(n => n !== rootIdx)!;
+    const semitones = (otherIdx - rootIdx + 12) % 12;
+    return {
+      kind: 'interval', rootIdx, otherIdx, semitones,
+      name: FRIENDLY_INTERVALS[semitones],
+    };
+  }
+
+  // 3+ notes: try each selected note as a candidate root and look for an
+  // exact-set match in the CHORDS dictionary. Extensions like 9/11/13 mod
+  // down to 2/5/9 — that's correct, since a Major 9 voicing without the
+  // octave doubling really is {R, 3, 5, 7, 2}.
+  const noteSet = new Set(notes.map(n => n % 12));
+  const matches: { rootIdx: number; chordKey: string; size: number }[] = [];
+
+  for (const candidateRoot of notes) {
+    for (const [chordKey, def] of Object.entries(CHORDS)) {
+      const target = new Set(def.intervals.map(i => (candidateRoot + i) % 12));
+      if (target.size !== noteSet.size) continue;
+      let match = true;
+      for (const n of noteSet) if (!target.has(n)) { match = false; break; }
+      if (match) matches.push({ rootIdx: candidateRoot, chordKey, size: def.intervals.length });
+    }
+  }
+
+  if (matches.length === 0) return { kind: 'noMatch', notes };
+
+  // Prefer the user's selected root if it produced a match; otherwise prefer
+  // the simpler chord definition (fewer intervals → less ambiguous reading).
+  matches.sort((a, b) => {
+    if (a.rootIdx === preferredRoot && b.rootIdx !== preferredRoot) return -1;
+    if (b.rootIdx === preferredRoot && a.rootIdx !== preferredRoot) return 1;
+    return a.size - b.size;
+  });
+
+  const best = matches[0];
+  const def = CHORDS[best.chordKey];
+  const noteRoles = def.intervals.map((iv, i) => ({
+    note: (best.rootIdx + iv) % 12,
+    symbol: def.intervalNames[i],
+  }));
+  return { kind: 'chord', rootIdx: best.rootIdx, chordKey: best.chordKey, noteRoles };
+}
