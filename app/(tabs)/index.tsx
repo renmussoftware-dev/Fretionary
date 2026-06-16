@@ -12,7 +12,7 @@ import {
   SCALES, CHORDS, CAGED_ORDER, CAGED_COLORS, CAGED_SHAPES,
   CAGED_SHAPE_TIPS, POSITION_COLORS,
 } from '../../src/constants/music';
-import { useStore } from '../../src/store/useStore';
+import { useStore, SCALE_SPEED_MS, ScalePlaybackSpeed } from '../../src/store/useStore';
 import { getScalePositions, getCagedCaretFret } from '../../src/utils/theory';
 import { useProGate } from '../../src/hooks/useProGate';
 import { useAudioEngine } from '../../src/hooks/useAudioEngine';
@@ -40,6 +40,8 @@ export default function FretboardScreen() {
     customNotes, toggleCustomNote, clearCustomNotes,
   } = useStore();
   const setPlaybackHighlight = useStore(s => s.setPlaybackHighlight);
+  const scalePlaybackSpeed = useStore(s => s.scalePlaybackSpeed);
+  const setScalePlaybackSpeed = useStore(s => s.setScalePlaybackSpeed);
 
   // Build a MIDI sequence for the active scale and play the classic
   // practice-room pattern: two octaves ascending, then back down to the
@@ -75,7 +77,7 @@ export default function FretboardScreen() {
       setPlayingScale(true);
       playScale(
         notes,
-        280,
+        SCALE_SPEED_MS[scalePlaybackSpeed],
         // Per-step: light up every fretboard position whose pitch class
         // matches the note currently sounding. Fretboard reads playbackHighlight
         // from the store and renders a brighter dot + radial glow on match.
@@ -148,8 +150,27 @@ export default function FretboardScreen() {
                 );
               })}
             </ScrollView>
-            {/* Play scale button — Pro feature. Plays the current scale one
-                octave ascending from C4 transposed to the active root. */}
+            {/* Speed selector — paired with the Play button below. Lets
+                learners slow the playback enough to track each highlighted
+                note across the neck before the next one fires. */}
+            <View style={styles.speedRow}>
+              <Text style={styles.speedLabel}>Speed</Text>
+              {(['slow', 'normal', 'fast'] as ScalePlaybackSpeed[]).map(s => {
+                const active = scalePlaybackSpeed === s;
+                return (
+                  <TouchableOpacity key={s}
+                    onPress={() => setScalePlaybackSpeed(s)}
+                    style={[styles.speedPill, active && styles.speedPillActive]}
+                    activeOpacity={0.7}>
+                    <Text style={[styles.speedPillText, active && styles.speedPillTextActive]}>
+                      {s === 'slow' ? 'Slow' : s === 'normal' ? 'Normal' : 'Fast'}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+            {/* Play scale button — Pro feature. Plays the current scale across
+                two octaves ascending then descending, at the chosen speed. */}
             <TouchableOpacity onPress={handlePlayScale} style={styles.playScaleBtn} activeOpacity={0.85}>
               <Text style={styles.playScaleBtnText}>
                 {!isPro ? '🔒  ' : ''}{playingScale ? '⏸  Stop' : '▶  Hear scale'}
@@ -367,7 +388,7 @@ const styles = StyleSheet.create({
   },
   playScaleBtn: {
     alignSelf: 'center',
-    marginTop: SPACE.md,
+    marginTop: SPACE.sm,
     marginHorizontal: SPACE.lg,
     paddingHorizontal: 28,
     paddingVertical: 11,
@@ -379,6 +400,42 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#1a1400',
     letterSpacing: 0.2,
+  },
+  speedRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    marginTop: SPACE.md,
+    paddingHorizontal: SPACE.lg,
+  },
+  speedLabel: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: COLORS.textMuted,
+    marginRight: 4,
+    letterSpacing: 0.3,
+    textTransform: 'uppercase',
+  },
+  speedPill: {
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+    borderRadius: RADIUS.full,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    backgroundColor: COLORS.bg,
+  },
+  speedPillActive: {
+    backgroundColor: COLORS.accentSoft,
+    borderColor: COLORS.accent,
+  },
+  speedPillText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: COLORS.textMuted,
+  },
+  speedPillTextActive: {
+    color: COLORS.text,
   },
   customHeader: {
     flexDirection: 'row',

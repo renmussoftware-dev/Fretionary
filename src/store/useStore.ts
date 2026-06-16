@@ -39,6 +39,16 @@ function yesterdayKey(): string {
 
 export type AppMode = 'scales' | 'chords' | 'caged' | 'custom';
 export type LabelMode = 'name' | 'degree' | 'interval' | 'none';
+export type ScalePlaybackSpeed = 'slow' | 'normal' | 'fast';
+
+// Per-step delay (ms) for scale playback. Slow is for students who want
+// to track each highlighted note; fast is for fluent practice. Normal
+// matches the original hardcoded value, so existing users hear no change.
+export const SCALE_SPEED_MS: Record<ScalePlaybackSpeed, number> = {
+  slow:   500,
+  normal: 280,
+  fast:   150,
+};
 
 export type SavedItem =
   | { kind: 'scale';       root: number; scaleKey: string;     addedAt: number }
@@ -104,6 +114,11 @@ interface AppState {
   playbackHighlight: number | null;
   setPlaybackHighlight: (pitchClass: number | null) => void;
 
+  // User-selected playback speed for the scale Play button. Persisted —
+  // sticks across launches the way the user's tuning/labels do.
+  scalePlaybackSpeed: ScalePlaybackSpeed;
+  setScalePlaybackSpeed: (speed: ScalePlaybackSpeed) => void;
+
   // Transient: set by the Saved sheet so a tab screen can apply its local
   // selection on next render. The screen clears it after consuming.
   pendingNav: SavedItem | null;
@@ -154,6 +169,7 @@ export const useStore = create<AppState>()(
       currentStreak: 0,
       longestStreak: 0,
       playbackHighlight: null,
+      scalePlaybackSpeed: 'normal',
       pendingNav: null,
 
       setPendingNav: (pendingNav) => set({ pendingNav }),
@@ -161,6 +177,8 @@ export const useStore = create<AppState>()(
       markPaywallPromptShown: () => set({ paywallPromptShownAt: Date.now() }),
 
       setPlaybackHighlight: (playbackHighlight) => set({ playbackHighlight }),
+
+      setScalePlaybackSpeed: (scalePlaybackSpeed) => set({ scalePlaybackSpeed }),
 
       recordActivity: () => {
         const today = todayKey();
@@ -269,6 +287,7 @@ export const useStore = create<AppState>()(
         lastActivityDate: s.lastActivityDate,
         currentStreak: s.currentStreak,
         longestStreak: s.longestStreak,
+        scalePlaybackSpeed: s.scalePlaybackSpeed,
       }),
     },
   ),
