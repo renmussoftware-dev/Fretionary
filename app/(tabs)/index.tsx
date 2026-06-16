@@ -12,11 +12,34 @@ import {
   SCALES, CHORDS, CAGED_ORDER, CAGED_COLORS, CAGED_SHAPES,
   CAGED_SHAPE_TIPS, POSITION_COLORS,
 } from '../../src/constants/music';
-import { useStore, SCALE_SPEED_MS, ScalePlaybackSpeed } from '../../src/store/useStore';
+import { useStore, SCALE_SPEED_MS, ScalePlaybackSpeed, PlaybackHighlightMode } from '../../src/store/useStore';
 import { getScalePositions, getCagedCaretFret } from '../../src/utils/theory';
 import { useProGate } from '../../src/hooks/useProGate';
 import { useAudioEngine } from '../../src/hooks/useAudioEngine';
 import { isScaleFree, isChordFree } from '../../src/constants/subscription';
+import { getTuning } from '../../src/constants/tunings';
+
+// Pick the single fretboard position for a MIDI note in single-line trail
+// mode. Rule: lowest fret across all strings; on a tie, prefer the higher
+// string (closer to high e) so an ascending scale tends to climb one string.
+// Returns null when the note is off the visible neck — caller should clear
+// the highlight that step. Row uses Fretboard render order (0 = high e).
+const TOTAL_FRETS = 15;
+function pickTrailPosition(
+  midi: number,
+  tuningMidi: number[],     // low→high (idx 0 = low E)
+): { row: number; fret: number } | null {
+  let best: { row: number; fret: number } | null = null;
+  for (let lowString = 0; lowString < tuningMidi.length; lowString++) {
+    const fret = midi - tuningMidi[lowString];
+    if (fret < 0 || fret > TOTAL_FRETS) continue;
+    const row = tuningMidi.length - 1 - lowString;  // low→high → high→low render order
+    if (!best || fret < best.fret || (fret === best.fret && row < best.row)) {
+      best = { row, fret };
+    }
+  }
+  return best;
+}
 
 const LABEL_OPTIONS = [
   { label: 'Note', value: 'name' },
@@ -40,8 +63,12 @@ export default function FretboardScreen() {
     customNotes, toggleCustomNote, clearCustomNotes,
   } = useStore();
   const setPlaybackHighlight = useStore(s => s.setPlaybackHighlight);
+  const setPlaybackHighlightPos = useStore(s => s.setPlaybackHighlightPos);
   const scalePlaybackSpeed = useStore(s => s.scalePlaybackSpeed);
   const setScalePlaybackSpeed = useStore(s => s.setScalePlaybackSpeed);
+  const playbackHighlightMode = useStore(s => s.playbackHighlightMode);
+  const setPlaybackHighlightMode = useStore(s => s.setPlaybackHighlightMode);
+  const tuningId = useStore(s => s.tuningId);
 
   // True when playback should be locked behind the paywall. Playback is free
   // for the scales the free tier can already select — locking it there too
@@ -59,6 +86,7 @@ export default function FretboardScreen() {
       stopProgression();
       setPlayingScale(false);
       setPlaybackHighlight(null);
+      setPlaybackHighlightPos(null);
       return;
     }
     const apply = () => {
@@ -80,17 +108,35 @@ export default function FretboardScreen() {
       // at the turnaround — the ascent already played it.
       const descending = ascending.slice(0, -1).reverse();
       const notes = [...ascending, ...descending];
+
+      // For 'single' mode, pre-compute the position trail once so the per-step
+      // callback is a cheap array lookup. Notes above fret 15 (common in the
+      // upper octave for high roots) resolve to null — the highlight just
+      // disappears for that step, signaling "off the visible neck."
+      const tuningMidi = getTuning(tuningId).midi;
+      const trail = playbackHighlightMode === 'single'
+        ? notes.map(m => pickTrailPosition(m, tuningMidi))
+        : null;
+
       setPlayingScale(true);
       playScale(
         notes,
         SCALE_SPEED_MS[scalePlaybackSpeed],
-        // Per-step: light up every fretboard position whose pitch class
-        // matches the note currently sounding. Fretboard reads playbackHighlight
-        // from the store and renders a brighter dot + radial glow on match.
-        (idx) => setPlaybackHighlight(notes[idx] % 12),
-        // Finish: clear the highlight and reset the button state.
+        // Per-step: in 'all' mode light up every position matching the pitch
+        // class; in 'single' mode light just the trail position chosen above.
+        (idx) => {
+          if (trail) {
+            setPlaybackHighlight(null);
+            setPlaybackHighlightPos(trail[idx]);
+          } else {
+            setPlaybackHighlightPos(null);
+            setPlaybackHighlight(notes[idx] % 12);
+          }
+        },
+        // Finish: clear both highlights and reset the button state.
         () => {
           setPlaybackHighlight(null);
+          setPlaybackHighlightPos(null);
           setPlayingScale(false);
         },
       );
@@ -170,6 +216,25 @@ export default function FretboardScreen() {
                     activeOpacity={0.7}>
                     <Text style={[styles.speedPillText, active && styles.speedPillTextActive]}>
                       {s === 'slow' ? 'Slow' : s === 'normal' ? 'Normal' : 'Fast'}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+            {/* Highlight mode — All lights every matching pitch class on the
+                neck; Single lights just one dot at a time. Quieter for
+                beginners learning their first scale shapes. */}
+            <View style={[styles.speedRow, styles.speedRowTight]}>
+              <Text style={styles.speedLabel}>Highlight</Text>
+              {(['all', 'single'] as PlaybackHighlightMode[]).map(m => {
+                const active = playbackHighlightMode === m;
+                return (
+                  <TouchableOpacity key={m}
+                    onPress={() => setPlaybackHighlightMode(m)}
+                    style={[styles.speedPill, active && styles.speedPillActive]}
+                    activeOpacity={0.7}>
+                    <Text style={[styles.speedPillText, active && styles.speedPillTextActive]}>
+                      {m === 'all' ? 'All' : 'Single'}
                     </Text>
                   </TouchableOpacity>
                 );
@@ -414,6 +479,11 @@ const styles = StyleSheet.create({
     gap: 6,
     marginTop: SPACE.md,
     paddingHorizontal: SPACE.lg,
+  },
+  // Stacked sibling rows (e.g. Highlight under Speed) — tighter top gap so
+  // they read as a single grouped controls block.
+  speedRowTight: {
+    marginTop: SPACE.xs,
   },
   speedLabel: {
     fontSize: 11,

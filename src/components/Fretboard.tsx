@@ -49,6 +49,7 @@ export default function Fretboard() {
 
   const { root, scaleKey, chordKey, mode, labelMode, activePosition, activeCaged, tuningId, customNotes } = useStore();
   const playbackHighlight = useStore(s => s.playbackHighlight);
+  const playbackHighlightPos = useStore(s => s.playbackHighlightPos);
 
   // CAGED is defined by standard-tuning open shapes — force standard for that mode.
   const activeTuning = mode === 'caged' ? STANDARD_TUNING : getTuning(tuningId);
@@ -299,12 +300,20 @@ export default function Fretboard() {
             const y = strY(s);
             const label = noteLabel(ni, root, labelMode, scaleKey, chordKey, mode);
             const fs = label.length > 2 ? 7 : 9;
-            // When this note's pitch class matches the currently-playing
-            // scale note, scale the dot up and overlay a bright white ring +
-            // outer glow so all instances of that pitch on the neck "light up"
-            // simultaneously. Lets the user see where the note they're hearing
-            // lives across the entire fretboard.
-            const isPlaying = playbackHighlight !== null && ni === playbackHighlight;
+            // Two ways a position can be "currently playing":
+            //   - 'all' mode (default): every position whose pitch class matches
+            //     the playing note lights up. Wide visual but noisy for beginners.
+            //   - 'single' mode: only the single (row, fret) chosen by the trail
+            //     for this step lights up. Quieter — one dot at a time walking
+            //     along the neck.
+            // Only one of playbackHighlight / playbackHighlightPos is set per
+            // step (handlePlayScale clears the other), so these are mutually
+            // exclusive in practice.
+            const isPlaying =
+              (playbackHighlight !== null && ni === playbackHighlight) ||
+              (playbackHighlightPos !== null &&
+                playbackHighlightPos.row === s &&
+                playbackHighlightPos.fret === f);
             const r = DOT_R * col.scale * (isPlaying ? 1.35 : 1);
             return (
               <G key={`${s}-${f}`} opacity={col.opacity}>
