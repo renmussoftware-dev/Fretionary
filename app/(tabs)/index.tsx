@@ -93,12 +93,15 @@ export default function FretboardScreen() {
       const sc = SCALES[scaleKey];
       if (!sc) return;
       // 60 = C4 (middle C). Transpose to the active root so any key starts
-      // in the same comfortable octave. Two octaves ascending takes us to
-      // root+24 (max B6 for root=B, well within the loaded sample range).
+      // in the same comfortable octave. 'All' mode plays two octaves so the
+      // pitch-class highlight gets to show off across the neck; 'single' mode
+      // plays one octave because the trail position runs off the visible
+      // fretboard somewhere in the upper octave for most roots.
       const startMidi = 60 + root;
+      const octaveCount = playbackHighlightMode === 'single' ? 1 : 2;
       const ascending: number[] = [startMidi];
       let cur = startMidi;
-      for (let octave = 0; octave < 2; octave++) {
+      for (let octave = 0; octave < octaveCount; octave++) {
         for (const step of sc.steps) {
           cur += step;
           ascending.push(cur);
