@@ -41,9 +41,11 @@ export default function FretboardScreen() {
   } = useStore();
   const setPlaybackHighlight = useStore(s => s.setPlaybackHighlight);
 
-  // Build a MIDI sequence for the active scale and play it ascending from
-  // C4 (transposed to the active root) one octave up. Pro-gated — addresses
-  // user feedback asking for scale playback. Tap-again-to-stop pattern.
+  // Build a MIDI sequence for the active scale and play the classic
+  // practice-room pattern: two octaves ascending, then back down to the
+  // root. Crossing octaves makes the visual highlight pay off — the same
+  // pitch class lights up at multiple positions on the neck. Pro-gated.
+  // Tap-again-to-stop pattern.
   function handlePlayScale() {
     if (playingScale) {
       stopProgression();
@@ -55,14 +57,21 @@ export default function FretboardScreen() {
       const sc = SCALES[scaleKey];
       if (!sc) return;
       // 60 = C4 (middle C). Transpose to the active root so any key starts
-      // in the same comfortable octave (root → root+12).
+      // in the same comfortable octave. Two octaves ascending takes us to
+      // root+24 (max B6 for root=B, well within the loaded sample range).
       const startMidi = 60 + root;
-      const notes: number[] = [startMidi];
+      const ascending: number[] = [startMidi];
       let cur = startMidi;
-      for (const step of sc.steps) {
-        cur += step;
-        notes.push(cur);
+      for (let octave = 0; octave < 2; octave++) {
+        for (const step of sc.steps) {
+          cur += step;
+          ascending.push(cur);
+        }
       }
+      // Descend back to the start. Drop the top note so it doesn't double-hit
+      // at the turnaround — the ascent already played it.
+      const descending = ascending.slice(0, -1).reverse();
+      const notes = [...ascending, ...descending];
       setPlayingScale(true);
       playScale(
         notes,
