@@ -48,6 +48,7 @@ export default function Fretboard() {
   function strY(s: number) { return TOP_PAD + s * STR_H; }
 
   const { root, scaleKey, chordKey, mode, labelMode, activePosition, activeCaged, tuningId, customNotes } = useStore();
+  const playbackHighlight = useStore(s => s.playbackHighlight);
 
   // CAGED is defined by standard-tuning open shapes — force standard for that mode.
   const activeTuning = mode === 'caged' ? STANDARD_TUNING : getTuning(tuningId);
@@ -190,6 +191,13 @@ export default function Fretboard() {
             <Stop offset="0%" stopColor={MUSIC_COLORS.root.fill} stopOpacity="0.45" />
             <Stop offset="100%" stopColor={MUSIC_COLORS.root.fill} stopOpacity="0" />
           </RadialGradient>
+          {/* White-ish glow used to mark the currently-playing note during
+              scale playback. Different hue from rootGlow so it reads as
+              "now playing" rather than "this is the root." */}
+          <RadialGradient id="playGlow" cx="50%" cy="50%" r="50%">
+            <Stop offset="0%" stopColor="#ffffff" stopOpacity="0.7" />
+            <Stop offset="100%" stopColor="#ffffff" stopOpacity="0" />
+          </RadialGradient>
         </Defs>
 
         {/* Inlay dots */}
@@ -291,15 +299,26 @@ export default function Fretboard() {
             const y = strY(s);
             const label = noteLabel(ni, root, labelMode, scaleKey, chordKey, mode);
             const fs = label.length > 2 ? 7 : 9;
-            const r = DOT_R * col.scale;
+            // When this note's pitch class matches the currently-playing
+            // scale note, scale the dot up and overlay a bright white ring +
+            // outer glow so all instances of that pitch on the neck "light up"
+            // simultaneously. Lets the user see where the note they're hearing
+            // lives across the entire fretboard.
+            const isPlaying = playbackHighlight !== null && ni === playbackHighlight;
+            const r = DOT_R * col.scale * (isPlaying ? 1.35 : 1);
             return (
               <G key={`${s}-${f}`} opacity={col.opacity}>
                 {col.isRoot && col.opacity === 1 && (
                   <Circle cx={x} cy={y} r={DOT_R + 6} fill="url(#rootGlow)" />
                 )}
+                {isPlaying && (
+                  <Circle cx={x} cy={y} r={DOT_R + 10} fill="url(#playGlow)" />
+                )}
                 <Circle
                   cx={x} cy={y} r={r}
-                  fill={col.fill} stroke={col.stroke} strokeWidth={1}
+                  fill={col.fill}
+                  stroke={isPlaying ? '#ffffff' : col.stroke}
+                  strokeWidth={isPlaying ? 2.5 : 1}
                 />
                 {label ? (
                   <SvgText

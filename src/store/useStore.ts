@@ -97,6 +97,13 @@ interface AppState {
   longestStreak: number;
   recordActivity: () => void;
 
+  // Transient pitch class (0-11) of the currently-playing note during scale
+  // playback. The Fretboard reads this to render an extra glow + larger dot
+  // on every matching position. null when nothing is playing. Not persisted —
+  // resets to null on app launch.
+  playbackHighlight: number | null;
+  setPlaybackHighlight: (pitchClass: number | null) => void;
+
   // Transient: set by the Saved sheet so a tab screen can apply its local
   // selection on next render. The screen clears it after consuming.
   pendingNav: SavedItem | null;
@@ -146,11 +153,14 @@ export const useStore = create<AppState>()(
       lastActivityDate: null,
       currentStreak: 0,
       longestStreak: 0,
+      playbackHighlight: null,
       pendingNav: null,
 
       setPendingNav: (pendingNav) => set({ pendingNav }),
 
       markPaywallPromptShown: () => set({ paywallPromptShownAt: Date.now() }),
+
+      setPlaybackHighlight: (playbackHighlight) => set({ playbackHighlight }),
 
       recordActivity: () => {
         const today = todayKey();

@@ -39,6 +39,7 @@ export default function FretboardScreen() {
     activeCaged, setActiveCaged,
     customNotes, toggleCustomNote, clearCustomNotes,
   } = useStore();
+  const setPlaybackHighlight = useStore(s => s.setPlaybackHighlight);
 
   // Build a MIDI sequence for the active scale and play it ascending from
   // C4 (transposed to the active root) one octave up. Pro-gated — addresses
@@ -47,6 +48,7 @@ export default function FretboardScreen() {
     if (playingScale) {
       stopProgression();
       setPlayingScale(false);
+      setPlaybackHighlight(null);
       return;
     }
     const apply = () => {
@@ -62,7 +64,19 @@ export default function FretboardScreen() {
         notes.push(cur);
       }
       setPlayingScale(true);
-      playScale(notes, 280, () => {}, () => setPlayingScale(false));
+      playScale(
+        notes,
+        280,
+        // Per-step: light up every fretboard position whose pitch class
+        // matches the note currently sounding. Fretboard reads playbackHighlight
+        // from the store and renders a brighter dot + radial glow on match.
+        (idx) => setPlaybackHighlight(notes[idx] % 12),
+        // Finish: clear the highlight and reset the button state.
+        () => {
+          setPlaybackHighlight(null);
+          setPlayingScale(false);
+        },
+      );
     };
     if (!isPro) { requirePro(apply); return; }
     apply();
