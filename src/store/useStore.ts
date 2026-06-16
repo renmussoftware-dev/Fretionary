@@ -40,10 +40,6 @@ function yesterdayKey(): string {
 export type AppMode = 'scales' | 'chords' | 'caged' | 'custom';
 export type LabelMode = 'name' | 'degree' | 'interval' | 'none';
 export type ScalePlaybackSpeed = 'slow' | 'normal' | 'fast';
-// "all"    — every fretboard position matching the playing pitch class lights up
-// "single" — only the single position chosen for this note in the trail lights up.
-//            Quieter visual; better for beginners tracking one shape at a time.
-export type PlaybackHighlightMode = 'all' | 'single';
 
 // Per-step delay (ms) for scale playback. Slow is for students who want
 // to track each highlighted note; fast is for fluent practice. Normal
@@ -114,24 +110,14 @@ interface AppState {
   // Transient pitch class (0-11) of the currently-playing note during scale
   // playback. The Fretboard reads this to render an extra glow + larger dot
   // on every matching position. null when nothing is playing. Not persisted —
-  // resets to null on app launch. Set only in 'all' highlight mode.
+  // resets to null on app launch.
   playbackHighlight: number | null;
   setPlaybackHighlight: (pitchClass: number | null) => void;
-
-  // Transient single-position highlight for 'single' mode. row uses the
-  // Fretboard's render order (0 = high e, 5 = low E). null when nothing is
-  // playing OR when the current note is off the visible neck.
-  playbackHighlightPos: { row: number; fret: number } | null;
-  setPlaybackHighlightPos: (pos: { row: number; fret: number } | null) => void;
 
   // User-selected playback speed for the scale Play button. Persisted —
   // sticks across launches the way the user's tuning/labels do.
   scalePlaybackSpeed: ScalePlaybackSpeed;
   setScalePlaybackSpeed: (speed: ScalePlaybackSpeed) => void;
-
-  // User-selected highlight mode. Persisted alongside speed.
-  playbackHighlightMode: PlaybackHighlightMode;
-  setPlaybackHighlightMode: (mode: PlaybackHighlightMode) => void;
 
   // Transient: set by the Saved sheet so a tab screen can apply its local
   // selection on next render. The screen clears it after consuming.
@@ -183,9 +169,7 @@ export const useStore = create<AppState>()(
       currentStreak: 0,
       longestStreak: 0,
       playbackHighlight: null,
-      playbackHighlightPos: null,
       scalePlaybackSpeed: 'normal',
-      playbackHighlightMode: 'all',
       pendingNav: null,
 
       setPendingNav: (pendingNav) => set({ pendingNav }),
@@ -193,10 +177,8 @@ export const useStore = create<AppState>()(
       markPaywallPromptShown: () => set({ paywallPromptShownAt: Date.now() }),
 
       setPlaybackHighlight: (playbackHighlight) => set({ playbackHighlight }),
-      setPlaybackHighlightPos: (playbackHighlightPos) => set({ playbackHighlightPos }),
 
       setScalePlaybackSpeed: (scalePlaybackSpeed) => set({ scalePlaybackSpeed }),
-      setPlaybackHighlightMode: (playbackHighlightMode) => set({ playbackHighlightMode }),
 
       recordActivity: () => {
         const today = todayKey();
@@ -306,7 +288,6 @@ export const useStore = create<AppState>()(
         currentStreak: s.currentStreak,
         longestStreak: s.longestStreak,
         scalePlaybackSpeed: s.scalePlaybackSpeed,
-        playbackHighlightMode: s.playbackHighlightMode,
       }),
     },
   ),
