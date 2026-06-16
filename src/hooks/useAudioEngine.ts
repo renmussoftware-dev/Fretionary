@@ -228,5 +228,30 @@ export function useAudioEngine() {
     step();
   }, [playChord, stopProgression]);
 
-  return { playMidi, playChord, playProgression, stopProgression };
+  // Play a sequence of single MIDI notes — used for scale playback. Shares
+  // the same timer + stopProgression() with playProgression, so starting a
+  // scale cleanly cancels a running progression and vice versa.
+  const playScale = useCallback((
+    midiNotes: number[],
+    msPerNote: number,
+    onStep: (index: number) => void,
+    onFinish: () => void,
+  ) => {
+    stopProgression();
+    let idx = 0;
+
+    function step() {
+      if (idx >= midiNotes.length) {
+        onFinish();
+        return;
+      }
+      onStep(idx);
+      playMidi(midiNotes[idx]);
+      idx++;
+      progressionTimerRef.current = setTimeout(step, msPerNote);
+    }
+    step();
+  }, [playMidi, stopProgression]);
+
+  return { playMidi, playChord, playProgression, playScale, stopProgression };
 }

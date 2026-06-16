@@ -15,6 +15,7 @@ import {
 import { useStore } from '../../src/store/useStore';
 import { getScalePositions, getCagedCaretFret } from '../../src/utils/theory';
 import { useProGate } from '../../src/hooks/useProGate';
+import { useAudioEngine } from '../../src/hooks/useAudioEngine';
 import { isScaleFree, isChordFree } from '../../src/constants/subscription';
 
 const LABEL_OPTIONS = [
@@ -28,6 +29,8 @@ export default function FretboardScreen() {
   const { width: screenW } = useWindowDimensions();
   const isTablet = screenW >= 768;
   const { isPro, requirePro } = useProGate();
+  const { playScale, stopProgression } = useAudioEngine();
+  const [playingScale, setPlayingScale] = React.useState(false);
 
   const {
     mode, root, scaleKey, setScaleKey,
@@ -36,6 +39,34 @@ export default function FretboardScreen() {
     activeCaged, setActiveCaged,
     customNotes, toggleCustomNote, clearCustomNotes,
   } = useStore();
+
+  // Build a MIDI sequence for the active scale and play it ascending from
+  // C4 (transposed to the active root) one octave up. Pro-gated — addresses
+  // user feedback asking for scale playback. Tap-again-to-stop pattern.
+  function handlePlayScale() {
+    if (playingScale) {
+      stopProgression();
+      setPlayingScale(false);
+      return;
+    }
+    const apply = () => {
+      const sc = SCALES[scaleKey];
+      if (!sc) return;
+      // 60 = C4 (middle C). Transpose to the active root so any key starts
+      // in the same comfortable octave (root → root+12).
+      const startMidi = 60 + root;
+      const notes: number[] = [startMidi];
+      let cur = startMidi;
+      for (const step of sc.steps) {
+        cur += step;
+        notes.push(cur);
+      }
+      setPlayingScale(true);
+      playScale(notes, 280, () => {}, () => setPlayingScale(false));
+    };
+    if (!isPro) { requirePro(apply); return; }
+    apply();
+  }
 
   const positions = mode === 'scales' ? getScalePositions(root, scaleKey) : [];
 
@@ -94,6 +125,13 @@ export default function FretboardScreen() {
                 );
               })}
             </ScrollView>
+            {/* Play scale button — Pro feature. Plays the current scale one
+                octave ascending from C4 transposed to the active root. */}
+            <TouchableOpacity onPress={handlePlayScale} style={styles.playScaleBtn} activeOpacity={0.85}>
+              <Text style={styles.playScaleBtnText}>
+                {!isPro ? '🔒  ' : ''}{playingScale ? '⏸  Stop' : '▶  Hear scale'}
+              </Text>
+            </TouchableOpacity>
           </View>
         )}
         {/* Chord selector */}
@@ -303,6 +341,21 @@ const styles = StyleSheet.create({
   },
   pillLocked: {
     opacity: 0.5,
+  },
+  playScaleBtn: {
+    alignSelf: 'center',
+    marginTop: SPACE.md,
+    marginHorizontal: SPACE.lg,
+    paddingHorizontal: 28,
+    paddingVertical: 11,
+    borderRadius: RADIUS.full,
+    backgroundColor: COLORS.accent,
+  },
+  playScaleBtnText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#1a1400',
+    letterSpacing: 0.2,
   },
   customHeader: {
     flexDirection: 'row',

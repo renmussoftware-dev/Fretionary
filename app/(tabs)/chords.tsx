@@ -201,6 +201,21 @@ export default function ChordsScreen() {
             <ChordBox root={root} chordKey={selectedChord} />
           </View>
 
+          {/* Replay button — addresses user feedback that "it's not super
+              clear how to hear a chord." The chord plays automatically when
+              you pick it from the drawer, but there was no obvious way to
+              hear it again while viewing the detail card. */}
+          <TouchableOpacity
+            onPress={() => {
+              const voicings = getChordVoicings(root, selectedChord);
+              if (voicings.length > 0) playChord(voicings[0].frets);
+            }}
+            style={styles.playChordBtn}
+            activeOpacity={0.85}
+          >
+            <Text style={styles.playChordBtnText}>▶  Play chord</Text>
+          </TouchableOpacity>
+
           {/* Interval structure — colored circle + long-form name per interval */}
           {chord && (
             <>
@@ -400,7 +415,18 @@ const styles = StyleSheet.create({
                        borderRadius: RADIUS.lg,
                        padding: SPACE.lg,
                        alignItems: 'center', justifyContent: 'center',
+                       marginBottom: SPACE.md,
+                     },
+  playChordBtn:      {
+                       alignSelf: 'center',
+                       paddingHorizontal: 28, paddingVertical: 12,
+                       borderRadius: RADIUS.full,
+                       backgroundColor: COLORS.accent,
                        marginBottom: SPACE.xl,
+                     },
+  playChordBtnText:  {
+                       fontSize: 15, fontWeight: '700', color: '#1a1400',
+                       letterSpacing: 0.2,
                      },
 
   // Mono uppercase section label, matches the global treatment.
