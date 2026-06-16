@@ -43,10 +43,16 @@ export default function FretboardScreen() {
   const scalePlaybackSpeed = useStore(s => s.scalePlaybackSpeed);
   const setScalePlaybackSpeed = useStore(s => s.setScalePlaybackSpeed);
 
+  // True when playback should be locked behind the paywall. Playback is free
+  // for the scales the free tier can already select — locking it there too
+  // would be punishing the user twice for the same paywall.
+  const scalePlaybackLocked = !isPro && !isScaleFree(scaleKey);
+
   // Build a MIDI sequence for the active scale and play the classic
   // practice-room pattern: two octaves ascending, then back down to the
   // root. Crossing octaves makes the visual highlight pay off — the same
-  // pitch class lights up at multiple positions on the neck. Pro-gated.
+  // pitch class lights up at multiple positions on the neck. Only the
+  // Pro-only scales are gated; free scales play freely.
   // Tap-again-to-stop pattern.
   function handlePlayScale() {
     if (playingScale) {
@@ -89,7 +95,7 @@ export default function FretboardScreen() {
         },
       );
     };
-    if (!isPro) { requirePro(apply); return; }
+    if (scalePlaybackLocked) { requirePro(apply); return; }
     apply();
   }
 
@@ -173,7 +179,7 @@ export default function FretboardScreen() {
                 two octaves ascending then descending, at the chosen speed. */}
             <TouchableOpacity onPress={handlePlayScale} style={styles.playScaleBtn} activeOpacity={0.85}>
               <Text style={styles.playScaleBtnText}>
-                {!isPro ? '🔒  ' : ''}{playingScale ? '⏸  Stop' : '▶  Hear scale'}
+                {scalePlaybackLocked ? '🔒  ' : ''}{playingScale ? '⏸  Stop' : '▶  Hear scale'}
               </Text>
             </TouchableOpacity>
           </View>
