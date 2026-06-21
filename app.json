@@ -52,7 +52,9 @@
           "android": {
             "compileSdkVersion": 35,
             "targetSdkVersion": 35,
-            "minSdkVersion": 24
+            "minSdkVersion": 24,
+            "enableProguardInReleaseBuilds": true,
+            "enableShrinkResourcesInReleaseBuilds": true
           }
         }
       ],
@@ -69,7 +71,8 @@
           "iosUserTrackingPermission": "Allow Fretionary to use your activity to help us improve and personalize ads. This helps keep the app free and the Pro tier affordable."
         }
       ],
-      "./plugins/withAdIdPermission"
+      "./plugins/withAdIdPermission",
+      "./plugins/withMinifyRelease"
     ],
     "scheme": "fretionary",
     "experiments": {
