@@ -28,11 +28,9 @@
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
       "package": "com.renmussoftware.nodi",
-      "versionCode": 10,
+      "versionCode": 12,
       "predictiveBackGestureEnabled": false,
-      "permissions": [
-        "com.google.android.gms.permission.AD_ID"
-      ],
+      "permissions": [],
       "blockedPermissions": [
         "android.permission.RECORD_AUDIO"
       ]
@@ -70,7 +68,8 @@
           "isAutoInitEnabled": true,
           "iosUserTrackingPermission": "Allow Fretionary to use your activity to help us improve and personalize ads. This helps keep the app free and the Pro tier affordable."
         }
-      ]
+      ],
+      "./plugins/withAdIdPermission"
     ],
     "scheme": "fretionary",
     "experiments": {
