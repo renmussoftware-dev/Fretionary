@@ -111,6 +111,12 @@ export function useAudioEngine() {
   const soundsRef = useRef<Record<string, Sound>>({});
   const loadedRef = useRef(false);
   const progressionTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Android only: tracks the Sound that's currently ringing out during scale
+  // playback, so the next note's start can stop it. Without this, multiple
+  // samples overlap and Android's audio backend silently drops new playback
+  // calls once a few voices are active simultaneously. Reset by stopProgression
+  // and by playScale's onFinish.
+  const lastPlayingSoundRef = useRef<Sound | null>(null);
 
   useEffect(() => {
     async function loadAll() {
@@ -158,7 +164,11 @@ export function useAudioEngine() {
     };
   }, []);
 
-  const playMidi = useCallback(async (midi: number) => {
+  // stopPrevious: only set by playScale. Tells the Android path to hard-stop
+  // the previously-played sound before starting this one, so notes don't
+  // overlap and saturate Android's concurrent-voice limit. playChord leaves
+  // it false so the 18ms-spaced strum notes still ring together.
+  const playMidi = useCallback(async (midi: number, stopPrevious = false) => {
     const name = midiToFilename(midi);
     let sound = soundsRef.current[name];
 
@@ -179,14 +189,24 @@ export function useAudioEngine() {
     if (!sound) return;
     try {
       if (Platform.OS === 'android') {
-        // Android's MediaPlayer drops notes during rapid scale playback when
-        // we do setPositionAsync(0) followed by playAsync(): two sequential
-        // bridge crossings race against each other and the second call lands
-        // while MediaPlayer is still mid-transition. replayAsync is a single
-        // native call that performs stop+rewind+play atomically, so the
-        // state machine can't get desynced. iOS's AVPlayer handles the
-        // two-step approach cleanly, so we keep the original path there —
-        // don't break what's working.
+        // Android-specific concurrency management. iOS AVPlayer handles many
+        // overlapping samples cleanly; Android's audio backend doesn't, and
+        // a few notes into a scale run new playback calls start getting
+        // silently dropped (the user's pattern: "C plays, D-E-F skipped,
+        // G-A-B plays, then more skips at octave change"). Stopping the
+        // previous note frees its voice slot before the next one starts.
+        // Fire-and-forget — we don't await the stop so it doesn't add
+        // bridge latency to the new note kicking off.
+        if (stopPrevious) {
+          const prev = lastPlayingSoundRef.current;
+          lastPlayingSoundRef.current = sound;
+          if (prev && prev !== sound) {
+            prev.stopAsync().catch(() => {});
+          }
+        }
+        // replayAsync is a single native stop+rewind+play call, more reliable
+        // on Android than setPositionAsync followed by playAsync (which races
+        // across two bridge crossings).
         await sound.replayAsync();
       } else {
         await sound.setPositionAsync(0);
@@ -214,6 +234,13 @@ export function useAudioEngine() {
       clearTimeout(progressionTimerRef.current);
       progressionTimerRef.current = null;
     }
+    // Android only: stop whatever's currently ringing out so the user gets
+    // immediate silence when they tap Stop, instead of the last note
+    // continuing its decay. iOS never sets this ref, so this is a no-op there
+    // (and iOS already feels right with the natural decay continuing briefly).
+    const last = lastPlayingSoundRef.current;
+    lastPlayingSoundRef.current = null;
+    if (last) last.stopAsync().catch(() => {});
   }, []);
 
   // Play a sequence of chord fret arrays at a given BPM
@@ -255,11 +282,15 @@ export function useAudioEngine() {
 
     function step() {
       if (idx >= midiNotes.length) {
+        // Clear the last-playing ref so a future single-note playMidi doesn't
+        // try to stop a sound that's already finished naturally. The last
+        // note's natural decay is preserved (we don't stop it here).
+        lastPlayingSoundRef.current = null;
         onFinish();
         return;
       }
       onStep(idx);
-      playMidi(midiNotes[idx]);
+      playMidi(midiNotes[idx], /* stopPrevious */ true);
       idx++;
       progressionTimerRef.current = setTimeout(step, msPerNote);
     }
