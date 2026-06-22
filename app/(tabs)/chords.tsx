@@ -101,7 +101,20 @@ export default function ChordsScreen() {
       cat === 'All' || ch.category === CAT_MAP[cat]
     );
     setCategory(cat);
-    if (filtered.length > 0) setSelectedChord(filtered[0][0]);
+    if (filtered.length > 0) {
+      // For non-Pro users, default to the first FREE chord in the filtered
+      // list so the detail panel doesn't surface a Pro-only chord without
+      // going through the paywall gate. selectChord enforces the gate on
+      // explicit picks but auto-selection here bypassed it — e.g. clicking
+      // "Seventh" used to drop the user onto Major 6 (Pro) and "Extended"
+      // onto Dominant 9 (Pro). If no free chord exists in the category
+      // (Extended is fully Pro), leave the current selection alone — the
+      // drawer still opens showing the locked chords with their 🔒 icons.
+      const target = isPro
+        ? filtered[0][0]
+        : filtered.find(([key]) => isChordFree(key))?.[0];
+      if (target) setSelectedChord(target);
+    }
     openDrawer();
   }
 
