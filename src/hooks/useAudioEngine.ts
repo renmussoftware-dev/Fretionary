@@ -2,6 +2,18 @@ import { useEffect, useRef, useCallback } from 'react';
 import { Platform } from 'react-native';
 import { Audio } from 'expo-av';
 import { Sound } from 'expo-av/build/Audio';
+import { Asset } from 'expo-asset';
+// Android-only low-latency polyphonic playback via SoundPool. The functions
+// no-op on iOS (the module isn't loaded there) so it's safe to call from
+// shared code paths — we still gate at the useEffect / playMidi level to
+// avoid pointless work. See modules/fretionary-sound-pool/ for the native
+// Kotlin implementation and the "why" comment at the top of that file.
+import {
+  loadSound as soundPoolLoad,
+  playSound as soundPoolPlay,
+  stopAllSounds as soundPoolStopAll,
+  unloadAllSounds as soundPoolUnloadAll,
+} from '../../modules/fretionary-sound-pool/src/FretionarySoundPoolModule';
 
 // ── String open-string MIDI notes (standard tuning) ──────────────────────────
 // String 0 = low E = MIDI 40, String 5 = high e = MIDI 64
@@ -108,19 +120,44 @@ export function fretstToMidiNotes(frets: (number | null)[]): number[] {
 }
 
 export function useAudioEngine() {
+  // iOS-only: pool of expo-av Sound instances, one per audio file. On Android
+  // we don't touch this ref at all — playback goes through SoundPool.
   const soundsRef = useRef<Record<string, Sound>>({});
   const loadedRef = useRef(false);
   const progressionTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  // Android only: tracks the Sound that's currently ringing out during scale
-  // playback, so the next note's start can stop it. Without this, multiple
-  // samples overlap and Android's audio backend silently drops new playback
-  // calls once a few voices are active simultaneously. Reset by stopProgression
-  // and by playScale's onFinish.
-  const lastPlayingSoundRef = useRef<Sound | null>(null);
 
   useEffect(() => {
     async function loadAll() {
-      // Set audio mode first and wait for it to be fully active
+      if (Platform.OS === 'android') {
+        // Android path: load every sample into the native SoundPool. Expo
+        // asset() returns a require()-handle that needs to be materialized to
+        // a local file path before SoundPool can decode it — that's what
+        // downloadAsync does (it's a misleading name: for bundled assets it
+        // just copies them into cache, no network involved). We fire all the
+        // loads in parallel: downloadAsync calls are independent file copies,
+        // and SoundPool's native load() enqueues to its own decode thread
+        // and immediately returns a soundId — the wait happens entirely on
+        // the OnLoadComplete callback so parallel JS calls aren't blocking
+        // each other.
+        await Promise.all(
+          Object.entries(AUDIO_FILES).map(async ([name, src]) => {
+            try {
+              const asset = Asset.fromModule(src);
+              await asset.downloadAsync();
+              if (asset.localUri) {
+                await soundPoolLoad(name, asset.localUri);
+              }
+            } catch {
+              // skip missing files silently
+            }
+          }),
+        );
+        loadedRef.current = true;
+        return;
+      }
+
+      // iOS path — unchanged from what's been shipping. AVPlayer handles
+      // polyphony cleanly so we keep expo-av exactly as it was.
       await Audio.setAudioModeAsync({
         playsInSilentModeIOS: true,
         allowsRecordingIOS: false,
@@ -158,18 +195,29 @@ export function useAudioEngine() {
     loadAll();
 
     return () => {
-      // Unload all sounds on unmount
-      Object.values(soundsRef.current).forEach(s => s.unloadAsync());
+      if (Platform.OS === 'android') {
+        soundPoolUnloadAll();
+      } else {
+        Object.values(soundsRef.current).forEach(s => s.unloadAsync());
+      }
       if (progressionTimerRef.current) clearTimeout(progressionTimerRef.current);
     };
   }, []);
 
-  // stopPrevious: only set by playScale. Tells the Android path to hard-stop
-  // the previously-played sound before starting this one, so notes don't
-  // overlap and saturate Android's concurrent-voice limit. playChord leaves
-  // it false so the 18ms-spaced strum notes still ring together.
-  const playMidi = useCallback(async (midi: number, stopPrevious = false) => {
+  const playMidi = useCallback(async (midi: number) => {
     const name = midiToFilename(midi);
+
+    if (Platform.OS === 'android') {
+      // SoundPool.play is a single synchronous native call — no awaits, no
+      // bridge round-trips waiting on state machines. It returns a streamId
+      // and starts the sample on the audio thread immediately. Concurrent
+      // calls just allocate fresh voices (up to maxStreams=16) so chord
+      // strums and scale playback both work without serialization.
+      soundPoolPlay(name);
+      return;
+    }
+
+    // iOS path — unchanged. AVPlayer-backed Sound from expo-av.
     let sound = soundsRef.current[name];
 
     // If sound wasn't loaded (iPad race condition), try loading it now
@@ -188,36 +236,8 @@ export function useAudioEngine() {
 
     if (!sound) return;
     try {
-      if (Platform.OS === 'android' && stopPrevious) {
-        // Scale playback path: one voice at a time on Android. The audio
-        // backend hits a concurrent-voice ceiling and starts silently
-        // dropping calls when multiple ~1s sample tails overlap (user
-        // pattern: "C plays, D-E-F skipped, G-A-B plays, more skips at
-        // octave change"). Stopping the previous sound before starting
-        // the new one keeps Android under that ceiling. Fire-and-forget
-        // on the stop so it doesn't add bridge latency to the new note.
-        // Then replayAsync is a single native stop+rewind+play call,
-        // which is more reliable than the two-step path for a single-voice
-        // sequence.
-        const prev = lastPlayingSoundRef.current;
-        lastPlayingSoundRef.current = sound;
-        if (prev && prev !== sound) {
-          prev.stopAsync().catch(() => {});
-        }
-        await sound.replayAsync();
-      } else {
-        // Default path — used by playChord (which strums 6 notes at 18ms
-        // intervals and needs them to overlap) and by any single-shot play.
-        // Sequential setPositionAsync + playAsync. Don't be tempted to
-        // switch this to replayAsync on Android: when six Sound instances
-        // get replayAsync called on them within ~108ms, Android serializes
-        // the stop+rewind+play state machines across them and most of the
-        // notes never produce audio. This two-step path triggers all six
-        // reliably because each Sound's seek/play pair is independent.
-        // iOS AVPlayer handles either approach cleanly so we keep it here.
-        await sound.setPositionAsync(0);
-        await sound.playAsync();
-      }
+      await sound.setPositionAsync(0);
+      await sound.playAsync();
     } catch {
       // ignore playback errors
     }
@@ -240,13 +260,12 @@ export function useAudioEngine() {
       clearTimeout(progressionTimerRef.current);
       progressionTimerRef.current = null;
     }
-    // Android only: stop whatever's currently ringing out so the user gets
-    // immediate silence when they tap Stop, instead of the last note
-    // continuing its decay. iOS never sets this ref, so this is a no-op there
-    // (and iOS already feels right with the natural decay continuing briefly).
-    const last = lastPlayingSoundRef.current;
-    lastPlayingSoundRef.current = null;
-    if (last) last.stopAsync().catch(() => {});
+    // Android: hard-stop every active SoundPool voice so tapping Stop gives
+    // immediate silence. iOS keeps the natural ring-out — feels more musical
+    // and matches what's been shipping.
+    if (Platform.OS === 'android') {
+      soundPoolStopAll();
+    }
   }, []);
 
   // Play a sequence of chord fret arrays at a given BPM
@@ -288,15 +307,13 @@ export function useAudioEngine() {
 
     function step() {
       if (idx >= midiNotes.length) {
-        // Clear the last-playing ref so a future single-note playMidi doesn't
-        // try to stop a sound that's already finished naturally. The last
-        // note's natural decay is preserved (we don't stop it here).
-        lastPlayingSoundRef.current = null;
         onFinish();
         return;
       }
       onStep(idx);
-      playMidi(midiNotes[idx], /* stopPrevious */ true);
+      // SoundPool on Android and AVPlayer on iOS both handle the polyphony
+      // here natively — no more stopPrevious workaround needed.
+      playMidi(midiNotes[idx]);
       idx++;
       progressionTimerRef.current = setTimeout(step, msPerNote);
     }
