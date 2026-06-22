@@ -152,19 +152,28 @@ export default function ProgressionsScreen() {
   const [savedOpen, setSavedOpen] = useState(false);
   const [selectedExample, setSelectedExample] = useState<ExampleProgression | null>(EXAMPLE_PROGRESSIONS[0]);
 
-  // Apply pending navigation from the Saved sheet
+  // Apply pending navigation from the Saved sheet. Gate Pro progressions
+  // through requirePro: a user who favorited a progression while Pro and
+  // then downgraded would otherwise be able to load it from the Saved
+  // sheet, bypassing the in-tab paywall on the drawer list.
   useEffect(() => {
     if (pendingNav?.kind === 'progression') {
       const match = PROGRESSIONS.find(p => p.name === pendingNav.progName);
-      if (match) {
+      setPendingNav(null);
+      if (!match) return;
+      const apply = () => {
         setSelectedProg(match);
         setSubMode('common');
         setActiveIdx(0);
         setPlaying(false);
+      };
+      if (!isPro && !isProgressionFree(match.name)) {
+        requirePro(apply);
+      } else {
+        apply();
       }
-      setPendingNav(null);
     }
-  }, [pendingNav, setPendingNav]);
+  }, [pendingNav, setPendingNav, isPro, requirePro]);
 
   // Whether the active progression is a named PROGRESSIONS entry (so it can be saved)
   const isNamedProg = useMemo(

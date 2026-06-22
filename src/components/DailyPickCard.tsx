@@ -3,6 +3,8 @@ import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { COLORS, FONT_FAMILY, RADIUS, SPACE } from '../constants/theme';
 import { useStore } from '../store/useStore';
 import { getDailyPick } from '../utils/dailyPick';
+import { useProGate } from '../hooks/useProGate';
+import { isChordFree, isScaleFree } from '../constants/subscription';
 
 /**
  * Small accent card at the top of the Fretboard controls scroll. Reads the
@@ -12,6 +14,12 @@ import { getDailyPick } from '../utils/dailyPick';
  * Lives only on the Fretboard tab (the natural landing surface). Other tabs
  * don't get the card since their layouts are more constrained and the daily
  * pick is just one of several entry points.
+ *
+ * Gating: the rotation pulls from every scale/chord in the library — both
+ * free and Pro. We don't filter the pick itself (every user sees the same
+ * pick of the day) but the tap routes through requirePro when the item is
+ * Pro-only. That turns the card into a paywall surface on those days
+ * rather than a backdoor around the chord/scale picker gates.
  */
 export default function DailyPickCard() {
   const pick = useMemo(() => getDailyPick(), []);
@@ -19,6 +27,11 @@ export default function DailyPickCard() {
   const setScaleKey = useStore(s => s.setScaleKey);
   const setChordKey = useStore(s => s.setChordKey);
   const setMode = useStore(s => s.setMode);
+  const { isPro, requirePro } = useProGate();
+
+  const locked = !isPro && (
+    pick.type === 'scale' ? !isScaleFree(pick.itemKey) : !isChordFree(pick.itemKey)
+  );
 
   function applyPick() {
     setRoot(pick.root);
@@ -31,13 +44,23 @@ export default function DailyPickCard() {
     }
   }
 
+  function handlePress() {
+    if (locked) {
+      requirePro(applyPick);
+      return;
+    }
+    applyPick();
+  }
+
   const eyebrow = pick.type === 'scale' ? "TODAY'S SCALE" : "TODAY'S CHORD";
 
   return (
-    <TouchableOpacity style={styles.card} onPress={applyPick} activeOpacity={0.85}>
+    <TouchableOpacity style={styles.card} onPress={handlePress} activeOpacity={0.85}>
       <View style={{ flex: 1 }}>
         <Text style={styles.eyebrow}>{eyebrow}</Text>
-        <Text style={styles.title} numberOfLines={1}>{pick.fullName}</Text>
+        <Text style={styles.title} numberOfLines={1}>
+          {locked ? '🔒  ' : ''}{pick.fullName}
+        </Text>
         <Text style={styles.desc} numberOfLines={2}>{pick.description}</Text>
       </View>
       <Text style={styles.arrow}>→</Text>

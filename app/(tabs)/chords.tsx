@@ -42,13 +42,21 @@ export default function ChordsScreen() {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [savedOpen, setSavedOpen] = useState(false);
 
-  // Apply pending navigation from the Saved sheet
+  // Apply pending navigation from the Saved sheet. Gate Pro chords through
+  // requirePro: it's possible to have favorited a chord while Pro and then
+  // downgraded — without this check the Saved sheet would be a backdoor
+  // around the chord-library paywall.
   useEffect(() => {
     if (pendingNav?.kind === 'chord') {
-      setSelectedChord(pendingNav.chordKey);
+      const key = pendingNav.chordKey;
       setPendingNav(null);
+      if (!isPro && !isChordFree(key)) {
+        requirePro(() => setSelectedChord(key));
+      } else {
+        setSelectedChord(key);
+      }
     }
-  }, [pendingNav, setPendingNav]);
+  }, [pendingNav, setPendingNav, isPro, requirePro]);
   const drawerAnim = useRef(new Animated.Value(0)).current;
   const scrimAnim = useRef(new Animated.Value(0)).current;
 
