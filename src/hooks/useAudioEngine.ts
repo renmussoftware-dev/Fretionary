@@ -1,4 +1,5 @@
 import { useEffect, useRef, useCallback } from 'react';
+import { Platform } from 'react-native';
 import { Audio } from 'expo-av';
 import { Sound } from 'expo-av/build/Audio';
 
@@ -177,8 +178,20 @@ export function useAudioEngine() {
 
     if (!sound) return;
     try {
-      await sound.setPositionAsync(0);
-      await sound.playAsync();
+      if (Platform.OS === 'android') {
+        // Android's MediaPlayer drops notes during rapid scale playback when
+        // we do setPositionAsync(0) followed by playAsync(): two sequential
+        // bridge crossings race against each other and the second call lands
+        // while MediaPlayer is still mid-transition. replayAsync is a single
+        // native call that performs stop+rewind+play atomically, so the
+        // state machine can't get desynced. iOS's AVPlayer handles the
+        // two-step approach cleanly, so we keep the original path there —
+        // don't break what's working.
+        await sound.replayAsync();
+      } else {
+        await sound.setPositionAsync(0);
+        await sound.playAsync();
+      }
     } catch {
       // ignore playback errors
     }
