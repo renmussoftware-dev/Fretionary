@@ -4,8 +4,11 @@ dist/
 *.tar.gz
 .env
 .env.local
-ios/
-android/
+# Prebuild output at the project root — we want this ignored, but NOT
+# anchored to children like modules/<x>/android which is custom native code
+# that must be tracked.
+/ios/
+/android/
 
 # Claude Code working state — worktrees and local-only project files.
 # Worktrees were getting committed as bare gitlinks, which broke the
