@@ -188,27 +188,33 @@ export function useAudioEngine() {
 
     if (!sound) return;
     try {
-      if (Platform.OS === 'android') {
-        // Android-specific concurrency management. iOS AVPlayer handles many
-        // overlapping samples cleanly; Android's audio backend doesn't, and
-        // a few notes into a scale run new playback calls start getting
-        // silently dropped (the user's pattern: "C plays, D-E-F skipped,
-        // G-A-B plays, then more skips at octave change"). Stopping the
-        // previous note frees its voice slot before the next one starts.
-        // Fire-and-forget — we don't await the stop so it doesn't add
-        // bridge latency to the new note kicking off.
-        if (stopPrevious) {
-          const prev = lastPlayingSoundRef.current;
-          lastPlayingSoundRef.current = sound;
-          if (prev && prev !== sound) {
-            prev.stopAsync().catch(() => {});
-          }
+      if (Platform.OS === 'android' && stopPrevious) {
+        // Scale playback path: one voice at a time on Android. The audio
+        // backend hits a concurrent-voice ceiling and starts silently
+        // dropping calls when multiple ~1s sample tails overlap (user
+        // pattern: "C plays, D-E-F skipped, G-A-B plays, more skips at
+        // octave change"). Stopping the previous sound before starting
+        // the new one keeps Android under that ceiling. Fire-and-forget
+        // on the stop so it doesn't add bridge latency to the new note.
+        // Then replayAsync is a single native stop+rewind+play call,
+        // which is more reliable than the two-step path for a single-voice
+        // sequence.
+        const prev = lastPlayingSoundRef.current;
+        lastPlayingSoundRef.current = sound;
+        if (prev && prev !== sound) {
+          prev.stopAsync().catch(() => {});
         }
-        // replayAsync is a single native stop+rewind+play call, more reliable
-        // on Android than setPositionAsync followed by playAsync (which races
-        // across two bridge crossings).
         await sound.replayAsync();
       } else {
+        // Default path — used by playChord (which strums 6 notes at 18ms
+        // intervals and needs them to overlap) and by any single-shot play.
+        // Sequential setPositionAsync + playAsync. Don't be tempted to
+        // switch this to replayAsync on Android: when six Sound instances
+        // get replayAsync called on them within ~108ms, Android serializes
+        // the stop+rewind+play state machines across them and most of the
+        // notes never produce audio. This two-step path triggers all six
+        // reliably because each Sound's seek/play pair is independent.
+        // iOS AVPlayer handles either approach cleanly so we keep it here.
         await sound.setPositionAsync(0);
         await sound.playAsync();
       }
