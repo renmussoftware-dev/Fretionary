@@ -28,7 +28,7 @@
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
       "package": "com.renmussoftware.nodi",
-      "versionCode": 12,
+      "versionCode": 14,
       "predictiveBackGestureEnabled": false,
       "permissions": [],
       "blockedPermissions": [
@@ -56,6 +56,12 @@
             "enableProguardInReleaseBuilds": true,
             "enableShrinkResourcesInReleaseBuilds": true
           }
+        }
+      ],
+      [
+        "expo-tracking-transparency",
+        {
+          "userTrackingPermission": "Allow Fretionary to use your activity to help us improve and personalize ads. This helps keep the app free and the Pro tier affordable."
         }
       ],
       [

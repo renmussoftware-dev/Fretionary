@@ -1,16 +1,17 @@
-// Force the com.google.android.gms.permission.AD_ID permission into the
-// merged AndroidManifest with tools:node="replace". Background:
-// react-native-fbsdk-next 13.x bundles a manifest that declares this same
-// permission with tools:node="remove" (to let apps opt out by default), so
-// the standard Expo `android.permissions` array gets stripped during merge.
-// With tools:node="replace", our declaration wins the merge and the Meta
-// SDK can read the Advertising ID on Android 13+ for ad attribution.
+// Belt-and-suspenders enforcement of com.google.android.gms.permission.AD_ID.
 //
-// Without this, Play Console raises:
-//   "A manifest file in one of your active artifacts doesn't include the
-//    com.google.android.gms.permission.AD_ID permission."
-// and the advertising identifier gets zeroed out, silently breaking
-// attribution.
+// The official path is expo-tracking-transparency (already in dependencies
+// and now registered in app.json) which adds the permission via Expo's
+// canonical withPermissions API. This plugin runs AFTER it and force-sets
+// tools:node="replace" on the entry, defeating any library that ships a
+// <uses-permission AD_ID tools:node="remove"/> directive in its AAR (the
+// Facebook Android SDK 16.1+ does this conditionally).
+//
+// Why both: prior releases (v11 with permissions:["AD_ID"], v13 with this
+// plugin's "replace" directive) BOTH failed Play Console's AD_ID check.
+// Stacking the official plugin + the replace directive covers both the
+// "permission never made it into the source manifest" failure mode and the
+// "library stripped it during merge" failure mode.
 const { withAndroidManifest } = require('@expo/config-plugins');
 
 const AD_ID = 'com.google.android.gms.permission.AD_ID';
