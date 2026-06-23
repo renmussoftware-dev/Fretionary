@@ -6,6 +6,18 @@ import TopBar from '../../src/components/TopBar';
 import InfoPanel from '../../src/components/InfoPanel';
 import PillSelector from '../../src/components/PillSelector';
 import DailyPickCard from '../../src/components/DailyPickCard';
+import ChordBox from '../../src/components/ChordBox';
+
+// Canonical pitch-class root for each CAGED letter — the note where the
+// shape sits in its open position. We render the open-position major chord
+// at this root in the CAGED detail card so the user can SEE what the shape
+// looks like (the prototype). The Fretboard above already shows where the
+// shape lives for the user's actually-selected root; the diagram answers
+// "what does this shape itself look like?" which the support email user
+// pointed out was missing.
+const CAGED_PROTOTYPE_ROOT: Record<string, number> = {
+  C: 0, A: 9, G: 7, E: 4, D: 2,
+};
 import { COLORS, SPACE, RADIUS, FONT_FAMILY } from '../../src/constants/theme';
 import {
   NOTES, NOTE_DISPLAY,
@@ -315,6 +327,8 @@ export default function FretboardScreen() {
               const col = CAGED_COLORS[activeCaged];
               const caret = getCagedCaretFret(root, activeCaged as any);
               const tips = CAGED_SHAPE_TIPS[activeCaged as keyof typeof CAGED_SHAPE_TIPS] ?? [];
+              const protoRoot = CAGED_PROTOTYPE_ROOT[activeCaged];
+              const protoNoteName = protoRoot !== undefined ? NOTES[protoRoot] : null;
               return (
                 <View style={styles.cagedDetailCard}>
                   <View style={styles.cagedDetailHeader}>
@@ -326,6 +340,33 @@ export default function FretboardScreen() {
                       <Text style={styles.cagedShapeSub}>Caret fret · {caret || 'open'}</Text>
                     </View>
                   </View>
+
+                  {/* Prototype chord diagram — shows what the CAGED letter's
+                      reference shape actually LOOKS like (e.g. C shape =
+                      open C major). The fretboard above already shows where
+                      this shape sits for the user's selected root; this
+                      diagram answers "what does the shape itself look
+                      like?" which a support email surfaced as a real gap
+                      in the app's CAGED explanation. */}
+                  {protoRoot !== undefined && (
+                    <View style={styles.cagedProtoWrap}>
+                      <Text style={styles.cagedProtoLabel}>
+                        Reference shape · open {protoNoteName} major
+                      </Text>
+                      <ChordBox
+                        root={protoRoot}
+                        chordKey="Major"
+                        compact
+                        lockToLabel={`${activeCaged} shape`}
+                      />
+                      <Text style={styles.cagedProtoHint}>
+                        {caret > 0
+                          ? `Memorize this fingering — for your selected key, barre this shape at fret ${caret}. The colored region on the fretboard above shows where it lives.`
+                          : `Memorize this fingering — for your selected key the shape sits in open position, exactly as shown.`}
+                      </Text>
+                    </View>
+                  )}
+
                   <Text style={styles.cagedShapeDesc}>{shape.description}</Text>
                   <View style={styles.cagedTipsList}>
                     {tips.map((tip, i) => (
@@ -580,6 +621,31 @@ const styles = StyleSheet.create({
   cagedShapeTitle: { fontSize: 16, fontWeight: '700', color: COLORS.text },
   cagedShapeSub:   { fontSize: 12, color: COLORS.textMuted, marginTop: 2 },
   cagedShapeDesc:  { fontSize: 13, color: COLORS.textMuted, lineHeight: 19, marginBottom: SPACE.md },
+  // Prototype-shape mini diagram inside the CAGED detail card.
+  cagedProtoWrap: {
+    alignItems: 'center',
+    paddingVertical: SPACE.md,
+    marginBottom: SPACE.md,
+    borderTopWidth: 1,
+    borderBottomWidth: 1,
+    borderColor: COLORS.border,
+  },
+  cagedProtoLabel: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: COLORS.textMuted,
+    letterSpacing: 1,
+    textTransform: 'uppercase',
+    marginBottom: SPACE.sm,
+  },
+  cagedProtoHint: {
+    fontSize: 11,
+    color: COLORS.textFaint,
+    lineHeight: 16,
+    marginTop: SPACE.sm,
+    paddingHorizontal: SPACE.md,
+    textAlign: 'center',
+  },
   cagedTipsList:   { gap: 10 },
   cagedTipRow:     { flexDirection: 'row', alignItems: 'flex-start', gap: 10 },
   cagedTipNumber:  {

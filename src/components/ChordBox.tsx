@@ -9,6 +9,13 @@ interface Props {
   root: number;
   chordKey: string;
   compact?: boolean; // smaller size for use in progression mini boxes
+  // Lock the box to a specific voicing template (matched by template label
+  // prefix — voicing labels include a fret-position suffix like "(3fr)" so
+  // a startsWith check picks them out regardless of root). Hides the
+  // navigator entirely. Used by the CAGED detail card to show "this is what
+  // the C shape looks like" without letting the user accidentally swipe to
+  // a different voicing.
+  lockToLabel?: string;
 }
 
 // Compact dimensions (progressions mini boxes — always fixed)
@@ -20,7 +27,7 @@ const C_DOT_R = 6;
 const FRETS_SHOWN = 5;
 const STRINGS = 6;
 
-export default function ChordBox({ root, chordKey, compact = false }: Props) {
+export default function ChordBox({ root, chordKey, compact = false, lockToLabel }: Props) {
   const { width: screenW } = useWindowDimensions();
   const isTablet = screenW >= 768;
 
@@ -45,7 +52,14 @@ export default function ChordBox({ root, chordKey, compact = false }: Props) {
 
   // Reset to 0 if root/chord changes and idx is out of range
   const safeIdx = Math.min(voicingIdx, voicings.length - 1);
-  const voicing = voicings[safeIdx];
+  // If lockToLabel is set, find the voicing whose label starts with that
+  // string and display it instead — useful for "show me the C shape" cases
+  // where we want a fixed shape regardless of the user's voicing-nav state.
+  const lockedIdx = lockToLabel
+    ? voicings.findIndex(v => v.label.startsWith(lockToLabel))
+    : -1;
+  const displayIdx = lockedIdx >= 0 ? lockedIdx : safeIdx;
+  const voicing = voicings[displayIdx];
 
   const pl = compact ? C_PAD_L : PAD_L;
   const pt = compact ? C_PAD_T : PAD_T;
@@ -193,8 +207,8 @@ export default function ChordBox({ root, chordKey, compact = false }: Props) {
         ))}
       </Svg>
 
-      {/* Voicing navigator */}
-      {voicings.length > 1 && (
+      {/* Voicing navigator — hidden when locked to a specific shape */}
+      {!lockToLabel && voicings.length > 1 && (
         <View style={[compact ? styles.compactNav : styles.nav, !compact && { width: svgW }]}>
           <TouchableOpacity
             onPress={() => setVoicingIdx(i => (i - 1 + voicings.length) % voicings.length)}
@@ -238,7 +252,7 @@ export default function ChordBox({ root, chordKey, compact = false }: Props) {
       )}
 
       {/* Neck position pills — full size only, aligned with nav */}
-      {!compact && voicings.length > 1 && (
+      {!compact && !lockToLabel && voicings.length > 1 && (
         <View style={[styles.pillRowWrap, { width: svgW }]}>
           {voicings.map((v, i) => (
             <TouchableOpacity key={i} onPress={() => setVoicingIdx(i)} activeOpacity={0.7}
