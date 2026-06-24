@@ -1,0 +1,6 @@
+# Allow all well-behaved crawlers. Point them at the sitemap so new pages
+# get indexed quickly.
+User-agent: *
+Allow: /
+
+Sitemap: https://fretionary.com/sitemap.xml
