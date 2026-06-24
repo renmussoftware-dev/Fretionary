@@ -27,6 +27,7 @@ export default function DailyPickCard() {
   const setScaleKey = useStore(s => s.setScaleKey);
   const setChordKey = useStore(s => s.setChordKey);
   const setMode = useStore(s => s.setMode);
+  const currentStreak = useStore(s => s.currentStreak);
   const { isPro, requirePro } = useProGate();
 
   const locked = !isPro && (
@@ -57,7 +58,19 @@ export default function DailyPickCard() {
   return (
     <TouchableOpacity style={styles.card} onPress={handlePress} activeOpacity={0.85}>
       <View style={{ flex: 1 }}>
-        <Text style={styles.eyebrow}>{eyebrow}</Text>
+        <View style={styles.topRow}>
+          <Text style={styles.eyebrow}>{eyebrow}</Text>
+          {/* Streak chip — relocated here from TopBar so it surfaces at the
+              "today's content" moment, which is where it conceptually belongs
+              (the daily pick card is the streak-counting surface). Only
+              renders once the user has actually opened the app at least one
+              day. */}
+          {currentStreak > 0 && (
+            <Text style={styles.streakText}>
+              🔥 {currentStreak} day streak!
+            </Text>
+          )}
+        </View>
         <Text style={styles.title} numberOfLines={1}>
           {locked ? '🔒  ' : ''}{pick.fullName}
         </Text>
@@ -81,13 +94,25 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(232,212,77,0.32)',
     backgroundColor: 'rgba(232,212,77,0.05)',
   },
+  topRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: SPACE.sm,
+    marginBottom: 6,
+  },
   eyebrow: {
     fontSize: 10,
     fontWeight: '700',
     color: '#E8D44D',
     letterSpacing: 1.5,
     fontFamily: FONT_FAMILY.mono,
-    marginBottom: 6,
+  },
+  streakText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#E8D44D',
+    letterSpacing: 0.2,
   },
   title: {
     fontSize: 18,
