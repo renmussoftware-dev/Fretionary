@@ -43,6 +43,13 @@ export default function NameTheNoteDrill({ difficulty, onComplete, onExit }: Pro
   const startTimeRef = useRef(Date.now());
   const advanceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const tickTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  // Refs mirror correct + qIdx so async callbacks (advance via setTimeout,
+  // tick via setInterval) read the latest values instead of stale closures.
+  // Without these, a perfect 10/10 round reports as 9/10 (90%) because the
+  // advance() closure scheduled in handlePick captures correct from before
+  // the state batch commits. Same root cause for the timer-expiry path.
+  const correctRef = useRef(0);
+  const qIdxRef = useRef(0);
 
   // Countdown timer for advanced
   useEffect(() => {
@@ -52,10 +59,11 @@ export default function NameTheNoteDrill({ difficulty, onComplete, onExit }: Pro
         if (s === null) return s;
         if (s <= 1) {
           if (tickTimerRef.current) clearInterval(tickTimerRef.current);
-          // End round on timeout
+          // End round on timeout — read from refs because this callback was
+          // captured at mount when both values were 0.
           onComplete({
-            correct,
-            total: qIdx + 1,
+            correct: correctRef.current,
+            total: qIdxRef.current + 1,
             elapsedMs: Date.now() - startTimeRef.current,
           });
           return 0;
@@ -76,7 +84,8 @@ export default function NameTheNoteDrill({ difficulty, onComplete, onExit }: Pro
     setPickedNoteClass(nc);
     if (nc === question.noteClass) {
       setFeedback('correct');
-      setCorrect(c => c + 1);
+      correctRef.current += 1;
+      setCorrect(correctRef.current);
     } else {
       setFeedback('wrong');
     }
@@ -88,12 +97,13 @@ export default function NameTheNoteDrill({ difficulty, onComplete, onExit }: Pro
     if (nextIdx >= cfg.questions) {
       if (tickTimerRef.current) clearInterval(tickTimerRef.current);
       onComplete({
-        correct: correct + (feedback === 'correct' ? 0 : 0), // already added in handlePick
+        correct: correctRef.current,
         total: cfg.questions,
         elapsedMs: Date.now() - startTimeRef.current,
       });
       return;
     }
+    qIdxRef.current = nextIdx;
     setQIdx(nextIdx);
     setQuestion(genQuestion(cfg.maxFret, cfg.naturalsOnly));
     setFeedback(null);

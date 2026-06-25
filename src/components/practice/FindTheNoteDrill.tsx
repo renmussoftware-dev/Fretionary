@@ -51,6 +51,12 @@ export default function FindTheNoteDrill({ difficulty, onComplete, onExit }: Pro
   const wrongTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const advanceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const tickTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  // Refs mirror perfectCount + tIdx so async callbacks (advanceTarget via
+  // setTimeout, timer tick via setInterval) read the latest values. Without
+  // these, the closure captured at scheduling time sees a stale count and
+  // a perfect round ends up reported as N-1 / N (e.g. 9/10 = 90%).
+  const perfectCountRef = useRef(0);
+  const tIdxRef = useRef(0);
 
   const allTargetPositions = useMemo(
     () => allPositionsFor(target, cfg.maxFret),
@@ -66,8 +72,8 @@ export default function FindTheNoteDrill({ difficulty, onComplete, onExit }: Pro
         if (s <= 1) {
           if (tickTimerRef.current) clearInterval(tickTimerRef.current);
           onComplete({
-            correct: perfectCount,
-            total: tIdx + 1,
+            correct: perfectCountRef.current,
+            total: tIdxRef.current + 1,
             elapsedMs: Date.now() - startTimeRef.current,
           });
           return 0;
@@ -96,7 +102,10 @@ export default function FindTheNoteDrill({ difficulty, onComplete, onExit }: Pro
       setFoundFrets(next);
       // All instances found?
       if (next.length === allTargetPositions.length) {
-        if (!mistakeThisTarget) setPerfectCount(c => c + 1);
+        if (!mistakeThisTarget) {
+          perfectCountRef.current += 1;
+          setPerfectCount(perfectCountRef.current);
+        }
         // Brief delay then advance
         advanceTimerRef.current = setTimeout(() => advanceTarget(), 700);
       }
@@ -113,12 +122,13 @@ export default function FindTheNoteDrill({ difficulty, onComplete, onExit }: Pro
     if (nextIdx >= targetCount) {
       if (tickTimerRef.current) clearInterval(tickTimerRef.current);
       onComplete({
-        correct: perfectCount + (!mistakeThisTarget ? 0 : 0), // already added above
+        correct: perfectCountRef.current,
         total: targetCount,
         elapsedMs: Date.now() - startTimeRef.current,
       });
       return;
     }
+    tIdxRef.current = nextIdx;
     setTIdx(nextIdx);
     setTarget(prev => pickTargetNote(cfg.naturalsOnly, prev));
     setFoundFrets([]);

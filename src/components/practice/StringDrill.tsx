@@ -42,6 +42,12 @@ export default function StringDrill({ difficulty, onComplete, onExit }: Props) {
   const startTimeRef = useRef(Date.now());
   const advanceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const tickTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  // Refs mirror correct + qIdx so async callbacks (setTimeout in advance,
+  // setInterval in the countdown) read the latest values — using state
+  // directly produced a stale-closure bug where a perfect round scored as
+  // N-1 / N (90% on a 10-question round).
+  const correctRef = useRef(0);
+  const qIdxRef = useRef(0);
 
   // First fret on mount
   useEffect(() => {
@@ -57,8 +63,8 @@ export default function StringDrill({ difficulty, onComplete, onExit }: Props) {
         if (s <= 1) {
           if (tickTimerRef.current) clearInterval(tickTimerRef.current);
           onComplete({
-            correct,
-            total: qIdx + 1,
+            correct: correctRef.current,
+            total: qIdxRef.current + 1,
             elapsedMs: Date.now() - startTimeRef.current,
           });
           return 0;
@@ -80,10 +86,12 @@ export default function StringDrill({ difficulty, onComplete, onExit }: Props) {
     const range = Array.from({ length: cfg.maxFret + 1 }, (_, i) => i);
     const newQueue = shuffle(range);
     setFretQueue(newQueue);
+    qIdxRef.current = 0;
     setQIdx(0);
     setCurrentFret(newQueue[0]);
     setFeedback(null);
     setPickedNoteClass(null);
+    correctRef.current = 0;
     setCorrect(0);
     startTimeRef.current = Date.now();
   }
@@ -94,7 +102,8 @@ export default function StringDrill({ difficulty, onComplete, onExit }: Props) {
     const correctClass = (OPEN_STRINGS[stringIdx] + currentFret) % 12;
     if (nc === correctClass) {
       setFeedback('correct');
-      setCorrect(c => c + 1);
+      correctRef.current += 1;
+      setCorrect(correctRef.current);
     } else {
       setFeedback('wrong');
     }
@@ -106,7 +115,7 @@ export default function StringDrill({ difficulty, onComplete, onExit }: Props) {
     if (nextIdx >= cfg.questions) {
       if (tickTimerRef.current) clearInterval(tickTimerRef.current);
       onComplete({
-        correct,
+        correct: correctRef.current,
         total: cfg.questions,
         elapsedMs: Date.now() - startTimeRef.current,
       });
@@ -118,6 +127,7 @@ export default function StringDrill({ difficulty, onComplete, onExit }: Props) {
       queue = shuffle(range);
       setFretQueue(queue);
     }
+    qIdxRef.current = nextIdx;
     setQIdx(nextIdx);
     setCurrentFret(queue[nextIdx % queue.length]);
     setFeedback(null);
