@@ -23,10 +23,18 @@ export default function TuningPicker({ forcedStandard = false }: Props) {
   function handleSelect(t: Tuning) {
     if (forcedStandard) return; // shouldn't happen — picker disabled in this mode
     if (!isPro && !isTuningFree(t.id)) {
-      requirePro(() => {
-        setTuningId(t.id);
-        setOpen(false);
-      });
+      // Close the picker's RN <Modal> before pushing the paywall route.
+      // Without this, the paywall (presentation: 'modal') stacks on top of an
+      // active <Modal> and native window-stack state gets stuck: after the
+      // user returns from a successful purchase, the picker's modal is still
+      // technically "visible" but its touch handlers are dead, and the tuning
+      // dropdown does nothing until the app is reloaded. Closing here keeps
+      // only one modal layer active at a time.
+      // The requirePro action callback never fires on the post-purchase path
+      // anyway (requirePro only invokes it when isPro is already true), so
+      // we just close — the user re-opens the picker after upgrading.
+      setOpen(false);
+      requirePro(() => setTuningId(t.id));
       return;
     }
     setTuningId(t.id);
