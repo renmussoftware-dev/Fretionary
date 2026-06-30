@@ -40,6 +40,20 @@ function yesterdayKey(): string {
 export type AppMode = 'scales' | 'chords' | 'caged' | 'custom';
 export type LabelMode = 'name' | 'degree' | 'interval' | 'none';
 export type ScalePlaybackSpeed = 'slow' | 'normal' | 'fast';
+export type LabelSize = 'sm' | 'md' | 'lg';
+export type FretRange = 'all' | 'open' | 'low' | 'mid' | 'high';
+
+// Inclusive start/end frets for each FretRange preset. Centralized here so
+// Fretboard.tsx and the UI picker stay in sync. Beyond raw range, anything
+// outside [start, end] is hidden entirely (frets, notes, inlays) and the
+// remaining range fills the available width so the user can actually focus.
+export const FRET_RANGES: Record<FretRange, { start: number; end: number; label: string }> = {
+  all:  { start: 0,  end: 15, label: 'All' },
+  open: { start: 0,  end: 5,  label: '0–5' },
+  low:  { start: 0,  end: 7,  label: '0–7' },
+  mid:  { start: 5,  end: 12, label: '5–12' },
+  high: { start: 12, end: 15, label: '12+' },
+};
 
 // Per-step delay (ms) for scale playback. Slow is for students who want
 // to track each highlighted note; fast is for fluent practice. Normal
@@ -119,6 +133,15 @@ interface AppState {
   scalePlaybackSpeed: ScalePlaybackSpeed;
   setScalePlaybackSpeed: (speed: ScalePlaybackSpeed) => void;
 
+  // Note-label readability + neck range. Both persisted. The 'sm' preset
+  // matches the old baseline so existing users don't see a surprise jump
+  // in label size unless they opt in; 'md' is the new default for fresh
+  // installs (slightly bigger + brighter scale-tone text).
+  labelSize: LabelSize;
+  setLabelSize: (size: LabelSize) => void;
+  fretRange: FretRange;
+  setFretRange: (range: FretRange) => void;
+
   // Transient: set by the Saved sheet so a tab screen can apply its local
   // selection on next render. The screen clears it after consuming.
   pendingNav: SavedItem | null;
@@ -170,6 +193,8 @@ export const useStore = create<AppState>()(
       longestStreak: 0,
       playbackHighlight: null,
       scalePlaybackSpeed: 'normal',
+      labelSize: 'md',
+      fretRange: 'all',
       pendingNav: null,
 
       setPendingNav: (pendingNav) => set({ pendingNav }),
@@ -179,6 +204,8 @@ export const useStore = create<AppState>()(
       setPlaybackHighlight: (playbackHighlight) => set({ playbackHighlight }),
 
       setScalePlaybackSpeed: (scalePlaybackSpeed) => set({ scalePlaybackSpeed }),
+      setLabelSize: (labelSize) => set({ labelSize }),
+      setFretRange: (fretRange) => set({ fretRange }),
 
       recordActivity: () => {
         const today = todayKey();
@@ -288,6 +315,8 @@ export const useStore = create<AppState>()(
         currentStreak: s.currentStreak,
         longestStreak: s.longestStreak,
         scalePlaybackSpeed: s.scalePlaybackSpeed,
+        labelSize: s.labelSize,
+        fretRange: s.fretRange,
       }),
     },
   ),

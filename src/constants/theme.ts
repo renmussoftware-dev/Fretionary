@@ -23,7 +23,11 @@ const ROOT  = { fill: '#E0CC58', stroke: '#B49E2E', text: '#3E3208' };
 const THIRD = { fill: '#D45846', stroke: '#9B3A2D', text: '#fff' };
 const FIFTH = { fill: '#3FA08A', stroke: '#26786A', text: '#fff' };
 const EXT   = { fill: '#5C8FCC', stroke: '#3D6BA0', text: '#fff' };
-const SCALE = { fill: 'rgba(255,255,255,0.10)', stroke: 'rgba(255,255,255,0.18)', text: 'rgba(242,241,236,0.65)' };
+// Scale-tone text brightened from 0.65 → 0.92 alpha so the letters inside
+// the gray "passing tone" dots are actually readable. User reported the
+// labels were hard to read; this is half of the fix (the other half is the
+// labelSize picker that bumps the font itself).
+const SCALE = { fill: 'rgba(255,255,255,0.10)', stroke: 'rgba(255,255,255,0.18)', text: 'rgba(242,241,236,0.92)' };
 const GHOST = { fill: 'rgba(255,255,255,0.04)', stroke: 'rgba(255,255,255,0.10)', text: 'rgba(242,241,236,0.30)' };
 
 // Position colours rebalanced — same identity, lower chroma so they harmonize

@@ -37,6 +37,22 @@ const LABEL_OPTIONS = [
   { label: 'None', value: 'none' },
 ];
 
+const LABEL_SIZE_OPTIONS = [
+  { label: 'Sm', value: 'sm' },
+  { label: 'Md', value: 'md' },
+  { label: 'Lg', value: 'lg' },
+];
+
+// Pull friendly labels straight from FRET_RANGES so the picker and the
+// renderer can't drift. Order matches All → narrow → mid → high.
+const FRET_RANGE_OPTIONS = [
+  { label: 'All',  value: 'all'  },
+  { label: '0–5',  value: 'open' },
+  { label: '0–7',  value: 'low'  },
+  { label: '5–12', value: 'mid'  },
+  { label: '12+',  value: 'high' },
+];
+
 export default function FretboardScreen() {
   const { width: screenW } = useWindowDimensions();
   const isTablet = screenW >= 768;
@@ -50,6 +66,7 @@ export default function FretboardScreen() {
     activePosition, setActivePosition,
     activeCaged, setActiveCaged,
     customNotes, toggleCustomNote, clearCustomNotes,
+    labelSize, setLabelSize, fretRange, setFretRange,
   } = useStore();
   const setPlaybackHighlight = useStore(s => s.setPlaybackHighlight);
   const scalePlaybackSpeed = useStore(s => s.scalePlaybackSpeed);
@@ -386,6 +403,16 @@ export default function FretboardScreen() {
         <View style={styles.section}>
           <PillSelector label="Note labels" options={LABEL_OPTIONS} value={labelMode}
             onChange={v => v && setLabelMode(v as any)} allowDeselect={false} />
+        </View>
+        {/* Display section — readability controls. Both pickers apply across
+            every fretboard mode and persist via the store. */}
+        <View style={styles.section}>
+          <PillSelector label="Label size" options={LABEL_SIZE_OPTIONS} value={labelSize}
+            onChange={v => v && setLabelSize(v as any)} allowDeselect={false} />
+        </View>
+        <View style={styles.section}>
+          <PillSelector label="Fret range" options={FRET_RANGE_OPTIONS} value={fretRange}
+            onChange={v => v && setFretRange(v as any)} allowDeselect={false} />
         </View>
         <View style={{ height: SPACE.xxl }} />
     </>

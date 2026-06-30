@@ -13,12 +13,21 @@ import {
   getScaleNotes, getChordNotes, getScalePositions,
   getCagedFretRange, noteLabel,
 } from '../utils/theory';
-import { useStore } from '../store/useStore';
+import { useStore, FRET_RANGES, type LabelSize } from '../store/useStore';
 import { getTuning, tuningNoteClasses, STANDARD_TUNING } from '../constants/tunings';
 
 const TOTAL_FRETS = 15;
 const STR_COUNT = 6;
 const INLAY_FRETS = [3, 5, 7, 9, 12, 15];
+
+// Per-size font sizes for note labels inside the dots. 'sm' matches the
+// long-shipped default that a support email called out as hard to read;
+// 'md' (the new default) bumps both sizes by +2pt for everyone, and 'lg'
+// adds another +2 for users with vision needs. Dot radius isn't scaled —
+// keeping it constant makes the bigger font fill more of the circle,
+// which is what actually improves readability.
+const LABEL_FONT_SHORT: Record<LabelSize, number> = { sm: 9,  md: 11, lg: 13 };
+const LABEL_FONT_LONG:  Record<LabelSize, number> = { sm: 7,  md: 9,  lg: 11 };
 
 // Visual treatment for in-position vs out-of-position notes.
 // Per the Obsidian redesign: in-position notes pop, out-of-position notes
@@ -31,24 +40,57 @@ export default function Fretboard() {
   const { width: screenW } = useWindowDimensions();
   const isTablet = screenW >= 768;
 
+  const { root, scaleKey, chordKey, mode, labelMode, activePosition, activeCaged, tuningId, customNotes, labelSize, fretRange } = useStore();
+  const playbackHighlight = useStore(s => s.playbackHighlight);
+
+  // Fret-range window. When the user picks a narrower range than 'all', we
+  // hide everything outside [winStart, winEnd] AND grow FRET_W so the
+  // remaining range fills the available width — the point of "focus on
+  // first 5 frets" is to actually see them larger, not just clip the rest.
+  const range = FRET_RANGES[fretRange];
+  const winStart = range.start;
+  const winEnd = range.end;
+  const showNut = winStart === 0;
+  const cellCount = showNut ? winEnd : winEnd - winStart + 1;
+
   // Scale fretboard dimensions based on screen width
   const LEFT_PAD = isTablet ? 36 : 30;
   const TOP_PAD = isTablet ? 32 : 28;
-  const FRET_W = isTablet ? Math.floor((screenW - 100) / TOTAL_FRETS) : 56;
-  const STR_H = isTablet ? 44 : 36;
   const NUT_W = 8;
+  const STR_H = isTablet ? 44 : 36;
   const DOT_R = isTablet ? 17 : 14;
-  const SVG_W = LEFT_PAD + NUT_W + TOTAL_FRETS * FRET_W + 18;
+
+  // FRET_W: for the full neck on phone, keep the original fixed 56px (lets
+  // the existing horizontal scroll work). For narrower ranges, or on tablet
+  // at any range, fit the range to the available width so the zoom-in is
+  // actually visible.
+  const isFullRangePhone = fretRange === 'all' && !isTablet;
+  const availableW = screenW - (isTablet ? 100 : 60);
+  const FRET_W = isFullRangePhone
+    ? 56
+    : Math.floor((availableW - (showNut ? NUT_W : 0)) / cellCount);
+
+  const SVG_W = LEFT_PAD + (showNut ? NUT_W : 0) + cellCount * FRET_W + 18;
   const SVG_H = TOP_PAD + (STR_COUNT - 1) * STR_H + 40;
 
   function fretX(f: number) {
-    if (f === 0) return LEFT_PAD + NUT_W / 2;
-    return LEFT_PAD + NUT_W + f * FRET_W - FRET_W / 2;
+    // Open string (fret 0) sits at the nut. Only meaningful when the window
+    // includes the open position.
+    if (showNut && f === 0) return LEFT_PAD + NUT_W / 2;
+    // Offset within the rendered cell grid. cellIdx 0 = leftmost fretted
+    // cell. For windowed ranges (winStart > 0) the leftmost cell holds the
+    // winStart fret itself.
+    const cellIdx = f - (showNut ? 1 : winStart);
+    return LEFT_PAD + (showNut ? NUT_W : 0) + cellIdx * FRET_W + FRET_W / 2;
+  }
+  // X-coordinate of the metal fret line at the END (high-fret side) of the
+  // cell holding fret f. Used for drawing fret bars and the bounding box of
+  // position/CAGED highlight rectangles.
+  function fretLineX(f: number) {
+    const offsetFromLeftmostCell = f - (showNut ? 1 : winStart) + 1;
+    return LEFT_PAD + (showNut ? NUT_W : 0) + offsetFromLeftmostCell * FRET_W;
   }
   function strY(s: number) { return TOP_PAD + s * STR_H; }
-
-  const { root, scaleKey, chordKey, mode, labelMode, activePosition, activeCaged, tuningId, customNotes } = useStore();
-  const playbackHighlight = useStore(s => s.playbackHighlight);
 
   // CAGED is defined by standard-tuning open shapes — force standard for that mode.
   const activeTuning = mode === 'caged' ? STANDARD_TUNING : getTuning(tuningId);
@@ -200,9 +242,9 @@ export default function Fretboard() {
           </RadialGradient>
         </Defs>
 
-        {/* Inlay dots */}
-        {INLAY_FRETS.map(f => {
-          const x = LEFT_PAD + NUT_W + f * FRET_W - FRET_W / 2;
+        {/* Inlay dots — skipped when outside the visible window */}
+        {INLAY_FRETS.filter(f => f >= winStart && f <= winEnd).map(f => {
+          const x = fretX(f);
           if (f === 12) return (
             <G key={f}>
               <Circle cx={x} cy={strY(1.5)} r={3.5} fill={inlayColor} />
@@ -212,52 +254,68 @@ export default function Fretboard() {
           return <Circle key={f} cx={x} cy={strY(2.5)} r={3.5} fill={inlayColor} />;
         })}
 
-        {/* Position highlight — soft gradient, no harsh outline */}
+        {/* Position highlight — clamped to the visible window. If the
+            position lies entirely outside the window, the rect collapses
+            and renders nothing visible. */}
         {mode === 'scales' && activePosition !== null && positions[activePosition] && (() => {
           const pos = positions[activePosition];
-          const x1 = pos.start === 0 ? LEFT_PAD : LEFT_PAD + NUT_W + pos.start * FRET_W - FRET_W / 2;
-          const x2 = LEFT_PAD + NUT_W + (pos.end + 1) * FRET_W - FRET_W / 2;
+          const clampedStart = Math.max(pos.start, winStart);
+          const clampedEnd = Math.min(pos.end, winEnd);
+          if (clampedStart > clampedEnd) return null;
+          const x1 = clampedStart === 0 && showNut ? LEFT_PAD : fretX(clampedStart) - FRET_W / 2;
+          const x2 = fretLineX(clampedEnd);
           return (
             <Rect x={x1} y={strY(0) - 14} width={x2 - x1} height={(STR_COUNT - 1) * STR_H + 28}
               rx={10} fill="url(#posHL)" />
           );
         })()}
 
-        {/* CAGED highlight — same gradient treatment with a caret line */}
+        {/* CAGED highlight — same gradient treatment with a caret line.
+            Caret only renders when it falls inside the window. */}
         {mode === 'caged' && cagedRange && activeCaged && (() => {
           const col = CAGED_COLORS[activeCaged];
-          const x1 = cagedRange.start === 0 ? LEFT_PAD : LEFT_PAD + NUT_W + cagedRange.start * FRET_W - FRET_W / 2;
-          const x2 = LEFT_PAD + NUT_W + (cagedRange.end + 1) * FRET_W - FRET_W / 2;
+          const clampedStart = Math.max(cagedRange.start, winStart);
+          const clampedEnd = Math.min(cagedRange.end, winEnd);
+          if (clampedStart > clampedEnd) return null;
+          const x1 = clampedStart === 0 && showNut ? LEFT_PAD : fretX(clampedStart) - FRET_W / 2;
+          const x2 = fretLineX(clampedEnd);
+          const caretInWindow = cagedRange.caretFret >= winStart && cagedRange.caretFret <= winEnd;
           return (
             <G>
               <Rect x={x1} y={strY(0) - 14} width={x2 - x1} height={(STR_COUNT - 1) * STR_H + 28}
                 rx={10} fill={col.light} />
-              <Line
-                x1={LEFT_PAD + NUT_W + cagedRange.caretFret * FRET_W - FRET_W / 2}
-                y1={strY(0) - 16}
-                x2={LEFT_PAD + NUT_W + cagedRange.caretFret * FRET_W - FRET_W / 2}
-                y2={strY(5) + 16}
-                stroke={col.fill} strokeWidth={1.5} strokeDasharray="5,4" strokeOpacity={0.6}
-              />
+              {caretInWindow && (
+                <Line
+                  x1={fretX(cagedRange.caretFret)}
+                  y1={strY(0) - 16}
+                  x2={fretX(cagedRange.caretFret)}
+                  y2={strY(5) + 16}
+                  stroke={col.fill} strokeWidth={1.5} strokeDasharray="5,4" strokeOpacity={0.6}
+                />
+              )}
             </G>
           );
         })()}
 
-        {/* Frets */}
-        {Array.from({ length: TOTAL_FRETS }, (_, i) => i + 1).map(f => (
+        {/* Frets — only render lines for frets in the visible window. For
+            showNut ranges that's frets 1..winEnd. For mid-neck ranges
+            (winStart > 0) the leftmost fret line is at the window's left
+            edge (winStart) plus everything after. */}
+        {Array.from({ length: cellCount }, (_, i) => (showNut ? i + 1 : winStart + i)).map(f => (
           <Line key={f}
-            x1={LEFT_PAD + NUT_W + f * FRET_W} y1={strY(0) - 10}
-            x2={LEFT_PAD + NUT_W + f * FRET_W} y2={strY(5) + 10}
+            x1={fretLineX(f)} y1={strY(0) - 10}
+            x2={fretLineX(f)} y2={strY(5) + 10}
             stroke={f === 12 ? fretColorHL : fretColor} strokeWidth={1}
           />
         ))}
 
-        {/* Strings — hairline with thickness gradient */}
+        {/* Strings — hairline with thickness gradient. Width follows the
+            window: from the leftmost cell edge to the rightmost. */}
         {Array.from({ length: STR_COUNT }, (_, s) => (
           <G key={s}>
             <Line
               x1={LEFT_PAD} y1={strY(s)}
-              x2={LEFT_PAD + NUT_W + TOTAL_FRETS * FRET_W} y2={strY(s)}
+              x2={LEFT_PAD + (showNut ? NUT_W : 0) + cellCount * FRET_W} y2={strY(s)}
               stroke={stringColor} strokeWidth={0.5 + (s / STR_COUNT) * 1.4} strokeOpacity={0.7}
             />
             <SvgText
@@ -270,17 +328,26 @@ export default function Fretboard() {
           </G>
         ))}
 
-        {/* Nut — refined */}
-        <Rect
-          x={LEFT_PAD} y={strY(0) - 12}
-          width={NUT_W} height={(STR_COUNT - 1) * STR_H + 24}
-          rx={2} fill={nutColor} opacity={0.85}
-        />
+        {/* Nut — only when the open position is part of the window. */}
+        {showNut && (
+          <Rect
+            x={LEFT_PAD} y={strY(0) - 12}
+            width={NUT_W} height={(STR_COUNT - 1) * STR_H + 24}
+            rx={2} fill={nutColor} opacity={0.85}
+          />
+        )}
 
-        {/* Fret numbers — monospace, tabular */}
-        {[1,3,5,7,9,12,15].map(f => (
+        {/* Fret numbers — only render the ones inside the window. For
+            mid-neck windows we also show the leftmost fret number so the
+            user knows where on the neck they are looking. */}
+        {Array.from(new Set([
+          ...[1,3,5,7,9,12,15].filter(f => f >= winStart && f <= winEnd),
+          // Always include the window's leftmost fret as an orientation
+          // marker when we're not showing the nut.
+          ...(!showNut ? [winStart] : []),
+        ])).sort((a, b) => a - b).map(f => (
           <SvgText key={f}
-            x={LEFT_PAD + NUT_W + f * FRET_W - FRET_W / 2}
+            x={fretX(f)}
             y={SVG_H - 6}
             textAnchor="middle" fontSize={9} fill={COLORS.textFaint}
             fontFamily={FONT_FAMILY.mono}
@@ -289,16 +356,21 @@ export default function Fretboard() {
           </SvgText>
         ))}
 
-        {/* Note dots */}
+        {/* Note dots — skip frets outside the visible window so we don't
+            paint hidden notes into negative or oversized canvas regions. */}
         {Array.from({ length: STR_COUNT }, (_, s) =>
           Array.from({ length: TOTAL_FRETS + 1 }, (_, f) => {
+            if (f < winStart || f > winEnd) return null;
             const ni = (noteClasses[s] + f) % 12;
             const col = getNoteColor(ni, f);
             if (!col) return null;
             const x = fretX(f);
             const y = strY(s);
             const label = noteLabel(ni, root, labelMode, scaleKey, chordKey, mode);
-            const fs = label.length > 2 ? 7 : 9;
+            // User-controlled font size — the support-email request was that
+            // labels were hard to read. Defaults to 'md' (11pt/9pt), one tier
+            // above the old 'sm' baseline (9pt/7pt).
+            const fs = label.length > 2 ? LABEL_FONT_LONG[labelSize] : LABEL_FONT_SHORT[labelSize];
             // When this note's pitch class matches the currently-playing
             // scale note, scale the dot up and overlay a bright white ring +
             // outer glow so all instances of that pitch on the neck "light up"
