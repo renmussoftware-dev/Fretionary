@@ -21,6 +21,20 @@ function shuffle<T>(arr: T[]): T[] {
   return copy;
 }
 
+// Build the shuffled fret queue for a given string. When naturalsOnly is on
+// (Beginner difficulty) we must drop any fret whose resulting pitch class is
+// a sharp — otherwise the fretboard highlights e.g. E-string fret 2 (F#),
+// but the answer pills below are C/D/E/F/G/A/B and the user has no way to
+// answer correctly. Filtering per-string because the same fret number
+// resolves to a different pitch class on each string.
+function buildFretQueue(maxFret: number, stringIdx: number, naturalsOnly: boolean): number[] {
+  const range = Array.from({ length: maxFret + 1 }, (_, i) => i);
+  const filtered = naturalsOnly
+    ? range.filter(f => NATURAL_NOTES.includes((OPEN_STRINGS[stringIdx] + f) % 12))
+    : range;
+  return shuffle(filtered);
+}
+
 export default function StringDrill({ difficulty, onComplete, onExit }: Props) {
   const cfg = DIFFICULTY[difficulty];
   const optionNoteClasses = cfg.naturalsOnly ? NATURAL_NOTES : ALL_NOTE_CLASSES;
@@ -29,10 +43,11 @@ export default function StringDrill({ difficulty, onComplete, onExit }: Props) {
   const [stringIdx, setStringIdx] = useState<number>(() => Math.floor(Math.random() * 6));
 
   // Build a shuffled queue of frets to visit; refilled on string change.
-  const [fretQueue, setFretQueue] = useState<number[]>(() => {
-    const range = Array.from({ length: cfg.maxFret + 1 }, (_, i) => i);
-    return shuffle(range);
-  });
+  // Filtered by naturalsOnly per the answer-pill options so we never ask
+  // about a note the user can't select.
+  const [fretQueue, setFretQueue] = useState<number[]>(() =>
+    buildFretQueue(cfg.maxFret, stringIdx, cfg.naturalsOnly),
+  );
   const [qIdx, setQIdx] = useState(0);
   const [currentFret, setCurrentFret] = useState<number>(() => 0);
   const [feedback, setFeedback] = useState<'correct' | 'wrong' | null>(null);
@@ -83,8 +98,7 @@ export default function StringDrill({ difficulty, onComplete, onExit }: Props) {
   function changeString(s: number) {
     if (s === stringIdx) return;
     setStringIdx(s);
-    const range = Array.from({ length: cfg.maxFret + 1 }, (_, i) => i);
-    const newQueue = shuffle(range);
+    const newQueue = buildFretQueue(cfg.maxFret, s, cfg.naturalsOnly);
     setFretQueue(newQueue);
     qIdxRef.current = 0;
     setQIdx(0);
@@ -123,8 +137,7 @@ export default function StringDrill({ difficulty, onComplete, onExit }: Props) {
     }
     let queue = fretQueue;
     if (nextIdx >= queue.length) {
-      const range = Array.from({ length: cfg.maxFret + 1 }, (_, i) => i);
-      queue = shuffle(range);
+      queue = buildFretQueue(cfg.maxFret, stringIdx, cfg.naturalsOnly);
       setFretQueue(queue);
     }
     qIdxRef.current = nextIdx;
