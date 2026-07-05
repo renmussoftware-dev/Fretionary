@@ -11,7 +11,7 @@ const MODES: { label: string; value: AppMode; pro?: boolean }[] = [
   { label: 'Scales', value: 'scales' },
   { label: 'Chords', value: 'chords' },
   { label: 'CAGED',  value: 'caged'  },
-  { label: 'Custom', value: 'custom', pro: true },
+  { label: 'Identify', value: 'custom', pro: true },
 ];
 
 // Sliding indicator inside a segmented control. Animates between mode pills
@@ -120,7 +120,7 @@ export default function TopBar() {
     : mode === 'caged'
       ? `${NOTES[root]} CAGED`
       : mode === 'custom'
-        ? `${NOTES[root]} Custom`
+        ? `${NOTES[root]} Identify`
         : `${NOTES[root]} ${scaleKey}`;
 
   return (
