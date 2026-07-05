@@ -42,6 +42,9 @@ export default function Fretboard() {
 
   const { root, scaleKey, chordKey, mode, labelMode, activePosition, activeCaged, tuningId, customNotes, labelSize, fretRange } = useStore();
   const playbackHighlight = useStore(s => s.playbackHighlight);
+  // Only used in Custom mode — every fret position becomes a tap target
+  // that toggles the note class at that position on/off.
+  const toggleCustomNote = useStore(s => s.toggleCustomNote);
 
   // Fret-range window. When the user picks a narrower range than 'all', we
   // hide everything outside [winStart, winEnd] AND grow FRET_W so the
@@ -357,16 +360,23 @@ export default function Fretboard() {
         ))}
 
         {/* Note dots — skip frets outside the visible window so we don't
-            paint hidden notes into negative or oversized canvas regions. */}
+            paint hidden notes into negative or oversized canvas regions.
+            In Custom mode, every position renders (as a tap target with a
+            subtle ghost dot when unselected) so the user can pick notes
+            directly on the fretboard instead of hunting the pill row. */}
         {Array.from({ length: STR_COUNT }, (_, s) =>
           Array.from({ length: TOTAL_FRETS + 1 }, (_, f) => {
             if (f < winStart || f > winEnd) return null;
             const ni = (noteClasses[s] + f) % 12;
             const col = getNoteColor(ni, f);
-            if (!col) return null;
+            const isCustom = mode === 'custom';
+            // Skip empty positions in non-Custom modes — the read-only
+            // fretboard should stay uncluttered. In Custom mode we render
+            // a ghost dot at empty positions to advertise tappability.
+            if (!col && !isCustom) return null;
             const x = fretX(f);
             const y = strY(s);
-            const label = noteLabel(ni, root, labelMode, scaleKey, chordKey, mode);
+            const label = col ? noteLabel(ni, root, labelMode, scaleKey, chordKey, mode) : '';
             // User-controlled font size — the support-email request was that
             // labels were hard to read. Defaults to 'md' (11pt/9pt), one tier
             // above the old 'sm' baseline (9pt/7pt).
@@ -376,32 +386,65 @@ export default function Fretboard() {
             // outer glow so all instances of that pitch on the neck "light up"
             // simultaneously. Lets the user see where the note they're hearing
             // lives across the entire fretboard.
-            const isPlaying = playbackHighlight !== null && ni === playbackHighlight;
-            const r = DOT_R * col.scale * (isPlaying ? 1.35 : 1);
-            return (
-              <G key={`${s}-${f}`} opacity={col.opacity}>
-                {col.isRoot && col.opacity === 1 && (
-                  <Circle cx={x} cy={y} r={DOT_R + 6} fill="url(#rootGlow)" />
+            const isPlaying = col && playbackHighlight !== null && ni === playbackHighlight;
+            const r = col ? DOT_R * col.scale * (isPlaying ? 1.35 : 1) : DOT_R;
+
+            const inner = (
+              <>
+                {/* Oversized transparent hit target for Custom mode — makes
+                    the ~28px note dots comfortable to tap on. Renders behind
+                    the visible dot so touches on either land on the same
+                    handler. */}
+                {isCustom && (
+                  <Circle cx={x} cy={y} r={DOT_R * 1.5} fill="transparent" />
                 )}
-                {isPlaying && (
-                  <Circle cx={x} cy={y} r={DOT_R + 10} fill="url(#playGlow)" />
+                {/* Ghost dot on empty Custom positions — subtle visual
+                    affordance that the position is tappable. Small enough
+                    not to compete with the colored dots for selected notes. */}
+                {isCustom && !col && (
+                  <Circle
+                    cx={x} cy={y} r={DOT_R * 0.4}
+                    fill="rgba(255,255,255,0.05)"
+                    stroke="rgba(255,255,255,0.12)"
+                    strokeWidth={0.8}
+                  />
                 )}
-                <Circle
-                  cx={x} cy={y} r={r}
-                  fill={col.fill}
-                  stroke={isPlaying ? '#ffffff' : col.stroke}
-                  strokeWidth={isPlaying ? 2.5 : 1}
-                />
-                {label ? (
-                  <SvgText
-                    x={x} y={y + fs / 2 + 1}
-                    textAnchor="middle" fontSize={fs} fontWeight="600"
-                    fill={col.text}
-                    fontFamily={FONT_FAMILY.mono}
-                  >
-                    {label}
-                  </SvgText>
-                ) : null}
+                {col && (
+                  <>
+                    {col.isRoot && col.opacity === 1 && (
+                      <Circle cx={x} cy={y} r={DOT_R + 6} fill="url(#rootGlow)" />
+                    )}
+                    {isPlaying && (
+                      <Circle cx={x} cy={y} r={DOT_R + 10} fill="url(#playGlow)" />
+                    )}
+                    <Circle
+                      cx={x} cy={y} r={r}
+                      fill={col.fill}
+                      stroke={isPlaying ? '#ffffff' : col.stroke}
+                      strokeWidth={isPlaying ? 2.5 : 1}
+                    />
+                    {label ? (
+                      <SvgText
+                        x={x} y={y + fs / 2 + 1}
+                        textAnchor="middle" fontSize={fs} fontWeight="600"
+                        fill={col.text}
+                        fontFamily={FONT_FAMILY.mono}
+                      >
+                        {label}
+                      </SvgText>
+                    ) : null}
+                  </>
+                )}
+              </>
+            );
+
+            return isCustom ? (
+              <G key={`${s}-${f}`} opacity={col?.opacity ?? 1} onPress={() => toggleCustomNote(ni)}>
+                {inner}
+              </G>
+            ) : (
+              <G key={`${s}-${f}`} opacity={col!.opacity}>
+                {inner}
               </G>
             );
           })
