@@ -16,9 +16,12 @@ import {
 import { useStore, FRET_RANGES, type LabelSize } from '../store/useStore';
 import { getTuning, tuningNoteClasses, STANDARD_TUNING } from '../constants/tunings';
 
-const TOTAL_FRETS = 15;
+const TOTAL_FRETS = 24;
 const STR_COUNT = 6;
-const INLAY_FRETS = [3, 5, 7, 9, 12, 15];
+// Inlay dot positions — standard 24-fret layout. The 12 and 24 positions
+// are doubles (rendered as two dots) since they mark the octave and
+// double-octave respectively.
+const INLAY_FRETS = [3, 5, 7, 9, 12, 15, 17, 19, 21, 24];
 
 // Per-size font sizes for note labels inside the dots. 'sm' matches the
 // long-shipped default that a support email called out as hard to read;
@@ -248,7 +251,9 @@ export default function Fretboard() {
         {/* Inlay dots — skipped when outside the visible window */}
         {INLAY_FRETS.filter(f => f >= winStart && f <= winEnd).map(f => {
           const x = fretX(f);
-          if (f === 12) return (
+          // Octave frets (12 and 24) get double dots — the standard
+          // guitar-neck convention marks the two octaves that way.
+          if (f === 12 || f === 24) return (
             <G key={f}>
               <Circle cx={x} cy={strY(1.5)} r={3.5} fill={inlayColor} />
               <Circle cx={x} cy={strY(3.5)} r={3.5} fill={inlayColor} />
@@ -308,7 +313,7 @@ export default function Fretboard() {
           <Line key={f}
             x1={fretLineX(f)} y1={strY(0) - 10}
             x2={fretLineX(f)} y2={strY(5) + 10}
-            stroke={f === 12 ? fretColorHL : fretColor} strokeWidth={1}
+            stroke={(f === 12 || f === 24) ? fretColorHL : fretColor} strokeWidth={1}
           />
         ))}
 
@@ -344,7 +349,7 @@ export default function Fretboard() {
             mid-neck windows we also show the leftmost fret number so the
             user knows where on the neck they are looking. */}
         {Array.from(new Set([
-          ...[1,3,5,7,9,12,15].filter(f => f >= winStart && f <= winEnd),
+          ...[1,3,5,7,9,12,15,17,19,21,24].filter(f => f >= winStart && f <= winEnd),
           // Always include the window's leftmost fret as an orientation
           // marker when we're not showing the nut.
           ...(!showNut ? [winStart] : []),

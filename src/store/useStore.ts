@@ -48,11 +48,11 @@ export type FretRange = 'all' | 'open' | 'low' | 'mid' | 'high';
 // outside [start, end] is hidden entirely (frets, notes, inlays) and the
 // remaining range fills the available width so the user can actually focus.
 export const FRET_RANGES: Record<FretRange, { start: number; end: number; label: string }> = {
-  all:  { start: 0,  end: 15, label: 'All' },
+  all:  { start: 0,  end: 24, label: 'All' },
   open: { start: 0,  end: 5,  label: '0–5' },
   low:  { start: 0,  end: 7,  label: '0–7' },
   mid:  { start: 5,  end: 12, label: '5–12' },
-  high: { start: 12, end: 15, label: '12+' },
+  high: { start: 12, end: 24, label: '12+' },
 };
 
 // Per-step delay (ms) for scale playback. Slow is for students who want

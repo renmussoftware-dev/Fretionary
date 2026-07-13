@@ -28,7 +28,7 @@ export function getScalePositions(
 ) {
   const notes = getScaleNotes(root, scaleKey);
   const positions: { start: number; end: number }[] = [];
-  for (let startFret = 0; startFret <= 15; startFret++) {
+  for (let startFret = 0; startFret <= 20; startFret++) {
     let maxF = 0, minF = 99, count = 0;
     for (let s = 0; s < 6; s++) {
       for (let f = startFret; f <= startFret + 4; f++) {
@@ -41,7 +41,7 @@ export function getScalePositions(
       }
     }
     if (count >= 4 && maxF - startFret <= 4) {
-      positions.push({ start: startFret, end: Math.min(startFret + 4, 22) });
+      positions.push({ start: startFret, end: Math.min(startFret + 4, 24) });
     }
   }
   const merged: { start: number; end: number }[] = [];
