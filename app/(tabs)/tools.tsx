@@ -3,11 +3,9 @@ import {
   View, Text, ScrollView, TouchableOpacity, StyleSheet,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { router } from 'expo-router';
 import { COLORS, FONT_FAMILY, RADIUS, SPACE } from '../../src/constants/theme';
 import Metronome from '../../src/components/Metronome';
 import Guide from '../../src/components/Guide';
-import { useProGate } from '../../src/hooks/useProGate';
 import { SUPPORT_EMAIL, openSupportEmail, requestInlineReview, openStoreReview } from '../../src/utils/support';
 
 type ToolMode = 'guide' | 'metronome' | 'support';
@@ -58,33 +56,12 @@ function Support() {
   );
 }
 
-function ProUpsell() {
-  return (
-    <View style={styles.upsell}>
-      <Text style={styles.upsellLock}>🔒</Text>
-      <Text style={styles.upsellTitle}>Metronome is Pro</Text>
-      <Text style={styles.upsellDesc}>
-        Practice in time with a built-in metronome. BPM, time signature, accent beat, and tap-tempo.
-      </Text>
-      <TouchableOpacity
-        style={styles.upsellBtn}
-        onPress={() => router.push('/paywall')}
-        activeOpacity={0.85}
-      >
-        <Text style={styles.upsellBtnText}>Unlock Pro →</Text>
-      </TouchableOpacity>
-    </View>
-  );
-}
-
 export default function ToolsScreen() {
-  const { isPro } = useProGate();
   const [mode, setMode] = useState<ToolMode>('guide');
 
   let body: React.ReactNode;
   if (mode === 'guide')            body = <Guide />;
   else if (mode === 'support')     body = <Support />;
-  else if (!isPro)                 body = <ProUpsell />;
   else                             body = <Metronome />;
 
   return (
@@ -153,23 +130,6 @@ const styles = StyleSheet.create({
   tabSubActive: { color: COLORS.textMuted },
 
   body: { paddingTop: SPACE.lg },
-
-  upsell: {
-    margin: SPACE.lg, padding: SPACE.xl, alignItems: 'center',
-    borderRadius: RADIUS.lg, borderWidth: 1, borderColor: COLORS.border,
-    backgroundColor: COLORS.surface,
-  },
-  upsellLock: { fontSize: 36, marginBottom: SPACE.md },
-  upsellTitle: { fontSize: 20, fontWeight: '700', color: COLORS.text, marginBottom: SPACE.sm },
-  upsellDesc: {
-    fontSize: 14, color: COLORS.textMuted, lineHeight: 20,
-    textAlign: 'center', marginBottom: SPACE.lg,
-  },
-  upsellBtn: {
-    paddingHorizontal: 24, paddingVertical: 11, borderRadius: RADIUS.full,
-    backgroundColor: COLORS.accent,
-  },
-  upsellBtnText: { fontSize: 14, fontWeight: '700', color: '#fff' },
 
   supportWrap: {
     margin: SPACE.lg, padding: SPACE.xl, alignItems: 'center',

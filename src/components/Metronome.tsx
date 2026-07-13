@@ -109,7 +109,18 @@ export default function Metronome() {
       beatRef.current = (beat + 1) % sig.beats;
       const interval = 60_000 / bpm;
       nextTickRef.current += interval;
-      const delay = Math.max(0, nextTickRef.current - Date.now());
+      // Skip-forward safety: if the JS thread stalled (app backgrounded, GC
+      // pause, heavy animation on another screen), Date.now() will have
+      // jumped past nextTickRef by more than a full beat. The base scheduler
+      // would then fire a burst of catch-up ticks — a machine-gun click that
+      // makes the metronome go audibly off-tempo. Instead, re-anchor to now
+      // when we've fallen more than half an interval behind. Small drift
+      // corrections still work through the normal path.
+      const now = Date.now();
+      if (nextTickRef.current < now - interval / 2) {
+        nextTickRef.current = now;
+      }
+      const delay = Math.max(0, nextTickRef.current - now);
       timerRef.current = setTimeout(tick, delay);
     }
     // First tick immediately

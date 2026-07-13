@@ -71,7 +71,7 @@ const SECTIONS: Section[] = [
     title: 'Metronome',
     intro: 'Practice in time with a drift-corrected metronome on the Tools tab.',
     features: [
-      { name: 'Metronome', desc: 'BPM 40–240, six time signatures, accent + offbeat clicks, tap-tempo.', badge: 'pro' },
+      { name: 'Metronome', desc: 'BPM 40–240, six time signatures, accent + offbeat clicks, tap-tempo.', badge: 'free' },
     ],
   },
   {
