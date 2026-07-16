@@ -48,6 +48,11 @@ export default function Fretboard() {
   // Only used in Custom mode — every fret position becomes a tap target
   // that toggles the note class at that position on/off.
   const toggleCustomNote = useStore(s => s.toggleCustomNote);
+  // Custom mode is Pro; non-Pro users see the Fretboard in read-only shape
+  // (no tap-to-edit, no ghost dots) so the interactive tap-to-add doesn't
+  // leak the feature outside the paywall. The Identify preview panel in
+  // the controls area handles the upsell.
+  const isPro = useStore(s => s.isPro);
 
   // Fret-range window. When the user picks a narrower range than 'all', we
   // hide everything outside [winStart, winEnd] AND grow FRET_W so the
@@ -374,7 +379,10 @@ export default function Fretboard() {
             if (f < winStart || f > winEnd) return null;
             const ni = (noteClasses[s] + f) % 12;
             const col = getNoteColor(ni, f);
-            const isCustom = mode === 'custom';
+            // Custom mode is Pro. Non-Pro users still see the mode but the
+            // fretboard falls back to non-interactive (no ghost dots, no
+            // onPress) — the controls area shows a preview + upsell.
+            const isCustom = mode === 'custom' && isPro;
             // Skip empty positions in non-Custom modes — the read-only
             // fretboard should stay uncluttered. In Custom mode we render
             // a ghost dot at empty positions to advertise tappability.

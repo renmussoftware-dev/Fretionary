@@ -6,6 +6,7 @@ import { useStore, type AppMode } from '../store/useStore';
 import { useProGate } from '../hooks/useProGate';
 import TuningPicker from './TuningPicker';
 import SavedSheet from './SavedSheet';
+import HelpSheet from './HelpSheet';
 
 const MODES: { label: string; value: AppMode; pro?: boolean }[] = [
   { label: 'Scales', value: 'scales' },
@@ -20,12 +21,10 @@ function SegmentedControl({
   value,
   onChange,
   isPro,
-  requirePro,
 }: {
   value: AppMode;
   onChange: (m: AppMode) => void;
   isPro: boolean;
-  requirePro: (action: () => void) => void;
 }) {
   const idx = MODES.findIndex(m => m.value === value);
   const slide = useRef(new Animated.Value(idx)).current;
@@ -59,7 +58,11 @@ function SegmentedControl({
         return (
           <TouchableOpacity
             key={m.value}
-            onPress={() => locked ? requirePro(() => onChange(m.value)) : onChange(m.value)}
+            // Always allow the mode switch, even for locked Pro modes — the
+            // destination screen renders a preview + soft upsell instead of
+            // firing the paywall route immediately. Feels less punishing and
+            // gives the user context for why the feature is worth paying for.
+            onPress={() => onChange(m.value)}
             activeOpacity={0.7}
             style={segStyles.segment}
           >
@@ -112,8 +115,9 @@ const segStyles = StyleSheet.create({
 
 export default function TopBar() {
   const { root, setRoot, scaleKey, chordKey, mode, setMode } = useStore();
-  const { isPro, requirePro } = useProGate();
+  const { isPro } = useProGate();
   const [savedOpen, setSavedOpen] = useState(false);
+  const [helpOpen, setHelpOpen] = useState(false);
 
   const titleSubject = mode === 'chords'
     ? `${NOTES[root]} ${chordKey}`
@@ -133,6 +137,14 @@ export default function TopBar() {
         </View>
         <TuningPicker forcedStandard={mode === 'caged'} />
         <TouchableOpacity
+          onPress={() => setHelpOpen(true)}
+          activeOpacity={0.7}
+          style={styles.helpBtn}
+          hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+        >
+          <Text style={styles.helpBtnText}>?</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
           onPress={() => setSavedOpen(true)}
           activeOpacity={0.7}
           style={styles.savedBtn}
@@ -144,7 +156,7 @@ export default function TopBar() {
 
       {/* Mode tabs — full width so all 4 fit */}
       <View style={styles.topRow}>
-        <SegmentedControl value={mode} onChange={setMode} isPro={isPro} requirePro={requirePro} />
+        <SegmentedControl value={mode} onChange={setMode} isPro={isPro} />
       </View>
 
       {/* Root note selector */}
@@ -165,6 +177,7 @@ export default function TopBar() {
       </ScrollView>
 
       <SavedSheet visible={savedOpen} onClose={() => setSavedOpen(false)} />
+      <HelpSheet visible={helpOpen} onClose={() => setHelpOpen(false)} tab="fretboard" />
     </View>
   );
 }
@@ -199,6 +212,13 @@ const styles = StyleSheet.create({
     alignItems: 'center', justifyContent: 'center',
   },
   savedBtnText: { fontSize: 14, color: '#D45846', fontWeight: '700', lineHeight: 16 },
+  helpBtn: {
+    width: 32, height: 32, borderRadius: 16,
+    borderWidth: 1, borderColor: COLORS.border,
+    backgroundColor: COLORS.surface,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  helpBtnText: { fontSize: 15, color: COLORS.textMuted, fontWeight: '700', lineHeight: 16 },
   topRow: {
     flexDirection: 'row',
     alignItems: 'center',

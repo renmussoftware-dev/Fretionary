@@ -21,6 +21,7 @@ import { getChordVoicings } from '../../src/utils/theory';
 import StandardTuningNotice from '../../src/components/StandardTuningNotice';
 import HeartButton from '../../src/components/HeartButton';
 import SavedSheet from '../../src/components/SavedSheet';
+import HelpSheet from '../../src/components/HelpSheet';
 
 type SubMode = 'common' | 'diatonic' | 'custom' | 'examples';
 
@@ -150,6 +151,7 @@ export default function ProgressionsScreen() {
   const [modalRoot, setModalRoot] = useState<number>(root); // 'pick any chord' picker root
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [savedOpen, setSavedOpen] = useState(false);
+  const [helpOpen, setHelpOpen] = useState(false);
   const [selectedExample, setSelectedExample] = useState<ExampleProgression | null>(EXAMPLE_PROGRESSIONS[0]);
 
   // Apply pending navigation from the Saved sheet. Gate Pro progressions
@@ -350,6 +352,10 @@ export default function ProgressionsScreen() {
               <Text style={styles.bpmBtnTxt}>+</Text>
             </TouchableOpacity>
           </View>
+          <TouchableOpacity onPress={() => setHelpOpen(true)} activeOpacity={0.7} style={styles.helpBtn}
+            hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}>
+            <Text style={styles.helpBtnText}>?</Text>
+          </TouchableOpacity>
           <TouchableOpacity onPress={() => setSavedOpen(true)} activeOpacity={0.7} style={styles.savedBtn}>
             <Text style={styles.savedBtnText}>♥</Text>
           </TouchableOpacity>
@@ -694,6 +700,7 @@ export default function ProgressionsScreen() {
       </Modal>
 
       <SavedSheet visible={savedOpen} onClose={() => setSavedOpen(false)} />
+      <HelpSheet visible={helpOpen} onClose={() => setHelpOpen(false)} tab="progressions" />
     </SafeAreaView>
   );
 }
@@ -820,6 +827,14 @@ const styles = StyleSheet.create({
                     alignItems: 'center', justifyContent: 'center',
                   },
   savedBtnText:   { fontSize: 14, color: '#D45846', fontWeight: '700', lineHeight: 16 },
+  helpBtn:        {
+                    width: 32, height: 32, borderRadius: 16,
+                    borderWidth: 1, borderColor: COLORS.border,
+                    backgroundColor: COLORS.surface,
+                    alignItems: 'center', justifyContent: 'center',
+                    marginRight: 6,
+                  },
+  helpBtnText:    { fontSize: 15, fontWeight: '700', color: COLORS.textMuted, lineHeight: 16 },
   fbWrap:         {
                     backgroundColor: COLORS.surface,
                     borderTopWidth: 1, borderBottomWidth: 1, borderColor: COLORS.border,

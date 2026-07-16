@@ -235,8 +235,46 @@ export default function FretboardScreen() {
             </ScrollView>
           </View>
         )}
+        {/* Custom / Identify mode — Pro feature. Non-Pro users see a preview
+            panel (coded mockup + description + CTA) instead of the note
+            picker so they can understand what the mode does before deciding
+            whether to upgrade. */}
+        {mode === 'custom' && !isPro && (
+          <View style={styles.section}>
+            <View style={styles.identifyPreviewCard}>
+              <Text style={styles.identifyPreviewEyebrow}>PREVIEW · PRO</Text>
+              <Text style={styles.identifyPreviewTitle}>Identify</Text>
+              <Text style={styles.identifyPreviewSub}>
+                Pick any notes on the fretboard and see what chord or interval you're playing. A reverse chord dictionary for figuring out what your fingers are doing.
+              </Text>
+
+              {/* Coded mock of the identifier card — same visual language as
+                  the real one, with a static example (C Major = C E G). */}
+              <View style={styles.identifyMockCard}>
+                <Text style={styles.identifyLabel}>This is</Text>
+                <Text style={styles.identifyName}>C Major</Text>
+                <Text style={styles.identifyDetail}>C (R) · E (3) · G (5)</Text>
+              </View>
+
+              <View style={styles.identifyMockCard}>
+                <Text style={styles.identifyLabel}>This is</Text>
+                <Text style={styles.identifyName}>Perfect 5th</Text>
+                <Text style={styles.identifyDetail}>C → G</Text>
+              </View>
+
+              <TouchableOpacity
+                onPress={() => requirePro(() => {})}
+                activeOpacity={0.85}
+                style={styles.identifyUnlockBtn}
+              >
+                <Text style={styles.identifyUnlockBtnText}>Unlock Identify with Pro →</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        )}
+
         {/* Custom note picker */}
-        {mode === 'custom' && (
+        {mode === 'custom' && isPro && (
           <View style={styles.section}>
             <View style={styles.customHeader}>
               <Text style={styles.sectionLabel}>Notes</Text>
@@ -608,6 +646,57 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: COLORS.textMuted,
     lineHeight: 17,
+  },
+  // Preview panel shown to non-Pro users when they land on the Identify
+  // tab. Coded mockup of the identifier card + short explainer + upsell.
+  identifyPreviewCard: {
+    marginHorizontal: SPACE.lg,
+    padding: SPACE.lg,
+    borderRadius: RADIUS.lg,
+    borderWidth: 1,
+    borderColor: COLORS.accent,
+    backgroundColor: COLORS.accentSoft,
+  },
+  identifyPreviewEyebrow: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: COLORS.accent,
+    letterSpacing: 1.5,
+    marginBottom: 4,
+  },
+  identifyPreviewTitle: {
+    fontSize: 22,
+    fontWeight: '700',
+    color: COLORS.text,
+    marginBottom: 6,
+  },
+  identifyPreviewSub: {
+    fontSize: 13,
+    color: COLORS.textMuted,
+    lineHeight: 19,
+    marginBottom: SPACE.md,
+  },
+  identifyMockCard: {
+    padding: SPACE.md,
+    marginBottom: SPACE.sm,
+    backgroundColor: COLORS.surface,
+    borderRadius: RADIUS.md,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+  },
+  identifyUnlockBtn: {
+    marginTop: SPACE.md,
+    paddingVertical: 12,
+    paddingHorizontal: SPACE.lg,
+    borderRadius: RADIUS.full,
+    backgroundColor: COLORS.accent,
+    alignItems: 'center',
+  },
+  identifyUnlockBtnText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#fff',
+    letterSpacing: 0.2,
   },
   pillText: {
     fontSize: 13,

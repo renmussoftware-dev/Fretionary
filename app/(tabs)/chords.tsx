@@ -21,6 +21,7 @@ import StandardTuningNotice from '../../src/components/StandardTuningNotice';
 import { getResolutions } from '../../src/constants/resolutions';
 import HeartButton from '../../src/components/HeartButton';
 import SavedSheet from '../../src/components/SavedSheet';
+import HelpSheet from '../../src/components/HelpSheet';
 
 const CATEGORIES = ['All', 'Triads', 'Seventh', 'Extended', 'Sus'];
 const CAT_MAP: Record<string, string> = {
@@ -41,6 +42,7 @@ export default function ChordsScreen() {
   const [selectedChord, setSelectedChord] = useState('Major');
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [savedOpen, setSavedOpen] = useState(false);
+  const [helpOpen, setHelpOpen] = useState(false);
 
   // Apply pending navigation from the Saved sheet. Gate Pro chords through
   // requirePro: it's possible to have favorited a chord while Pro and then
@@ -170,6 +172,10 @@ export default function ChordsScreen() {
             <Text style={styles.eyebrow}>Library</Text>
             <Text style={styles.title}>Chords</Text>
           </View>
+          <TouchableOpacity onPress={() => setHelpOpen(true)} activeOpacity={0.7} style={styles.helpBtn}
+            hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}>
+            <Text style={styles.helpBtnText}>?</Text>
+          </TouchableOpacity>
           <TouchableOpacity onPress={() => setSavedOpen(true)} activeOpacity={0.7} style={styles.savedBtn}>
             <Text style={styles.savedBtnText}>♥ Saved</Text>
           </TouchableOpacity>
@@ -351,6 +357,7 @@ export default function ChordsScreen() {
       </View>
 
       <SavedSheet visible={savedOpen} onClose={() => setSavedOpen(false)} />
+      <HelpSheet visible={helpOpen} onClose={() => setHelpOpen(false)} tab="chords" />
     </SafeAreaView>
   );
 }
@@ -381,6 +388,14 @@ const styles = StyleSheet.create({
                   backgroundColor: COLORS.surface,
                 },
   savedBtnText: { fontSize: 12, fontWeight: '600', color: COLORS.textMuted },
+  helpBtn:      {
+                  width: 32, height: 32, borderRadius: 16,
+                  borderWidth: 1, borderColor: COLORS.border,
+                  backgroundColor: COLORS.surface,
+                  alignItems: 'center', justifyContent: 'center',
+                  marginRight: 6,
+                },
+  helpBtnText:  { fontSize: 15, fontWeight: '700', color: COLORS.textMuted, lineHeight: 16 },
 
   noteRow:      { flexDirection: 'row', paddingHorizontal: SPACE.lg, gap: 6 },
   notePill:     {
