@@ -139,6 +139,7 @@ export default function ProgressionsScreen() {
   const pendingNav = useStore(s => s.pendingNav);
   const setPendingNav = useStore(s => s.setPendingNav);
   const addRecent = useStore(s => s.addRecent);
+  const recordProgressionPlayed = useStore(s => s.recordProgressionPlayed);
   const { isPro, requirePro } = useProGate();
   const [subMode, setSubMode] = useState<SubMode>('common');
   const [genre, setGenre] = useState('All');
@@ -274,6 +275,10 @@ export default function ProgressionsScreen() {
     if (sequenceKey.length === 0) return;
 
     const fretsList = getProgressionFrets();
+    // Only named progressions count toward the "progressions played" progress
+    // — custom sequences and one-off diatonic doodles aren't fixed items to
+    // check off. Named ones are the 22 in the library.
+    if (isNamedProg) recordProgressionPlayed(selectedProg.name);
     playProgression(
       fretsList,
       bpm,

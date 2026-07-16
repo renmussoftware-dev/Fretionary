@@ -36,6 +36,7 @@ export default function ChordsScreen() {
   const pendingNav = useStore(s => s.pendingNav);
   const setPendingNav = useStore(s => s.setPendingNav);
   const addRecent = useStore(s => s.addRecent);
+  const recordChordLearned = useStore(s => s.recordChordLearned);
   const { isPro, requirePro } = useProGate();
   const { playChord } = useAudioEngine();
   const [category, setCategory] = useState('All');
@@ -134,7 +135,10 @@ export default function ChordsScreen() {
       addRecent({ kind: 'chord', root, chordKey: key });
       closeDrawer();
       const voicings = getChordVoicings(root, key);
-      if (voicings.length > 0) playChord(voicings[0].frets);
+      if (voicings.length > 0) {
+        playChord(voicings[0].frets);
+        recordChordLearned(key);
+      }
     };
     if (!isChordFree(key)) { requirePro(apply); return; }
     apply();
@@ -147,7 +151,10 @@ export default function ChordsScreen() {
       setSelectedChord(targetType);
       addRecent({ kind: 'chord', root: newRoot, chordKey: targetType });
       const voicings = getChordVoicings(newRoot, targetType);
-      if (voicings.length > 0) playChord(voicings[0].frets);
+      if (voicings.length > 0) {
+        playChord(voicings[0].frets);
+        recordChordLearned(targetType);
+      }
     };
     if (!isChordFree(targetType)) { requirePro(apply); return; }
     apply();
@@ -186,7 +193,10 @@ export default function ChordsScreen() {
                 setRoot(i);
                 addRecent({ kind: 'chord', root: i, chordKey: selectedChord });
                 const voicings = getChordVoicings(i, selectedChord);
-                if (voicings.length > 0) playChord(voicings[0].frets);
+                if (voicings.length > 0) {
+                  playChord(voicings[0].frets);
+                  recordChordLearned(selectedChord);
+                }
               }}
               style={[styles.notePill, root === i && styles.notePillActive]} activeOpacity={0.7}>
               <Text style={[styles.noteText, root === i && styles.noteTextActive]}>{NOTE_DISPLAY[note] || note}</Text>
@@ -235,7 +245,10 @@ export default function ChordsScreen() {
           <TouchableOpacity
             onPress={() => {
               const voicings = getChordVoicings(root, selectedChord);
-              if (voicings.length > 0) playChord(voicings[0].frets);
+              if (voicings.length > 0) {
+                playChord(voicings[0].frets);
+                recordChordLearned(selectedChord);
+              }
             }}
             style={styles.playChordBtn}
             activeOpacity={0.85}

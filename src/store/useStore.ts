@@ -121,6 +121,18 @@ interface AppState {
   longestStreak: number;
   recordActivity: () => void;
 
+  // Practice progress — arrays of scale/chord/progression keys the user has
+  // actively engaged with (played the audio for, not just viewed). Powers
+  // the Progress screen in Tools. Idempotent recorders — adding an item
+  // that's already in the list is a no-op, so it's safe to call from every
+  // playback trigger without dedupe logic at the call site.
+  scalesExplored: string[];
+  chordsLearned: string[];
+  progressionsPlayed: string[];
+  recordScaleExplored: (scaleKey: string) => void;
+  recordChordLearned: (chordKey: string) => void;
+  recordProgressionPlayed: (name: string) => void;
+
   // Transient pitch class (0-11) of the currently-playing note during scale
   // playback. The Fretboard reads this to render an extra glow + larger dot
   // on every matching position. null when nothing is playing. Not persisted —
@@ -191,6 +203,9 @@ export const useStore = create<AppState>()(
       lastActivityDate: null,
       currentStreak: 0,
       longestStreak: 0,
+      scalesExplored: [],
+      chordsLearned: [],
+      progressionsPlayed: [],
       playbackHighlight: null,
       scalePlaybackSpeed: 'normal',
       labelSize: 'md',
@@ -221,6 +236,24 @@ export const useStore = create<AppState>()(
           currentStreak: newStreak,
           longestStreak: newLongest,
         });
+      },
+
+      // Idempotent — arrays act as Sets, adding a duplicate is a no-op so
+      // callers can safely fire on every play without dedupe.
+      recordScaleExplored: (scaleKey) => {
+        const list = get().scalesExplored;
+        if (list.includes(scaleKey)) return;
+        set({ scalesExplored: [...list, scaleKey] });
+      },
+      recordChordLearned: (chordKey) => {
+        const list = get().chordsLearned;
+        if (list.includes(chordKey)) return;
+        set({ chordsLearned: [...list, chordKey] });
+      },
+      recordProgressionPlayed: (name) => {
+        const list = get().progressionsPlayed;
+        if (list.includes(name)) return;
+        set({ progressionsPlayed: [...list, name] });
       },
 
       recordPositiveAction: () => {
@@ -317,6 +350,9 @@ export const useStore = create<AppState>()(
         scalePlaybackSpeed: s.scalePlaybackSpeed,
         labelSize: s.labelSize,
         fretRange: s.fretRange,
+        scalesExplored: s.scalesExplored,
+        chordsLearned: s.chordsLearned,
+        progressionsPlayed: s.progressionsPlayed,
       }),
     },
   ),

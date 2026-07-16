@@ -6,12 +6,14 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { COLORS, FONT_FAMILY, RADIUS, SPACE } from '../../src/constants/theme';
 import Metronome from '../../src/components/Metronome';
 import Guide from '../../src/components/Guide';
+import Progress from '../../src/components/Progress';
 import { SUPPORT_EMAIL, openSupportEmail, requestInlineReview, openStoreReview } from '../../src/utils/support';
 
-type ToolMode = 'guide' | 'metronome' | 'support';
+type ToolMode = 'guide' | 'progress' | 'metronome' | 'support';
 
 const TOOLS: { mode: ToolMode; label: string; sub: string }[] = [
   { mode: 'guide',     label: 'Guide',     sub: 'Features & what\u2019s free' },
+  { mode: 'progress',  label: 'Progress',  sub: 'Streak & practice stats' },
   { mode: 'metronome', label: 'Metronome', sub: 'BPM & time sig' },
   { mode: 'support',   label: 'Support',   sub: 'Bugs & feedback' },
 ];
@@ -61,6 +63,7 @@ export default function ToolsScreen() {
 
   let body: React.ReactNode;
   if (mode === 'guide')            body = <Guide />;
+  else if (mode === 'progress')    body = <Progress />;
   else if (mode === 'support')     body = <Support />;
   else                             body = <Metronome />;
 

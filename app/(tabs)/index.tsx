@@ -71,6 +71,7 @@ export default function FretboardScreen() {
   const setPlaybackHighlight = useStore(s => s.setPlaybackHighlight);
   const scalePlaybackSpeed = useStore(s => s.scalePlaybackSpeed);
   const setScalePlaybackSpeed = useStore(s => s.setScalePlaybackSpeed);
+  const recordScaleExplored = useStore(s => s.recordScaleExplored);
 
   // True when playback should be locked behind the paywall. Playback is free
   // for the scales the free tier can already select — locking it there too
@@ -110,6 +111,8 @@ export default function FretboardScreen() {
       const descending = ascending.slice(0, -1).reverse();
       const notes = [...ascending, ...descending];
       setPlayingScale(true);
+      // Progress tracking: playing the scale is the "practiced" signal.
+      recordScaleExplored(scaleKey);
       playScale(
         notes,
         SCALE_SPEED_MS[scalePlaybackSpeed],
