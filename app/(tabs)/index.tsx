@@ -44,13 +44,16 @@ const LABEL_SIZE_OPTIONS = [
 ];
 
 // Pull friendly labels straight from FRET_RANGES so the picker and the
-// renderer can't drift. Order matches All → narrow → mid → high.
+// renderer can't drift. Order matches All → narrow → mid → high → 24-fret
+// extended. Default 'All' stays at 15 frets so scale mode doesn't feel
+// cluttered on phones; 24 is opt-in for users who need the full range.
 const FRET_RANGE_OPTIONS = [
-  { label: 'All',  value: 'all'  },
-  { label: '0–5',  value: 'open' },
-  { label: '0–7',  value: 'low'  },
-  { label: '5–12', value: 'mid'  },
-  { label: '12+',  value: 'high' },
+  { label: 'All',  value: 'all'      },
+  { label: '0–5',  value: 'open'     },
+  { label: '0–7',  value: 'low'      },
+  { label: '5–12', value: 'mid'      },
+  { label: '12+',  value: 'high'     },
+  { label: '24',   value: 'extended' },
 ];
 
 export default function FretboardScreen() {

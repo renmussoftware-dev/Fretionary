@@ -41,18 +41,24 @@ export type AppMode = 'scales' | 'chords' | 'caged' | 'custom';
 export type LabelMode = 'name' | 'degree' | 'interval' | 'none';
 export type ScalePlaybackSpeed = 'slow' | 'normal' | 'fast';
 export type LabelSize = 'sm' | 'md' | 'lg';
-export type FretRange = 'all' | 'open' | 'low' | 'mid' | 'high';
+export type FretRange = 'all' | 'open' | 'low' | 'mid' | 'high' | 'extended';
 
 // Inclusive start/end frets for each FretRange preset. Centralized here so
 // Fretboard.tsx and the UI picker stay in sync. Beyond raw range, anything
 // outside [start, end] is hidden entirely (frets, notes, inlays) and the
 // remaining range fills the available width so the user can actually focus.
+//
+// Default is 15 frets ('all') — the standard "acoustic-to-electric" neck
+// that fits phone screens without crowding. The extended 2-octave 24-fret
+// range is available as its own preset for users who play modern electrics
+// (Ibanez, PRS, etc.) or who want to see the full upper-fret neighborhood.
 export const FRET_RANGES: Record<FretRange, { start: number; end: number; label: string }> = {
-  all:  { start: 0,  end: 24, label: 'All' },
-  open: { start: 0,  end: 5,  label: '0–5' },
-  low:  { start: 0,  end: 7,  label: '0–7' },
-  mid:  { start: 5,  end: 12, label: '5–12' },
-  high: { start: 12, end: 24, label: '12+' },
+  all:      { start: 0,  end: 15, label: 'All' },
+  open:     { start: 0,  end: 5,  label: '0–5' },
+  low:      { start: 0,  end: 7,  label: '0–7' },
+  mid:      { start: 5,  end: 12, label: '5–12' },
+  high:     { start: 12, end: 15, label: '12+' },
+  extended: { start: 0,  end: 24, label: '24' },
 };
 
 // Per-step delay (ms) for scale playback. Slow is for students who want
