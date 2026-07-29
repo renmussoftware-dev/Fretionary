@@ -166,10 +166,13 @@ export default function FretboardScreen() {
 
   const controlsContent = (
     <>
-        {/* Daily Pick — top of the controls scroll so it's the first thing
-            the user sees below the fretboard. Rotates deterministically by
-            local date. Tapping it loads the pick into the fretboard. */}
-        <DailyPickCard />
+        {/* Daily Pick — only in Scales mode. Scales is the app's default
+            landing surface, so surfacing it once at first-open is enough;
+            repeating it on Chords/CAGED/Identify is visual noise since
+            those modes have their own primary UIs (chord list, shape
+            picker, note picker). Streak stays visible via other paths
+            (badge in TopBar, Progress tab). */}
+        {mode === 'scales' && <DailyPickCard />}
 
         {/* Scale selector */}
         {mode === 'scales' && (
