@@ -338,6 +338,7 @@ export default function FretboardScreen() {
                     <>
                       <Text style={styles.identifyName}>
                         {NOTES[id.rootIdx]} {id.chordKey}
+                        {id.omitted5 ? <Text style={styles.identifyBadge}>  · no 5</Text> : null}
                       </Text>
                       <Text style={styles.identifyDetail}>
                         {id.noteRoles.map(r => `${NOTES[r.note]} (${r.symbol})`).join(' · ')}
@@ -646,6 +647,14 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: '700',
     color: COLORS.accent,
+  },
+  // Small inline "· no 5" tag for chord matches that dropped the 5th.
+  // Same color but smaller + lighter weight so it reads as a secondary tag.
+  identifyBadge: {
+    fontSize: 13,
+    fontWeight: '500',
+    color: COLORS.textMuted,
+    letterSpacing: 0.3,
   },
   identifyDetail: {
     marginTop: 4,

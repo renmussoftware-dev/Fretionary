@@ -214,7 +214,12 @@ export type Identification =
   | { kind: 'none' }
   | { kind: 'note';     idx: number }
   | { kind: 'interval'; rootIdx: number; otherIdx: number; semitones: number; name: string }
-  | { kind: 'chord';    rootIdx: number; chordKey: string; noteRoles: { note: number; symbol: string }[] }
+  // omitted5 = true when the match required dropping the chord's 5th to
+  // fit — a common guitar voicing choice for 7th chords and extensions
+  // (guitarists routinely leave the 5 off in Maj7/Maj9/Min9/Dom13 grips).
+  // The UI can surface this with a "no 5" tag so the user knows why the
+  // chord name doesn't include the 5th in their selection.
+  | { kind: 'chord';    rootIdx: number; chordKey: string; noteRoles: { note: number; symbol: string }[]; omitted5?: boolean }
   | { kind: 'noMatch';  notes: number[] };
 
 export function identifyCustomSelection(
@@ -240,7 +245,7 @@ export function identifyCustomSelection(
   // down to 2/5/9 — that's correct, since a Major 9 voicing without the
   // octave doubling really is {R, 3, 5, 7, 2}.
   const noteSet = new Set(notes.map(n => n % 12));
-  const matches: { rootIdx: number; chordKey: string; size: number }[] = [];
+  const matches: { rootIdx: number; chordKey: string; size: number; omitted5?: boolean }[] = [];
 
   for (const candidateRoot of notes) {
     for (const [chordKey, def] of Object.entries(CHORDS)) {
@@ -249,6 +254,30 @@ export function identifyCustomSelection(
       let match = true;
       for (const n of noteSet) if (!target.has(n)) { match = false; break; }
       if (match) matches.push({ rootIdx: candidateRoot, chordKey, size: def.intervals.length });
+    }
+  }
+
+  // Fallback: no-5 voicing match. Guitarists routinely omit the 5th when
+  // playing 7th chords and extensions (Cmaj9, Am9, D13, etc. are commonly
+  // played with the 5 dropped because there aren't enough fingers). If no
+  // exact match was found above, try each chord with its 5th removed from
+  // the target set and see if that matches. Only considers chords that
+  // actually contain a 5 (so triads like Sus2/Sus4 don't spuriously
+  // "match" without it) and requires the chord to have ≥4 intervals so
+  // dropping one still leaves a 3-note identifiable shape.
+  if (matches.length === 0) {
+    for (const candidateRoot of notes) {
+      for (const [chordKey, def] of Object.entries(CHORDS)) {
+        if (def.intervals.length < 4) continue;
+        if (!def.intervals.some(i => (i % 12) === 7)) continue;
+        const target = new Set(
+          def.intervals.filter(i => (i % 12) !== 7).map(i => (candidateRoot + i) % 12),
+        );
+        if (target.size !== noteSet.size) continue;
+        let match = true;
+        for (const n of noteSet) if (!target.has(n)) { match = false; break; }
+        if (match) matches.push({ rootIdx: candidateRoot, chordKey, size: def.intervals.length, omitted5: true });
+      }
     }
   }
 
@@ -264,9 +293,17 @@ export function identifyCustomSelection(
 
   const best = matches[0];
   const def = CHORDS[best.chordKey];
-  const noteRoles = def.intervals.map((iv, i) => ({
-    note: (best.rootIdx + iv) % 12,
-    symbol: def.intervalNames[i],
-  }));
-  return { kind: 'chord', rootIdx: best.rootIdx, chordKey: best.chordKey, noteRoles };
+  // For an omitted-5 match, only show the intervals the user actually
+  // selected (drop the 5 from the role list) so the "C (R) · E (3) · B (7)"
+  // reads honestly against the notes on screen.
+  const noteRoles = def.intervals
+    .map((iv, i) => ({ note: (best.rootIdx + iv) % 12, symbol: def.intervalNames[i] }))
+    .filter(r => !(best.omitted5 && (r.symbol === '5' || r.symbol === '♭5' || r.symbol === '♯5')));
+  return {
+    kind: 'chord',
+    rootIdx: best.rootIdx,
+    chordKey: best.chordKey,
+    noteRoles,
+    ...(best.omitted5 ? { omitted5: true } : {}),
+  };
 }
