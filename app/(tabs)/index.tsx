@@ -334,17 +334,25 @@ export default function FretboardScreen() {
                       </Text>
                     </>
                   )}
-                  {id.kind === 'chord' && (
-                    <>
-                      <Text style={styles.identifyName}>
-                        {NOTES[id.rootIdx]} {id.chordKey}
-                        {id.omitted5 ? <Text style={styles.identifyBadge}>  · no 5</Text> : null}
-                      </Text>
-                      <Text style={styles.identifyDetail}>
-                        {id.noteRoles.map(r => `${NOTES[r.note]} (${r.symbol})`).join(' · ')}
-                      </Text>
-                    </>
-                  )}
+                  {id.kind === 'chord' && (() => {
+                    // Build a compact tag like "· no root, no 5" that only
+                    // appears when the match dropped notes for playability.
+                    const tags: string[] = [];
+                    if (id.omittedRoot) tags.push('no root');
+                    if (id.omitted5)    tags.push('no 5');
+                    const badge = tags.length ? `  · ${tags.join(', ')}` : '';
+                    return (
+                      <>
+                        <Text style={styles.identifyName}>
+                          {NOTES[id.rootIdx]} {id.chordKey}
+                          {badge ? <Text style={styles.identifyBadge}>{badge}</Text> : null}
+                        </Text>
+                        <Text style={styles.identifyDetail}>
+                          {id.noteRoles.map(r => `${NOTES[r.note]} (${r.symbol})`).join(' · ')}
+                        </Text>
+                      </>
+                    );
+                  })()}
                   {id.kind === 'noMatch' && (
                     <>
                       <Text style={styles.identifyName}>No exact chord</Text>
