@@ -22,6 +22,7 @@ import { getResolutions } from '../../src/constants/resolutions';
 import HeartButton from '../../src/components/HeartButton';
 import SavedSheet from '../../src/components/SavedSheet';
 import HelpSheet from '../../src/components/HelpSheet';
+import DailyPickCard from '../../src/components/DailyPickCard';
 
 const CATEGORIES = ['All', 'Triads', 'Seventh', 'Extended', 'Sus'];
 const CAT_MAP: Record<string, string> = {
@@ -220,6 +221,32 @@ export default function ChordsScreen() {
           contentContainerStyle={styles.detailContent}
         >
           <StandardTuningNotice context="chord library" />
+
+          {/* Today's Chord — the daily-pick card only renders on chord days
+              (the Fretboard/Scales tab renders it on scale days). Setting
+              root + selectedChord here applies the pick to the library
+              context directly — no jump back to the Fretboard tab. */}
+          <DailyPickCard
+            showType="chord"
+            onTap={(pick) => {
+              const apply = () => {
+                setRoot(pick.root);
+                setSelectedChord(pick.itemKey);
+                closeDrawer();
+                addRecent({ kind: 'chord', root: pick.root, chordKey: pick.itemKey });
+                const voicings = getChordVoicings(pick.root, pick.itemKey);
+                if (voicings.length > 0) {
+                  playChord(voicings[0].frets);
+                  recordChordLearned(pick.itemKey);
+                }
+              };
+              // Pro gate: the daily rotation includes Pro chords, so hitting
+              // one as a free user routes through the paywall same as any
+              // other Pro selection path in this tab.
+              if (!isChordFree(pick.itemKey)) { requirePro(apply); return; }
+              apply();
+            }}
+          />
 
           {/* Chord title block — category eyebrow + big title + heart */}
           <View style={styles.detailTitleRow}>

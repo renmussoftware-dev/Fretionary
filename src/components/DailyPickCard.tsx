@@ -2,26 +2,41 @@ import React, { useMemo } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { COLORS, FONT_FAMILY, RADIUS, SPACE } from '../constants/theme';
 import { useStore } from '../store/useStore';
-import { getDailyPick } from '../utils/dailyPick';
+import { getDailyPick, type DailyPick } from '../utils/dailyPick';
 import { useProGate } from '../hooks/useProGate';
 import { isChordFree, isScaleFree } from '../constants/subscription';
 
+interface Props {
+  // Filter render by pick type. Fretboard/Scales passes 'scale' so the
+  // card only appears on scale days; Chords tab passes 'chord' so the
+  // card only appears on chord days. Omit for the older behavior (always
+  // renders regardless of type).
+  showType?: 'scale' | 'chord';
+  // Override the tap behavior. The default apply targets the Fretboard
+  // tab (sets root + scale/chord key + mode via the store). Callers whose
+  // context is the Chord library (which manages its own selectedChord
+  // state) pass their own onTap so the pick applies to that context
+  // without jumping the user out to the Fretboard tab. Called only after
+  // the Pro gate resolves (equivalent to the default apply's Pro check).
+  onTap?: (pick: DailyPick) => void;
+}
+
 /**
- * Small accent card at the top of the Fretboard controls scroll. Reads the
- * deterministic daily pick — alternates scale/chord, rotates root and item
- * by date — and applies it to the fretboard on tap.
+ * Small accent card that reads the deterministic daily pick and applies
+ * it on tap. Two usage sites today:
  *
- * Lives only on the Fretboard tab (the natural landing surface). Other tabs
- * don't get the card since their layouts are more constrained and the daily
- * pick is just one of several entry points.
+ *   - Fretboard tab (Scales mode): showType="scale". Default onTap sets
+ *     root + scaleKey + mode='scales' via the store.
+ *   - Chords tab: showType="chord" + custom onTap that sets the Chords
+ *     tab's local selectedChord state (rather than the store's chordKey
+ *     which the chord library doesn't read).
  *
- * Gating: the rotation pulls from every scale/chord in the library — both
- * free and Pro. We don't filter the pick itself (every user sees the same
- * pick of the day) but the tap routes through requirePro when the item is
- * Pro-only. That turns the card into a paywall surface on those days
- * rather than a backdoor around the chord/scale picker gates.
+ * Gating: the rotation pulls from every scale/chord in the library —
+ * both free and Pro. On Pro-day picks the tap routes through requirePro,
+ * turning the card into a paywall surface rather than a backdoor around
+ * the chord/scale picker gates.
  */
-export default function DailyPickCard() {
+export default function DailyPickCard({ showType, onTap }: Props = {}) {
   const pick = useMemo(() => getDailyPick(), []);
   const setRoot = useStore(s => s.setRoot);
   const setScaleKey = useStore(s => s.setScaleKey);
@@ -30,11 +45,20 @@ export default function DailyPickCard() {
   const currentStreak = useStore(s => s.currentStreak);
   const { isPro, requirePro } = useProGate();
 
+  // Type filter — early-return if the caller only wants a specific pick
+  // type and today's pick doesn't match.
+  if (showType && pick.type !== showType) return null;
+
   const locked = !isPro && (
     pick.type === 'scale' ? !isScaleFree(pick.itemKey) : !isChordFree(pick.itemKey)
   );
 
   function applyPick() {
+    if (onTap) {
+      onTap(pick);
+      return;
+    }
+    // Default: Fretboard-tab behavior — set root + item key + switch mode.
     setRoot(pick.root);
     if (pick.type === 'scale') {
       setScaleKey(pick.itemKey);
