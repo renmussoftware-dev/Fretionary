@@ -68,6 +68,56 @@ export function getCagedFretRange(root: number, shape: CagedLetter) {
   return { start: Math.max(0, cf + lo), end: cf + hi, caretFret: cf };
 }
 
+// ── Enharmonic spelling ─────────────────────────────────────────────────────
+// The NOTES constant is sharps-only, which is fine for pitch-class math but
+// wrong for displaying scales/chords: in C Dorian the ♭7 is B♭, never A♯,
+// because a diatonic scale should use each letter A–G exactly once. This
+// section spells notes based on their SCALE OR CHORD DEGREE — a proper
+// music-theory display.
+
+const LETTERS = ['C', 'D', 'E', 'F', 'G', 'A', 'B'] as const;
+const LETTER_PITCH: Record<string, number> = { C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11 };
+
+// Extract the letter name of the root's current display. The app displays
+// every root using its sharp variant (NOTES = ['C','C#','D','D#',...]) so
+// we peel off any '#' and return the base letter. Sharp roots use the
+// letter one step BELOW their pitch class (C# → C, F# → F).
+function rootLetterOf(rootPitch: number): string {
+  const naturals: Record<number, string> = { 0:'C', 2:'D', 4:'E', 5:'F', 7:'G', 9:'A', 11:'B' };
+  return naturals[rootPitch] ?? naturals[(rootPitch - 1 + 12) % 12];
+}
+
+// Spell a note based on its degree within the current scale/chord. degreeIdx
+// is 0-based (0 = root, 1 = 2nd/9th, 2 = 3rd, 3 = 4th/11th, 4 = 5th, 5 =
+// 6th/13th, 6 = 7th) and wraps at 7 for chord extensions. The target letter
+// is degreeIdx letters up from the root letter; the accidental is chosen so
+// the letter's pitch aligns with notePitch.
+export function spellNoteAt(rootPitch: number, degreeIdx: number, notePitch: number): string {
+  const rootLetter = rootLetterOf(rootPitch);
+  const rootLetterIdx = LETTERS.indexOf(rootLetter as typeof LETTERS[number]);
+  const targetLetter = LETTERS[(rootLetterIdx + degreeIdx) % 7];
+  const naturalPitch = LETTER_PITCH[targetLetter];
+  // Signed distance from the letter's natural pitch to the target pitch,
+  // normalized to -6..+5 so we pick the shortest sharp/flat direction.
+  let diff = (notePitch - naturalPitch + 12) % 12;
+  if (diff > 6) diff -= 12;
+  if (diff === 0)  return targetLetter;
+  if (diff === 1)  return targetLetter + '#';
+  if (diff === -1) return targetLetter + '♭';
+  if (diff === 2)  return targetLetter + '##';
+  if (diff === -2) return targetLetter + '♭♭';
+  return NOTES[notePitch]; // extreme case: our degree logic is off
+}
+
+// Parse a chord interval symbol (R / ♭3 / ♯5 / 9 / ♭♭7 / etc.) into its
+// 0-6 degree index. 9 → 1 (same letter class as 2), 11 → 3, 13 → 5.
+export function symbolToDegreeIdx(symbol: string): number {
+  if (symbol === 'R' || symbol === '1') return 0;
+  const num = parseInt(symbol.replace(/[^0-9]/g, ''), 10);
+  if (isNaN(num) || num === 0) return 0;
+  return (num - 1) % 7;
+}
+
 export function noteLabel(
   noteIdx: number,
   root: number,
@@ -77,7 +127,33 @@ export function noteLabel(
   mode: string,
 ): string {
   if (labelMode === 'none') return '';
-  if (labelMode === 'name') return NOTES[noteIdx];
+  if (labelMode === 'name') {
+    // Context-aware spelling: pick the letter+accidental that makes each
+    // scale degree use a unique letter (C Dorian → B♭, not A♯). Falls back
+    // to sharps-only NOTES when there's no scale/chord context to key off.
+    if (mode === 'scales' || mode === 'caged') {
+      // CAGED overlays major-scale notes; scales mode uses the active scale.
+      const key = mode === 'caged' ? 'Major' : scaleKey;
+      const sc = SCALES[key];
+      if (sc) {
+        const scNotes = getScaleNotes(root, key);
+        const pos = scNotes.indexOf(noteIdx);
+        if (pos >= 0) return spellNoteAt(root, pos, noteIdx);
+      }
+      return NOTES[noteIdx];
+    }
+    if (mode === 'chords') {
+      const ch = CHORDS[chordKey];
+      if (ch) {
+        const intv = (noteIdx - root + 12) % 12;
+        const pos = ch.intervals.map(i => i % 12).indexOf(intv);
+        if (pos >= 0) return spellNoteAt(root, symbolToDegreeIdx(ch.intervalNames[pos]), noteIdx);
+      }
+      return NOTES[noteIdx];
+    }
+    // custom / identify mode — no scale-or-chord context, fall back to sharps
+    return NOTES[noteIdx];
+  }
   const intv = (noteIdx - root + 12) % 12;
   if (labelMode === 'interval') {
     const names = ['R','♭2','2','♭3','3','4','♭5','5','♭6','6','♭7','7'];

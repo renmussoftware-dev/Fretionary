@@ -25,7 +25,7 @@ import {
   CAGED_SHAPE_TIPS, POSITION_COLORS,
 } from '../../src/constants/music';
 import { useStore, SCALE_SPEED_MS, ScalePlaybackSpeed } from '../../src/store/useStore';
-import { getScalePositions, getCagedCaretFret, identifyCustomSelection } from '../../src/utils/theory';
+import { getScalePositions, getCagedCaretFret, identifyCustomSelection, spellNoteAt, symbolToDegreeIdx } from '../../src/utils/theory';
 import { useProGate } from '../../src/hooks/useProGate';
 import { useAudioEngine } from '../../src/hooks/useAudioEngine';
 import { isScaleFree, isChordFree } from '../../src/constants/subscription';
@@ -349,7 +349,9 @@ export default function FretboardScreen() {
                           {badge ? <Text style={styles.identifyBadge}>{badge}</Text> : null}
                         </Text>
                         <Text style={styles.identifyDetail}>
-                          {id.noteRoles.map(r => `${NOTES[r.note]} (${r.symbol})`).join(' · ')}
+                          {id.noteRoles
+                            .map(r => `${spellNoteAt(id.rootIdx, symbolToDegreeIdx(r.symbol), r.note)} (${r.symbol})`)
+                            .join(' · ')}
                         </Text>
                       </>
                     );
