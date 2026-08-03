@@ -4,7 +4,8 @@ import Svg, { Circle, Line, Text as SvgText, G, Rect } from 'react-native-svg';
 import { COLORS, RADIUS, SPACE } from '../constants/theme';
 import { NOTES, CHORDS, OPEN_STRINGS, intervalColorBucket, COLORS as MUSIC_COLORS } from '../constants/music';
 import {
-  getChordVoicings, spellNoteAt, symbolToDegreeIdx, type ChordVoicing,
+  getChordVoicings, spellNoteAt, symbolToDegreeIdx, chordRootLetter,
+  type ChordVoicing,
 } from '../utils/theory';
 
 interface Props {
@@ -184,7 +185,7 @@ export default function ChordBox({ root, chordKey, compact = false, lockToLabel 
           // diagram reads E♭ rather than D#. Notes with no role (shouldn't
           // happen for an in-chord tone) fall back to sharps.
           const noteName = symbol
-            ? spellNoteAt(root, symbolToDegreeIdx(symbol), ni)
+            ? spellNoteAt(root, symbolToDegreeIdx(symbol), ni, chordRootLetter(root, chordKey))
             : NOTES[ni];
 
           return (

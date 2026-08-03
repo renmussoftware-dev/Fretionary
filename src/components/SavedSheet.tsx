@@ -5,6 +5,7 @@ import {
 import { router } from 'expo-router';
 import { COLORS, RADIUS, SPACE } from '../constants/theme';
 import { NOTES } from '../constants/music';
+import { scaleRootName, chordRootName } from '../utils/theory';
 import { useStore, type SavedItem } from '../store/useStore';
 
 interface Props {
@@ -27,10 +28,12 @@ const KIND_COLOR: Record<SavedItem['kind'], string> = {
 };
 
 function itemTitle(it: SavedItem): string {
-  const root = NOTES[it.root];
-  if (it.kind === 'scale')       return `${root} ${it.scaleKey}`;
-  if (it.kind === 'chord')       return `${root} ${it.chordKey}`;
-  return `${it.progName} · in ${root}`;
+  // Spell the root the way its own scale/chord does, so a saved item reads
+  // "E♭ Dorian" here exactly as it does in the title bar. Progressions carry
+  // no scale/chord, so their key keeps the bare sharp name.
+  if (it.kind === 'scale') return `${scaleRootName(it.root, it.scaleKey)} ${it.scaleKey}`;
+  if (it.kind === 'chord') return `${chordRootName(it.root, it.chordKey)} ${it.chordKey}`;
+  return `${it.progName} · in ${NOTES[it.root]}`;
 }
 
 export default function SavedSheet({ visible, onClose }: Props) {

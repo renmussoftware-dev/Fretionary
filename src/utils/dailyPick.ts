@@ -13,7 +13,8 @@
  * from this function and agree.
  */
 
-import { NOTES, SCALES, CHORDS } from '../constants/music';
+import { SCALES, CHORDS } from '../constants/music';
+import { scaleRootName, chordRootName } from './theory';
 
 export interface DailyPick {
   type: 'scale' | 'chord';
@@ -45,12 +46,14 @@ function mod(n: number, m: number): number {
 export function getDailyPick(date: Date = new Date()): DailyPick {
   const day = localDayNumber(date);
   const root = mod(day, 12);
-  const rootName = NOTES[root];
   const useScale = mod(day, 2) === 0;
   const itemIndex = Math.floor(day / 2);
 
   if (useScale) {
     const key = SCALE_KEYS[mod(itemIndex, SCALE_KEYS.length)];
+    // Spell the root the way this particular scale does — the card headline
+    // has to read "E♭ Dorian" to match the title bar it navigates to.
+    const rootName = scaleRootName(root, key);
     return {
       type: 'scale',
       root,
@@ -61,6 +64,7 @@ export function getDailyPick(date: Date = new Date()): DailyPick {
     };
   }
   const key = CHORD_KEYS[mod(itemIndex, CHORD_KEYS.length)];
+  const rootName = chordRootName(root, key);
   return {
     type: 'chord',
     root,

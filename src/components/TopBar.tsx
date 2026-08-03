@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Animated } from 'react-native';
 import { COLORS, FONT_FAMILY, RADIUS, SPACE } from '../constants/theme';
 import { NOTES, NOTE_DISPLAY } from '../constants/music';
+import { scaleRootName, chordRootName } from '../utils/theory';
 import { useStore, type AppMode } from '../store/useStore';
 import { useProGate } from '../hooks/useProGate';
 import TuningPicker from './TuningPicker';
@@ -119,13 +120,16 @@ export default function TopBar() {
   const [savedOpen, setSavedOpen] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
 
+  // Name the root the way the active scale/chord spells it — "E♭ Dorian",
+  // not "D# Dorian". CAGED overlays the major scale, so it spells against
+  // Major. Identify has no scale/chord frame, so it keeps the bare sharp name.
   const titleSubject = mode === 'chords'
-    ? `${NOTES[root]} ${chordKey}`
+    ? `${chordRootName(root, chordKey)} ${chordKey}`
     : mode === 'caged'
-      ? `${NOTES[root]} CAGED`
+      ? `${scaleRootName(root, 'Major')} CAGED`
       : mode === 'custom'
         ? `${NOTES[root]} Identify`
-        : `${NOTES[root]} ${scaleKey}`;
+        : `${scaleRootName(root, scaleKey)} ${scaleKey}`;
 
   return (
     <View style={styles.wrap}>

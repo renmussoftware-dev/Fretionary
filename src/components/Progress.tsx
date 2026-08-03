@@ -4,6 +4,7 @@ import { router } from 'expo-router';
 import { COLORS, FONT_FAMILY, RADIUS, SPACE } from '../constants/theme';
 import { useStore } from '../store/useStore';
 import { SCALES, CHORDS, NOTES } from '../constants/music';
+import { scaleRootName, chordRootName } from '../utils/theory';
 import { PROGRESSIONS } from '../constants/progressions';
 
 /**
@@ -118,7 +119,9 @@ export default function Progress() {
             >
               <Text style={styles.recentKind}>{r.kind === 'scale' ? '♪' : r.kind === 'chord' ? '♫' : '↝'}</Text>
               <Text style={styles.recentText} numberOfLines={1}>
-                {NOTES[r.root]}{' '}
+                {r.kind === 'scale' ? scaleRootName(r.root, r.scaleKey) :
+                 r.kind === 'chord' ? chordRootName(r.root, r.chordKey) :
+                 NOTES[r.root]}{' '}
                 {r.kind === 'scale' ? r.scaleKey :
                  r.kind === 'chord' ? r.chordKey :
                  r.progName}

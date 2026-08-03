@@ -5,6 +5,7 @@ import { NOTES, SCALES, CHORDS } from '../constants/music';
 import { useStore } from '../store/useStore';
 import {
   getScaleNotes, getChordNotes, spellNoteAt, symbolToDegreeIdx,
+  scaleDegreeIdxAt, scaleRootLetter, chordRootLetter,
 } from '../utils/theory';
 
 const INTERVAL_NAMES = ['R','♭2','2','♭3','3','4','♭5','5','♭6','6','♭7','7'];
@@ -40,12 +41,18 @@ export default function InfoPanel() {
     } else if (mode === 'chords') {
       const ch = CHORDS[chordKey];
       // getChordNotes maps ch.intervals in order, so index i ↔ intervalNames[i].
+      const rl = chordRootLetter(root, chordKey);
       notesStr = ch
-        ? notes.map((n, i) => spellNoteAt(root, symbolToDegreeIdx(ch.intervalNames[i]), n)).join(' ')
+        ? notes.map((n, i) => spellNoteAt(root, symbolToDegreeIdx(ch.intervalNames[i]), n, rl)).join(' ')
         : notes.map(n => NOTES[n]).join(' ');
     } else {
-      // scales + caged — getScaleNotes returns degree order, so index IS the degree.
-      notesStr = notes.map((n, i) => spellNoteAt(root, i, n)).join(' ');
+      // scales + caged. The degree comes from the scale's degree symbols, not
+      // the array index — pentatonic/blues/whole-tone skip letters, so index
+      // and degree diverge (Pentatonic Minor's 2nd note is its ♭3).
+      const rl = scaleRootLetter(root, scaleForNotes);
+      notesStr = notes
+        .map((n, i) => spellNoteAt(root, scaleDegreeIdxAt(scaleForNotes, i), n, rl))
+        .join(' ');
     }
   }
 

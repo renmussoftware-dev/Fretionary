@@ -25,7 +25,10 @@ import {
   CAGED_SHAPE_TIPS, POSITION_COLORS,
 } from '../../src/constants/music';
 import { useStore, SCALE_SPEED_MS, ScalePlaybackSpeed } from '../../src/store/useStore';
-import { getScalePositions, getCagedCaretFret, identifyCustomSelection, spellNoteAt, symbolToDegreeIdx } from '../../src/utils/theory';
+import {
+  getScalePositions, getCagedCaretFret, identifyCustomSelection,
+  spellNoteAt, symbolToDegreeIdx, chordRootName, chordRootLetter,
+} from '../../src/utils/theory';
 import { useProGate } from '../../src/hooks/useProGate';
 import { useAudioEngine } from '../../src/hooks/useAudioEngine';
 import { isScaleFree, isChordFree } from '../../src/constants/subscription';
@@ -345,12 +348,12 @@ export default function FretboardScreen() {
                     return (
                       <>
                         <Text style={styles.identifyName}>
-                          {NOTES[id.rootIdx]} {id.chordKey}
+                          {chordRootName(id.rootIdx, id.chordKey)} {id.chordKey}
                           {badge ? <Text style={styles.identifyBadge}>{badge}</Text> : null}
                         </Text>
                         <Text style={styles.identifyDetail}>
                           {id.noteRoles
-                            .map(r => `${spellNoteAt(id.rootIdx, symbolToDegreeIdx(r.symbol), r.note)} (${r.symbol})`)
+                            .map(r => `${spellNoteAt(id.rootIdx, symbolToDegreeIdx(r.symbol), r.note, chordRootLetter(id.rootIdx, id.chordKey))} (${r.symbol})`)
                             .join(' · ')}
                         </Text>
                       </>

@@ -77,14 +77,13 @@ export function getCagedFretRange(root: number, shape: CagedLetter) {
 
 const LETTERS = ['C', 'D', 'E', 'F', 'G', 'A', 'B'] as const;
 const LETTER_PITCH: Record<string, number> = { C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11 };
+const NATURAL_LETTER: Record<number, string> = { 0:'C', 2:'D', 4:'E', 5:'F', 7:'G', 9:'A', 11:'B' };
 
-// Extract the letter name of the root's current display. The app displays
-// every root using its sharp variant (NOTES = ['C','C#','D','D#',...]) so
-// we peel off any '#' and return the base letter. Sharp roots use the
-// letter one step BELOW their pitch class (C# → C, F# → F).
+// Fallback root letter when there's no scale/chord context to choose with.
+// Mirrors the app's sharps-only NOTES display: a black key takes the letter
+// one step BELOW its pitch class (C# → C, F# → F).
 function rootLetterOf(rootPitch: number): string {
-  const naturals: Record<number, string> = { 0:'C', 2:'D', 4:'E', 5:'F', 7:'G', 9:'A', 11:'B' };
-  return naturals[rootPitch] ?? naturals[(rootPitch - 1 + 12) % 12];
+  return NATURAL_LETTER[rootPitch] ?? NATURAL_LETTER[(rootPitch - 1 + 12) % 12];
 }
 
 // Spell a note based on its degree within the current scale/chord. degreeIdx
@@ -92,9 +91,18 @@ function rootLetterOf(rootPitch: number): string {
 // 6th/13th, 6 = 7th) and wraps at 7 for chord extensions. The target letter
 // is degreeIdx letters up from the root letter; the accidental is chosen so
 // the letter's pitch aligns with notePitch.
-export function spellNoteAt(rootPitch: number, degreeIdx: number, notePitch: number): string {
-  const rootLetter = rootLetterOf(rootPitch);
-  const rootLetterIdx = LETTERS.indexOf(rootLetter as typeof LETTERS[number]);
+//
+// rootLetter lets the caller override which letter the root itself uses —
+// that's how a flat key gets spelled (root 3 as 'E' → E♭ Dorian rather than
+// 'D' → D# Dorian). Omit it to fall back to the sharp-biased default.
+export function spellNoteAt(
+  rootPitch: number,
+  degreeIdx: number,
+  notePitch: number,
+  rootLetter?: string,
+): string {
+  const rl = rootLetter ?? rootLetterOf(rootPitch);
+  const rootLetterIdx = LETTERS.indexOf(rl as typeof LETTERS[number]);
   const targetLetter = LETTERS[(rootLetterIdx + degreeIdx) % 7];
   const naturalPitch = LETTER_PITCH[targetLetter];
   // Signed distance from the letter's natural pitch to the target pitch,
@@ -109,13 +117,157 @@ export function spellNoteAt(rootPitch: number, degreeIdx: number, notePitch: num
   return NOTES[notePitch]; // extreme case: our degree logic is off
 }
 
-// Parse a chord interval symbol (R / ♭3 / ♯5 / 9 / ♭♭7 / etc.) into its
-// 0-6 degree index. 9 → 1 (same letter class as 2), 11 → 3, 13 → 5.
+// Parse a scale or chord degree symbol (R / 1 / ♭3 / ♯4 / 9 / ♭♭7 / etc.)
+// into its 0-6 letter offset from the root. 9 → 1 (same letter class as 2),
+// 11 → 3, 13 → 5. Accidentals don't move the letter, only the pitch.
 export function symbolToDegreeIdx(symbol: string): number {
   if (symbol === 'R' || symbol === '1') return 0;
   const num = parseInt(symbol.replace(/[^0-9]/g, ''), 10);
   if (isNaN(num) || num === 0) return 0;
   return (num - 1) % 7;
+}
+
+// ── Root spelling ───────────────────────────────────────────────────────────
+// A root is stored as a bare pitch class, and the display default is the
+// sharp name. That's wrong for flat keys: root 3 spelled 'D' gives
+// D# Dorian → D# E# F# G# A# B# C#, when a player would write
+// E♭ Dorian → E♭ F G♭ A♭ B♭ C D♭.
+//
+// Rather than add a "preferred name" to the store (which would need
+// migration and a choice at every call site that sets a root), we derive it:
+// spell the whole scale/chord BOTH ways and keep whichever needs fewer
+// accidentals. That's the same criterion a musician uses, and it
+// automatically adapts to the scale — F# Lydian needs 7 sharps so it comes
+// out G♭ Lydian, while F# Major (6 sharps vs 6 flats) stays F#.
+
+// How many accidentals it costs to call `notePitch` by `letter`. 1 for a
+// single sharp/flat, 2 for a double. Anything beyond that is unspellable and
+// gets a large penalty so the other candidate always wins.
+function accidentalCost(letter: string, notePitch: number): number {
+  let diff = (notePitch - LETTER_PITCH[letter] + 12) % 12;
+  if (diff > 6) diff -= 12;
+  const n = Math.abs(diff);
+  return n <= 2 ? n : 99;
+}
+
+// Some pitch classes tie: D# minor and E♭ minor are both real keys, 6 sharps
+// against 6 flats, and the count can't separate them. Both are defensible
+// theory, so the tiebreak is usage — which one a player would actually write.
+// E♭/A♭/B♭ dominate their sharp twins in practice; C#/F# dominate theirs.
+// This ONLY applies on an exact tie; any real difference in accidental count
+// decides on its own (that's why F# Lydian still comes out G♭ Lydian).
+const TIE_PREFERS_FLAT: Record<number, boolean> = {
+  1:  false, // C# over D♭
+  3:  true,  // E♭ over D#
+  6:  false, // F# over G♭
+  8:  true,  // A♭ over G#
+  10: true,  // B♭ over A#
+};
+
+// The letters a pitch class can legitimately be named by. Naturals have
+// exactly one; a black key has two — the letter below it with a sharp, or
+// the letter above it with a flat. Preferred spelling comes first, so a
+// strict < in bestRootLetter keeps it on a tie.
+function rootLetterCandidates(rootPitch: number): string[] {
+  const natural = NATURAL_LETTER[rootPitch];
+  if (natural) return [natural];
+  const sharpLetter = NATURAL_LETTER[(rootPitch - 1 + 12) % 12];
+  const sharpIdx = LETTERS.indexOf(sharpLetter as typeof LETTERS[number]);
+  const flatLetter = LETTERS[(sharpIdx + 1) % 7];
+  return TIE_PREFERS_FLAT[rootPitch]
+    ? [flatLetter, sharpLetter]
+    : [sharpLetter, flatLetter];
+}
+
+// Pick the root letter that spells this whole (degree, pitch) set with the
+// fewest accidentals.
+function bestRootLetter(
+  rootPitch: number,
+  pairs: { degreeIdx: number; pitch: number }[],
+): string {
+  const candidates = rootLetterCandidates(rootPitch);
+  if (candidates.length === 1) return candidates[0];
+  let best = candidates[0];
+  let bestCost = Infinity;
+  for (const cand of candidates) {
+    const ri = LETTERS.indexOf(cand as typeof LETTERS[number]);
+    let cost = 0;
+    for (const p of pairs) {
+      cost += accidentalCost(LETTERS[(ri + p.degreeIdx) % 7], p.pitch);
+    }
+    // Strict < keeps the first (sharp) candidate on a tie.
+    if (cost < bestCost) { bestCost = cost; best = cand; }
+  }
+  return best;
+}
+
+// noteLabel runs once per fretboard dot (up to ~150 on a 24-fret neck), and
+// each call would otherwise re-spell the entire scale twice to pick a letter.
+// The answer only depends on root + scale/chord, so cache it.
+const rootLetterCache = new Map<string, string>();
+
+export function scaleRootLetter(root: number, scaleKey: string): string {
+  const cacheKey = `s${root}|${scaleKey}`;
+  const hit = rootLetterCache.get(cacheKey);
+  if (hit !== undefined) return hit;
+  const sc = SCALES[scaleKey];
+  const notes = getScaleNotes(root, scaleKey);
+  // Non-7-note scales (pentatonic, blues, whole tone, diminished) skip or
+  // double up letters, so the degree symbols — not the array index — say
+  // which letter each note takes.
+  const letter = sc
+    ? bestRootLetter(root, notes.map((pitch, i) => ({
+        degreeIdx: symbolToDegreeIdx(sc.degrees[i] ?? String(i + 1)),
+        pitch,
+      })))
+    : rootLetterOf(root);
+  rootLetterCache.set(cacheKey, letter);
+  return letter;
+}
+
+export function chordRootLetter(root: number, chordKey: string): string {
+  const cacheKey = `c${root}|${chordKey}`;
+  const hit = rootLetterCache.get(cacheKey);
+  if (hit !== undefined) return hit;
+  const ch = CHORDS[chordKey];
+  const letter = ch
+    ? bestRootLetter(root, ch.intervals.map((iv, i) => ({
+        degreeIdx: symbolToDegreeIdx(ch.intervalNames[i]),
+        pitch: (root + iv) % 12,
+      })))
+    : rootLetterOf(root);
+  rootLetterCache.set(cacheKey, letter);
+  return letter;
+}
+
+// Which letter offset each note of a scale takes. Pulled out because both
+// noteLabel and InfoPanel need it and getting it from the array index is
+// only correct for 7-note scales.
+export function scaleDegreeIdxAt(scaleKey: string, i: number): number {
+  const sc = SCALES[scaleKey];
+  return symbolToDegreeIdx(sc?.degrees[i] ?? String(i + 1));
+}
+
+// Display name of a root in the context it's being used in — "E♭" rather
+// than "D#" for a flat key. These are what titles and headers should render.
+export function scaleRootName(root: number, scaleKey: string): string {
+  return spellNoteAt(root, 0, root, scaleRootLetter(root, scaleKey));
+}
+
+export function chordRootName(root: number, chordKey: string): string {
+  return spellNoteAt(root, 0, root, chordRootLetter(root, chordKey));
+}
+
+// Name a chord sitting on a degree of a key. Spelling a chord in isolation
+// isn't always enough inside a progression: chordRootName(6, 'Major') is
+// F# on its own, but the IV of D♭ major is G♭. degreeIdx is the chord's
+// 0-based position in the key's scale (I = 0, ii = 1, ... vii = 6).
+export function diatonicChordRootName(
+  keyRoot: number,
+  degreeIdx: number,
+  chordRoot: number,
+): string {
+  return spellNoteAt(keyRoot, degreeIdx, chordRoot, scaleRootLetter(keyRoot, 'Major'));
 }
 
 export function noteLabel(
@@ -138,7 +290,12 @@ export function noteLabel(
       if (sc) {
         const scNotes = getScaleNotes(root, key);
         const pos = scNotes.indexOf(noteIdx);
-        if (pos >= 0) return spellNoteAt(root, pos, noteIdx);
+        // scaleDegreeIdxAt reads the scale's degree symbols rather than the
+        // array position — pentatonic and blues skip letters, so position
+        // isn't the degree (Pentatonic Minor's 2nd note is the ♭3, not the 2nd).
+        if (pos >= 0) {
+          return spellNoteAt(root, scaleDegreeIdxAt(key, pos), noteIdx, scaleRootLetter(root, key));
+        }
       }
       return NOTES[noteIdx];
     }
@@ -147,7 +304,12 @@ export function noteLabel(
       if (ch) {
         const intv = (noteIdx - root + 12) % 12;
         const pos = ch.intervals.map(i => i % 12).indexOf(intv);
-        if (pos >= 0) return spellNoteAt(root, symbolToDegreeIdx(ch.intervalNames[pos]), noteIdx);
+        if (pos >= 0) {
+          return spellNoteAt(
+            root, symbolToDegreeIdx(ch.intervalNames[pos]), noteIdx,
+            chordRootLetter(root, chordKey),
+          );
+        }
       }
       return NOTES[noteIdx];
     }

@@ -16,7 +16,7 @@ import { useAudioEngine } from '../../src/hooks/useAudioEngine';
 import { useProGate } from '../../src/hooks/useProGate';
 import { ProBanner } from '../../src/components/ProLock';
 import { isChordFree } from '../../src/constants/subscription';
-import { getChordVoicings } from '../../src/utils/theory';
+import { getChordVoicings, chordRootName } from '../../src/utils/theory';
 import StandardTuningNotice from '../../src/components/StandardTuningNotice';
 import { getResolutions } from '../../src/constants/resolutions';
 import HeartButton from '../../src/components/HeartButton';
@@ -253,7 +253,7 @@ export default function ChordsScreen() {
             <View style={{ flex: 1 }}>
               {chord && <Text style={styles.detailEyebrow}>{categoryLabel(chord.category)}</Text>}
               <Text style={[styles.detailTitle, isTablet && styles.detailTitleTablet]}>
-                {NOTES[root]} {selectedChord}
+                {chordRootName(root, selectedChord)} {selectedChord}
               </Text>
             </View>
             <HeartButton item={{ kind: 'chord', root, chordKey: selectedChord }} size="md" />
@@ -334,7 +334,7 @@ export default function ChordsScreen() {
                       <View style={styles.resCardTop}>
                         <Text style={styles.resCardArrow}>→</Text>
                         <Text style={styles.resCardName} numberOfLines={1}>
-                          {NOTES[targetRoot]} {r.targetType}
+                          {chordRootName(targetRoot, r.targetType)} {r.targetType}
                         </Text>
                         {locked && <Text style={styles.resCardLock}>🔒</Text>}
                       </View>
@@ -371,7 +371,7 @@ export default function ChordsScreen() {
                   activeOpacity={0.7}>
                   <View style={{ flex: 1 }}>
                     <Text style={[styles.chordName, selectedChord === key && styles.chordNameActive]} numberOfLines={1}>
-                      {NOTES[root]} {key}
+                      {chordRootName(root, key)} {key}
                     </Text>
                     <Text style={styles.chordIntervals} numberOfLines={1}>{ch.intervalNames.join(' · ')}</Text>
                   </View>

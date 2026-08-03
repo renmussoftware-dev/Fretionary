@@ -17,7 +17,10 @@ import { useAudioEngine } from '../../src/hooks/useAudioEngine';
 import { useProGate } from '../../src/hooks/useProGate';
 import { ProBanner } from '../../src/components/ProLock';
 import { isProgressionFree } from '../../src/constants/subscription';
-import { getChordVoicings, spellNoteAt, symbolToDegreeIdx } from '../../src/utils/theory';
+import {
+  getChordVoicings, spellNoteAt, symbolToDegreeIdx, chordRootLetter, chordRootName,
+  scaleRootName, diatonicChordRootName,
+} from '../../src/utils/theory';
 import StandardTuningNotice from '../../src/components/StandardTuningNotice';
 import HeartButton from '../../src/components/HeartButton';
 import SavedSheet from '../../src/components/SavedSheet';
@@ -106,7 +109,7 @@ function ProgFretboard({ chordRoot, chordKey, animVal }: {
               // Spell by the interval role resolved above so a min7 chord in
               // the progression reads E♭/B♭ rather than D#/A#.
               const noteName = symbol
-                ? spellNoteAt(chordRoot, symbolToDegreeIdx(symbol), ni)
+                ? spellNoteAt(chordRoot, symbolToDegreeIdx(symbol), ni, chordRootLetter(chordRoot, chordKey))
                 : NOTES[ni];
               return (
                 <G key={`${s}-${f}`}>
@@ -222,7 +225,7 @@ export default function ProgressionsScreen() {
     ? {
         name: 'Custom',
         // For absolute custom chords, the "numeral" slot shows the note name.
-        numerals: customChords.map(c => NOTES[c.root]),
+        numerals: customChords.map(c => chordRootName(c.root, c.chordType)),
         // degrees retained for length only — actual roots come from progRoots.
         degrees: customChords.map(() => 0),
         chordTypes: customChords.map(c => c.chordType),
@@ -234,7 +237,7 @@ export default function ProgressionsScreen() {
         ? {
             name: selectedExample.name,
             // Concrete chord names in the "numeral" slot for display.
-            numerals: selectedExample.chords.map(c => NOTES[c.root]),
+            numerals: selectedExample.chords.map(c => chordRootName(c.root, c.chordType)),
             degrees: selectedExample.chords.map(() => 0),
             chordTypes: selectedExample.chords.map(c => c.chordType),
             genre: selectedExample.genre,
@@ -423,10 +426,10 @@ export default function ProgressionsScreen() {
                         : isNamedProg ? selectedProg.name : 'Custom'}
                     </Text>
                     <Text style={styles.activeMeta}>
-                      Key of {subMode === 'examples' ? (selectedExample?.key ?? NOTES[root]) : NOTES[root]} · {bpm} BPM
+                      Key of {subMode === 'examples' ? (selectedExample?.key ?? scaleRootName(root, 'Major')) : scaleRootName(root, 'Major')} · {bpm} BPM
                     </Text>
                   </View>
-                  <Text style={styles.activeName}>{NOTES[currentRoot]} {currentType}</Text>
+                  <Text style={styles.activeName}>{chordRootName(currentRoot, currentType)} {currentType}</Text>
                   <Text style={styles.activeIntervals}>{CHORDS[currentType]?.intervalNames.join('  ·  ')}</Text>
                 </View>
 
@@ -538,25 +541,25 @@ export default function ProgressionsScreen() {
           )}
           {drawerOpen && subMode === 'diatonic' && (
             <ScrollView showsVerticalScrollIndicator={false}>
-              <Text style={styles.diatHeader}>Key of {NOTES[root]} major</Text>
+              <Text style={styles.diatHeader}>Key of {scaleRootName(root, 'Major')} major</Text>
               {DIATONIC_MAJOR.map((d, i) => {
                 const cr = (root + d.degree) % 12;
                 return (
                   <TouchableOpacity key={i} onPress={() => {
-                    pickProg({ name: `${d.numeral} — ${NOTES[cr]} ${d.chordType}`, numerals: [d.numeral], degrees: [d.degree], chordTypes: [d.chordType], genre: 'Diatonic', description: `The ${d.numeral} chord of ${NOTES[root]} major.` });
+                    pickProg({ name: `${d.numeral} — ${diatonicChordRootName(root, i, cr)} ${d.chordType}`, numerals: [d.numeral], degrees: [d.degree], chordTypes: [d.chordType], genre: 'Diatonic', description: `The ${d.numeral} chord of ${scaleRootName(root, 'Major')} major.` });
                     setSubMode('common'); closeDrawer();
                   }} style={styles.progItem} activeOpacity={0.7}>
                     <View style={styles.diatRow}>
                       <Text style={styles.diatNum}>{d.numeral}</Text>
                       <View>
-                        <Text style={styles.progName}>{NOTES[cr]} {d.chordType}</Text>
+                        <Text style={styles.progName}>{diatonicChordRootName(root, i, cr)} {d.chordType}</Text>
                         <Text style={styles.progNums}>{CHORDS[d.chordType]?.intervalNames.join(' · ')}</Text>
                       </View>
                     </View>
                   </TouchableOpacity>
                 );
               })}
-              <Text style={styles.diatSubhead}>Common in {NOTES[root]}</Text>
+              <Text style={styles.diatSubhead}>Common in {scaleRootName(root, 'Major')}</Text>
               {[
                 { name: 'I – IV – V', n: ['I','IV','V'], d: [0,5,7], t: ['Major','Major','Major'] },
                 { name: 'I – V – vi – IV', n: ['I','V','vi','IV'], d: [0,7,9,5], t: ['Major','Major','Minor','Major'] },
@@ -588,8 +591,8 @@ export default function ProgressionsScreen() {
                 )}
                 {customChords.map((c, i) => (
                   <View key={i} style={styles.customItem}>
-                    <Text style={styles.customItemNum}>{NOTES[c.root]}</Text>
-                    <Text style={styles.customItemName} numberOfLines={1}>{NOTES[c.root]} {c.chordType}</Text>
+                    <Text style={styles.customItemNum}>{chordRootName(c.root, c.chordType)}</Text>
+                    <Text style={styles.customItemName} numberOfLines={1}>{chordRootName(c.root, c.chordType)} {c.chordType}</Text>
                     <TouchableOpacity onPress={() => { setCustomChords(ch => ch.filter((_, j) => j !== i)); if (activeIdx >= customChords.length - 1) setActiveIdx(0); }}
                       style={styles.removeBtn} activeOpacity={0.7}>
                       <Text style={styles.removeTxt}>x</Text>
@@ -628,7 +631,7 @@ export default function ProgressionsScreen() {
                       <View style={styles.progMeta}>
                         <View style={styles.badge}><Text style={styles.badgeTxt}>{ex.genre}</Text></View>
                         <Text style={styles.progNums} numberOfLines={1}>
-                          {ex.chords.map(c => NOTES[c.root]).slice(0, 4).join(' – ')}
+                          {ex.chords.map(c => chordRootName(c.root, c.chordType)).slice(0, 4).join(' – ')}
                         </Text>
                       </View>
                     </TouchableOpacity>
@@ -663,7 +666,7 @@ export default function ProgressionsScreen() {
               </TouchableOpacity>
             </View>
             <ScrollView>
-              <Text style={styles.modalSec}>Diatonic — {NOTES[root]} major</Text>
+              <Text style={styles.modalSec}>Diatonic — {scaleRootName(root, 'Major')} major</Text>
               {DIATONIC_MAJOR.map((d, i) => {
                 const absRoot = (root + d.degree) % 12;
                 return (
@@ -674,7 +677,7 @@ export default function ProgressionsScreen() {
                     }}
                     style={styles.modalItem} activeOpacity={0.7}>
                     <Text style={styles.modalNum}>{d.numeral}</Text>
-                    <Text style={styles.modalName}>{NOTES[absRoot]} {d.chordType}</Text>
+                    <Text style={styles.modalName}>{diatonicChordRootName(root, i, absRoot)} {d.chordType}</Text>
                     <Text style={styles.modalIntervals}>{CHORDS[d.chordType]?.intervalNames.join(' · ')}</Text>
                   </TouchableOpacity>
                 );
@@ -698,8 +701,8 @@ export default function ProgressionsScreen() {
                     setShowModal(false); setActiveIdx(0);
                   }}
                   style={styles.modalItem} activeOpacity={0.7}>
-                  <Text style={styles.modalNum}>{NOTES[modalRoot]}</Text>
-                  <Text style={styles.modalName}>{NOTES[modalRoot]} {ck}</Text>
+                  <Text style={styles.modalNum}>{chordRootName(modalRoot, ck)}</Text>
+                  <Text style={styles.modalName}>{chordRootName(modalRoot, ck)} {ck}</Text>
                   <Text style={styles.modalIntervals}>{CHORDS[ck]?.intervalNames.join(' · ')}</Text>
                 </TouchableOpacity>
               ))}
