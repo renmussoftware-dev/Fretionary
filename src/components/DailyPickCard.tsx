@@ -10,11 +10,13 @@ import { isChordFree, isScaleFree } from '../constants/subscription';
  * Small accent card that reads the deterministic daily pick and applies
  * it on tap.
  *
- * One usage site: the Fretboard tab in Scales mode. That's the screen the
- * app opens to, which is the whole point — the daily pick only works as a
- * habit loop if it's the first thing on screen. It renders on both scale
- * and chord days; a chord pick applies by switching this tab into Chords
- * mode rather than sending the user to the Chords tab.
+ * One usage site, and deliberately only one: the Fretboard tab in Scales
+ * mode. That's the screen the app opens to, which is the whole point — the
+ * daily pick only works as a habit loop if it's the first thing on screen.
+ * It renders on both scale and chord days; a chord pick applies by
+ * switching this tab into Chords mode rather than sending the user to the
+ * Chords tab. The card is not wanted anywhere else, so resist adding a
+ * second render site — that's been tried twice and reverted both times.
  *
  * Gating: the rotation pulls from every scale/chord in the library —
  * both free and Pro. On Pro-day picks the tap routes through requirePro,

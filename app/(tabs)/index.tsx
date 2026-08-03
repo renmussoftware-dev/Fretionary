@@ -169,14 +169,12 @@ export default function FretboardScreen() {
 
   const controlsContent = (
     <>
-        {/* Daily Pick — only in Scales mode AND only on scale days. When
-            today's rotation is a chord the card lives on the Chords tab
-            instead, where the fingering / voicings live and where the
-            user would naturally act on the pick. */}
-        {/* Today's pick lives here and nowhere else: Fretboard/Scales is the
-            screen the app opens to, so this is the one place it's guaranteed
-            to be seen. Renders on both scale and chord days — a chord pick
-            applies to this tab by switching it into Chords mode. */}
+        {/* Today's pick lives here and nowhere else. Fretboard/Scales is the
+            screen the app opens to, so it's the one place the card is
+            guaranteed to be seen — which is the whole point of a daily pick.
+            Renders on both scale and chord days. Tapping a chord pick puts
+            this tab in Chords mode, which does hide the card; that's
+            accepted, the pick has been applied at that point. */}
         {mode === 'scales' && <DailyPickCard />}
 
         {/* Scale selector */}
