@@ -3,21 +3,51 @@ import { View, Text, StyleSheet } from 'react-native';
 import { COLORS, FONT_FAMILY, SPACE } from '../constants/theme';
 import { NOTES, SCALES, CHORDS } from '../constants/music';
 import { useStore } from '../store/useStore';
-import { getScaleNotes, getChordNotes } from '../utils/theory';
+import {
+  getScaleNotes, getChordNotes, spellNoteAt, symbolToDegreeIdx,
+} from '../utils/theory';
 
 const INTERVAL_NAMES = ['R','♭2','2','♭3','3','4','♭5','5','♭6','6','♭7','7'];
 
 export default function InfoPanel() {
   const { root, scaleKey, chordKey, mode, activeCaged, customNotes } = useStore();
 
+  // CAGED overlays the MAJOR scale on the neck — that's what noteLabel spells
+  // against and what the Formula/Degrees columns below already report. This
+  // used to read the active scaleKey in CAGED mode, so the Notes column listed
+  // a different set of notes than the dots on the neck AND than its own
+  // Formula column right beside it.
+  const scaleForNotes = mode === 'caged' ? 'Major' : scaleKey;
+
   let notes: number[];
   if (mode === 'chords') notes = getChordNotes(root, chordKey);
   else if (mode === 'custom') notes = customNotes;
-  else notes = getScaleNotes(root, scaleKey);
+  else notes = getScaleNotes(root, scaleForNotes);
 
+  // Spell by degree so this list matches the neck: C Dorian reads
+  // "C D E♭ F G A B♭", not "C D D# F G A A#". The dots went through
+  // noteLabel and got this right; this strip built its own string off raw
+  // sharps-only NOTES, so the two disagreed on the same screen.
+  //
   // Spaces (instead of dots/multi-spaces) keep values short — important since
   // we now show all three columns side-by-side in a single panel row.
-  const notesStr = notes.length > 0 ? notes.map(n => NOTES[n]).join(' ') : '—';
+  let notesStr = '—';
+  if (notes.length > 0) {
+    if (mode === 'custom') {
+      // No scale/chord frame → no degree to spell against. Sharps, which is
+      // also what the neck shows in this mode.
+      notesStr = notes.map(n => NOTES[n]).join(' ');
+    } else if (mode === 'chords') {
+      const ch = CHORDS[chordKey];
+      // getChordNotes maps ch.intervals in order, so index i ↔ intervalNames[i].
+      notesStr = ch
+        ? notes.map((n, i) => spellNoteAt(root, symbolToDegreeIdx(ch.intervalNames[i]), n)).join(' ')
+        : notes.map(n => NOTES[n]).join(' ');
+    } else {
+      // scales + caged — getScaleNotes returns degree order, so index IS the degree.
+      notesStr = notes.map((n, i) => spellNoteAt(root, i, n)).join(' ');
+    }
+  }
 
   let formula = '—';
   let degrees = '—';

@@ -3,7 +3,9 @@ import { View, Text, TouchableOpacity, StyleSheet, ScrollView, useWindowDimensio
 import Svg, { Circle, Line, Text as SvgText, G, Rect } from 'react-native-svg';
 import { COLORS, RADIUS, SPACE } from '../constants/theme';
 import { NOTES, CHORDS, OPEN_STRINGS, intervalColorBucket, COLORS as MUSIC_COLORS } from '../constants/music';
-import { getChordVoicings, type ChordVoicing } from '../utils/theory';
+import {
+  getChordVoicings, spellNoteAt, symbolToDegreeIdx, type ChordVoicing,
+} from '../utils/theory';
 
 interface Props {
   root: number;
@@ -178,18 +180,24 @@ export default function ChordBox({ root, chordKey, compact = false, lockToLabel 
           const fill = palette.fill;
           const stroke = palette.stroke;
           const textColor = palette.text;
+          // Spell by the interval role we already resolved above, so a Cmin
+          // diagram reads E♭ rather than D#. Notes with no role (shouldn't
+          // happen for an in-chord tone) fall back to sharps.
+          const noteName = symbol
+            ? spellNoteAt(root, symbolToDegreeIdx(symbol), ni)
+            : NOTES[ni];
 
           return (
             <G key={s}>
               <Circle cx={sx(s)} cy={cy} r={dr} fill={fill} stroke={stroke} strokeWidth={1.5} />
               {!compact && (
                 <SvgText x={sx(s)} y={cy + 4} textAnchor="middle" fontSize={8} fontWeight="600" fill={textColor}>
-                  {NOTES[ni]}
+                  {noteName}
                 </SvgText>
               )}
               {compact && (
                 <SvgText x={sx(s)} y={cy + 2.5} textAnchor="middle" fontSize={5.5} fontWeight="600" fill={textColor}>
-                  {NOTES[ni]}
+                  {noteName}
                 </SvgText>
               )}
             </G>

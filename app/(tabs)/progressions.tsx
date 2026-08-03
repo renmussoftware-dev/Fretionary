@@ -17,7 +17,7 @@ import { useAudioEngine } from '../../src/hooks/useAudioEngine';
 import { useProGate } from '../../src/hooks/useProGate';
 import { ProBanner } from '../../src/components/ProLock';
 import { isProgressionFree } from '../../src/constants/subscription';
-import { getChordVoicings } from '../../src/utils/theory';
+import { getChordVoicings, spellNoteAt, symbolToDegreeIdx } from '../../src/utils/theory';
 import StandardTuningNotice from '../../src/components/StandardTuningNotice';
 import HeartButton from '../../src/components/HeartButton';
 import SavedSheet from '../../src/components/SavedSheet';
@@ -103,11 +103,16 @@ function ProgFretboard({ chordRoot, chordKey, animVal }: {
               else if (bucket === 'third') { fill = '#E24B4A'; stroke = '#A32D2D'; tc = '#fff'; }
               else if (bucket === 'fifth') { fill = '#1D9E75'; stroke = '#0F6E56'; tc = '#fff'; }
               else if (bucket === 'ext')   { fill = '#378ADD'; stroke = '#185FA5'; tc = '#fff'; }
+              // Spell by the interval role resolved above so a min7 chord in
+              // the progression reads E♭/B♭ rather than D#/A#.
+              const noteName = symbol
+                ? spellNoteAt(chordRoot, symbolToDegreeIdx(symbol), ni)
+                : NOTES[ni];
               return (
                 <G key={`${s}-${f}`}>
                   <Circle cx={x} cy={y} r={FBDR} fill={fill} stroke={stroke} strokeWidth={1.5} />
                   <SvgText x={x} y={y + 4} textAnchor="middle" fontSize={8} fontWeight="600" fill={tc}>
-                    {NOTES[ni]}
+                    {noteName}
                   </SvgText>
                 </G>
               );
