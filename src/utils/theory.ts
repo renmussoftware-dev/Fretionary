@@ -21,36 +21,50 @@ export function getChordNotes(root: number, chordKey: string): number[] {
   return ch.intervals.map(iv => (root + iv) % 12);
 }
 
+// Width of a position, as an inclusive fret offset — 4 gives a 5-fret window,
+// which is one hand span without shifting.
+const POSITION_SPAN = 4;
+
+/**
+ * The five scale positions, aligned to the five CAGED shapes for this root.
+ *
+ * Each CAGED band locates a chord shape on the neck; the position widens it
+ * to a 5-fret hand span, which is the stretch of scale you actually play
+ * around that shape. Anchoring to CAGED means the Positions pills and the
+ * CAGED tab describe the same neck instead of two unrelated griddings, and
+ * it lands on the shapes players already know — for A minor pentatonic,
+ * position 1 comes out at fret 5, the classic box.
+ *
+ * This replaced a sliding-window search whose two filters could never fail
+ * (`maxF - startFret <= 4` was tautological because f never exceeded
+ * startFret+4, and any 6-string x 5-fret window clears `count >= 4`). Every
+ * start fret therefore qualified, the merge thinned them to every third
+ * fret, and the result was the constant 0-4/3-7/6-10/9-13/12-16 for all 12
+ * roots and every scale — the boxes never moved when you changed key.
+ *
+ * scaleKey no longer participates: two scales sharing a root share their
+ * hand positions, and it's the notes lit inside the window that differ.
+ * noteClasses likewise — CAGED geometry is standard tuning (which is what
+ * the CAGED tab pins), so in an alternate tuning these stay put as hand
+ * positions while the notes inside them follow the tuning. Both are kept in
+ * the signature because callers pass them.
+ */
 export function getScalePositions(
   root: number,
-  scaleKey: string,
-  noteClasses: readonly number[] = OPEN_STRINGS,
+  _scaleKey?: string,
+  _noteClasses?: readonly number[],
 ) {
-  const notes = getScaleNotes(root, scaleKey);
-  const positions: { start: number; end: number }[] = [];
-  for (let startFret = 0; startFret <= 20; startFret++) {
-    let maxF = 0, minF = 99, count = 0;
-    for (let s = 0; s < 6; s++) {
-      for (let f = startFret; f <= startFret + 4; f++) {
-        const n = (noteClasses[s] + f) % 12;
-        if (notes.includes(n)) {
-          if (f > maxF) maxF = f;
-          if (f < minF) minF = f;
-          count++;
-        }
-      }
-    }
-    if (count >= 4 && maxF - startFret <= 4) {
-      positions.push({ start: startFret, end: Math.min(startFret + 4, 24) });
-    }
+  const starts = CAGED_ORDER
+    .map(shape => getCagedFretRange(root, shape).start)
+    .sort((a, b) => a - b);
+
+  const out: { start: number; end: number }[] = [];
+  for (const start of starts) {
+    // Two shapes can resolve to the same start; one window is enough.
+    if (out.some(p => p.start === start)) continue;
+    out.push({ start, end: Math.min(start + POSITION_SPAN, 24) });
   }
-  const merged: { start: number; end: number }[] = [];
-  for (const p of positions) {
-    if (!merged.length || p.start > merged[merged.length - 1].start + 2) {
-      merged.push(p);
-    }
-  }
-  return merged.slice(0, 5);
+  return out;
 }
 
 export function getCagedCaretFret(root: number, shape: CagedLetter): number {
