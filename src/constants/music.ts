@@ -232,12 +232,33 @@ export interface CagedShape {
   openShape: string; // what open chord it resembles
 }
 
+// fretSpan is measured from the caret (the fret where rootString carries the
+// root), so it depends on WHICH root string the shape is anchored to. Derive
+// it from the open shape: take the root's fret on rootString as the caret,
+// then offset the shape's lowest and highest fretted/open string from it.
+//
+//   shape  open voicing   fret extent   root frets (low→high strings)
+//   C      x 3 2 0 1 0    0..3          A str 3, B str 1
+//   A      x 0 2 2 2 0    0..2          A str 0, G str 2
+//   G      3 2 0 0 0 3    0..3          low E 3, G str 0, high e 3
+//   E      0 2 2 1 0 0    0..2          low E 0, D str 2, high e 0
+//   D      x x 0 2 3 2    0..3          D str 0, B str 3
+//
+// e.g. C is anchored on the B string, whose root sits at fret 1 of an open
+// C, and the shape runs 0..3 — so the span is [0-1, 3-1] = [-1, 2].
+//
+// These agree with VOICING_TEMPLATES, which encodes the same five shapes for
+// 'Major' independently (note it indexes strings the other way round:
+// 0=low E there, 0=high e here).
 export const CAGED_SHAPES: Record<string, CagedShape> = {
-  C: { name:'C shape', rootString:1, description:'Root on B string. Upper-neck brightness.', fretSpan:[-2,2], openShape:'C' },
-  A: { name:'A shape', rootString:2, description:'Root on G string. Very common barre shape.', fretSpan:[-1,3], openShape:'A' },
-  G: { name:'G shape', rootString:5, description:'Root on low E. Widest shape, spans 4+ frets.', fretSpan:[-2,3], openShape:'G' },
-  E: { name:'E shape', rootString:5, description:'Root on low E & high e. Most common barre shape.', fretSpan:[0,3], openShape:'E' },
-  D: { name:'D shape', rootString:0, description:'Root on high e. Great for treble lead lines.', fretSpan:[-1,2], openShape:'D' },
+  C: { name:'C shape', rootString:1, description:'Root on B string. Upper-neck brightness.', fretSpan:[-1,2], openShape:'C' },
+  A: { name:'A shape', rootString:2, description:'Root on G string. Very common barre shape.', fretSpan:[-2,0], openShape:'A' },
+  G: { name:'G shape', rootString:5, description:'Root on low E. Widest shape, spans 4+ frets.', fretSpan:[-3,0], openShape:'G' },
+  E: { name:'E shape', rootString:5, description:'Root on low E & high e. Most common barre shape.', fretSpan:[0,2], openShape:'E' },
+  // Anchored on the D string, not the high e: an open D is x x 0 2 3 2, so
+  // the high e plays F# — the 3rd, not a root. Anchoring there put the caret
+  // (and the whole highlight band) on a fret unrelated to the shape.
+  D: { name:'D shape', rootString:3, description:'Root on D string. Bright upper voicing for lead lines.', fretSpan:[0,3], openShape:'D' },
 };
 
 export const CAGED_ORDER = ['C','A','G','E','D'] as const;
@@ -270,9 +291,9 @@ export const CAGED_SHAPE_TIPS: Record<CagedLetter, string[]> = {
     'Connects to D shape above it',
   ],
   D: [
-    'Root on high e string (1st string)',
+    'Root on D string (4th string)',
+    'High e plays the 3rd, not the root',
     'Great for melodic lead work',
-    'Often overlooked but very useful',
     'Connects to C shape above it',
   ],
 };

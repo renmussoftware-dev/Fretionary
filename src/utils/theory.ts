@@ -57,7 +57,14 @@ export function getCagedCaretFret(root: number, shape: CagedLetter): number {
   const shapeInfo = CAGED_SHAPES[shape];
   for (let f = 0; f <= 12; f++) {
     const stringNote = (OPEN_STRINGS[shapeInfo.rootString] + f) % 12;
-    if (stringNote === root) return f;
+    if (stringNote === root) {
+      // Shapes that reach below their caret can't be played at the lowest
+      // root — the fingering would cross the nut. The A shape is anchored on
+      // the G string and extends 2 frets down, so for root G (open G string,
+      // caret 0) it wants frets -2..0; the real voicing is the octave up at
+      // 10..12. Same for the C shape on low roots and the G shape at E/F/F#.
+      return f + shapeInfo.fretSpan[0] < 0 ? f + 12 : f;
+    }
   }
   return 0;
 }

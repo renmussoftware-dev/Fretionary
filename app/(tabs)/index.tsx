@@ -26,7 +26,7 @@ import {
 } from '../../src/constants/music';
 import { useStore, SCALE_SPEED_MS, ScalePlaybackSpeed } from '../../src/store/useStore';
 import {
-  getScalePositions, getCagedCaretFret, identifyCustomSelection,
+  getScalePositions, getCagedCaretFret, getCagedFretRange, identifyCustomSelection,
   spellNoteAt, symbolToDegreeIdx, chordRootName, chordRootLetter,
 } from '../../src/utils/theory';
 import { useProGate } from '../../src/hooks/useProGate';
@@ -404,6 +404,10 @@ export default function FretboardScreen() {
               const shape = CAGED_SHAPES[activeCaged];
               const col = CAGED_COLORS[activeCaged];
               const caret = getCagedCaretFret(root, activeCaged as any);
+              // Where the shape actually starts. Not the same as the caret:
+              // the caret is the root on the anchor string, and the C, A and
+              // G shapes all reach below it (spans [-1,2], [-2,0], [-3,0]).
+              const cagedSpan = getCagedFretRange(root, activeCaged as any);
               const tips = CAGED_SHAPE_TIPS[activeCaged as keyof typeof CAGED_SHAPE_TIPS] ?? [];
               const protoRoot = CAGED_PROTOTYPE_ROOT[activeCaged];
               const protoNoteName = protoRoot !== undefined ? NOTES[protoRoot] : null;
@@ -438,8 +442,8 @@ export default function FretboardScreen() {
                         lockToLabel={`${activeCaged} shape`}
                       />
                       <Text style={styles.cagedProtoHint}>
-                        {caret > 0
-                          ? `Memorize this fingering — for your selected key, barre this shape at fret ${caret}. The colored region on the fretboard above shows where it lives.`
+                        {cagedSpan.start > 0
+                          ? `Memorize this fingering — for your selected key it sits at frets ${cagedSpan.start}–${cagedSpan.end}. The colored region on the fretboard above shows where it lives.`
                           : `Memorize this fingering — for your selected key the shape sits in open position, exactly as shown.`}
                       </Text>
                     </View>
