@@ -25,3 +25,13 @@ expo-env.d.ts
 # @end expo-cli
 
 credentials.json
+
+# Signing keys — never commit. credentials.json above is already ignored, but
+# it only POINTS at the keystore, so the keystore itself needs its own rule.
+# NOTE: these patterns do nothing for a file git is already tracking.
+credentials/
+*.jks
+*.keystore
+*.p8
+*.p12
+*.mobileprovision
