@@ -7,12 +7,14 @@ import { COLORS, FONT_FAMILY, RADIUS, SPACE } from '../../src/constants/theme';
 import Metronome from '../../src/components/Metronome';
 import Guide from '../../src/components/Guide';
 import Progress from '../../src/components/Progress';
+import MapBuilder from '../../src/components/MapBuilder';
 import { SUPPORT_EMAIL, openSupportEmail, requestInlineReview, openStoreReview } from '../../src/utils/support';
 
-type ToolMode = 'guide' | 'progress' | 'metronome' | 'support';
+type ToolMode = 'guide' | 'maps' | 'progress' | 'metronome' | 'support';
 
 const TOOLS: { mode: ToolMode; label: string; sub: string }[] = [
   { mode: 'guide',     label: 'Guide',     sub: 'Features & what\u2019s free' },
+  { mode: 'maps',      label: 'Maps',      sub: 'Custom diagrams & PDF' },
   { mode: 'progress',  label: 'Progress',  sub: 'Streak & practice stats' },
   { mode: 'metronome', label: 'Metronome', sub: 'BPM & time sig' },
   { mode: 'support',   label: 'Support',   sub: 'Bugs & feedback' },
@@ -63,6 +65,7 @@ export default function ToolsScreen() {
 
   let body: React.ReactNode;
   if (mode === 'guide')            body = <Guide />;
+  else if (mode === 'maps')        body = <MapBuilder />;
   else if (mode === 'progress')    body = <Progress />;
   else if (mode === 'support')     body = <Support />;
   else                             body = <Metronome />;

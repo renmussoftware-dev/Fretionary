@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as StoreReview from 'expo-store-review';
+import type { FretMap } from '../utils/diagramSvg';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const REVIEW_MIN_ACTIONS = 3;
@@ -183,6 +184,12 @@ interface AppState {
   isFavorite: (item: SavedItemInput) => boolean;
   addRecent: (item: SavedItemInput) => void;
   clearRecents: () => void;
+
+  // Custom fretboard maps (the Maps builder in Tools). Persisted. saveMap
+  // upserts by id so "save again" updates in place instead of duplicating.
+  savedMaps: FretMap[];
+  saveMap: (map: FretMap) => void;
+  deleteMap: (id: string) => void;
 }
 
 export const useStore = create<AppState>()(
@@ -337,6 +344,15 @@ export const useStore = create<AppState>()(
       },
 
       clearRecents: () => set({ recents: [] }),
+
+      savedMaps: [],
+      saveMap: (map) => {
+        const rest = get().savedMaps.filter(m => m.id !== map.id);
+        set({ savedMaps: [map, ...rest] });
+        // Saving a map is engagement of the same kind as favoriting.
+        get().recordPositiveAction();
+      },
+      deleteMap: (id) => set({ savedMaps: get().savedMaps.filter(m => m.id !== id) }),
     }),
     {
       name: 'fretionary-store',
@@ -359,6 +375,7 @@ export const useStore = create<AppState>()(
         scalesExplored: s.scalesExplored,
         chordsLearned: s.chordsLearned,
         progressionsPlayed: s.progressionsPlayed,
+        savedMaps: s.savedMaps,
       }),
     },
   ),
