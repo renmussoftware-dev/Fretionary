@@ -232,4 +232,50 @@ export const VOICING_TEMPLATES: Record<string, VoicingTemplate[]> = {
     { frets:[null,0,2,1,2,3], rootString:1, label:'Maj7#11 (A root)', position:'mid' },
     { frets:[null,null,0,1,1,2], rootString:2, label:'Maj7#11 (D root)', position:'high' },
   ],
+
+  // ── Suspended sevenths and Lydian colours ─────────────────────────────────
+  // Shapes below were solved rather than transcribed: every string offset was
+  // checked to land on an interval the chord actually contains, with no
+  // foreign notes, root at offset 0 on rootString, span <= 3 frets, and no
+  // muted string between two sounding ones. Interval each string produces is
+  // in the comment above it.
+
+  // R 2 5 b7
+  '7sus2': [
+    { frets:[0,-3,0,-3,0,0],   rootString:0, label:'7sus2 (E root)', position:'low' }, // R 2 ♭7 R 5 R
+    { frets:[null,0,2,0,0,0],  rootString:1, label:'7sus2 (A root)', position:'mid' }, // R 5 ♭7 2 5
+  ],
+
+  // R 2 5 7
+  'Maj7sus2': [
+    { frets:[0,-3,-3,-3,0,-1], rootString:0, label:'Maj7sus2 (E root)', position:'low' }, // R 2 5 R 5 7
+    { frets:[null,0,2,1,0,0],  rootString:1, label:'Maj7sus2 (A root)', position:'mid' }, // R 5 7 2 5
+  ],
+
+  // R 4 5 7
+  'Maj7sus4': [
+    { frets:[0,0,1,2,0,0],      rootString:0, label:'Maj7sus4 (E root)', position:'low' }, // R 4 7 4 5 R
+    { frets:[null,0,0,-3,-3,0], rootString:1, label:'Maj7sus4 (A root)', position:'mid' }, // R 4 5 7 5
+  ],
+
+  // R 4 5 b7 9 — the A-root shape is the straight five-string barre players
+  // already know as "sus9"; every string lands on a chord tone at the same fret.
+  '9sus4': [
+    { frets:[null,0,0,0,0,0],  rootString:1, label:'9sus4 (A root)', position:'mid' }, // R 4 ♭7 9 5
+    { frets:[0,0,0,-1,0,0],    rootString:0, label:'9sus4 (E root)', position:'low' }, // R 4 ♭7 9 5 R
+  ],
+
+  // R 3 #5 7
+  'Maj7♯5': [
+    { frets:[0,-1,1,1,1,-1],       rootString:0, label:'Maj7#5 (E root)', position:'low' }, // R 3 7 3 ♯5 7
+    { frets:[null,0,-1,-2,-3,-3],  rootString:1, label:'Maj7#5 (A root)', position:'mid' }, // R 3 ♯5 7 3
+  ],
+
+  // R 3 5 7 9 #11 — six notes, six strings, and the ♯11 wants room, so both
+  // shapes drop the 5th. Standard practice: the ♯11 is the colour tone and a
+  // natural 5th a semitone below it just muddies the voicing.
+  'Maj9♯11': [
+    { frets:[0,-1,1,-1,-1,-1], rootString:0, label:'Maj9#11 (E root)', position:'low' }, // R 3 7 9 ♯11 7
+    { frets:[null,0,-1,1,0,-1], rootString:1, label:'Maj9#11 (A root)', position:'mid' }, // R 3 7 9 ♯11
+  ],
 };

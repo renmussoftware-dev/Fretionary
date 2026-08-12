@@ -193,6 +193,10 @@ export const CHORDS: Record<string, ChordDef> = {
   'Sus2':        { intervals:[0,2,7],          intervalNames:['R','2','5'],             category:'sus',      description:'Open, ambiguous.' },
   'Sus4':        { intervals:[0,5,7],          intervalNames:['R','4','5'],             category:'sus',      description:'Anticipatory tension.' },
   'Dom 7sus4':   { intervals:[0,5,7,10],       intervalNames:['R','4','5','♭7'],         category:'sus',      description:'Dominant 7 with the 3rd suspended to a 4th. Funk and modal jazz staple.' },
+  '7sus2':       { intervals:[0,2,7,10],       intervalNames:['R','2','5','♭7'],         category:'sus',      description:'Dominant 7 with the 3rd suspended to a 2nd. Open and unresolved.' },
+  'Maj7sus2':    { intervals:[0,2,7,11],       intervalNames:['R','2','5','7'],          category:'sus',      description:'Major 7 with the 3rd suspended to a 2nd. Floating, ambiguous.' },
+  'Maj7sus4':    { intervals:[0,5,7,11],       intervalNames:['R','4','5','7'],          category:'sus',      description:'Major 7 with the 3rd suspended to a 4th. Airy, never quite settles.' },
+  '9sus4':       { intervals:[0,5,7,10,14],    intervalNames:['R','4','5','♭7','9'],     category:'sus',      description:'The sus9 sound. Gospel, soul and modal jazz.' },
   'Power (5)':   { intervals:[0,7],            intervalNames:['R','5'],                 category:'triad',    description:'Root + 5th. Rock staple.' },
   'Major 6':     { intervals:[0,4,7,9],        intervalNames:['R','3','5','6'],         category:'seventh',  description:'Sweet jazz color.' },
   'Minor 6':     { intervals:[0,3,7,9],        intervalNames:['R','♭3','5','6'],       category:'seventh',  description:'Bittersweet quality.' },
@@ -203,6 +207,7 @@ export const CHORDS: Record<string, ChordDef> = {
   'Dim 7':       { intervals:[0,3,6,9],        intervalNames:['R','♭3','♭5','♭♭7'],  category:'seventh',  description:'Maximum tension. Symmetrical.' },
   'Half-Dim 7':  { intervals:[0,3,6,10],       intervalNames:['R','♭3','♭5','♭7'],   category:'seventh',  description:'Minor 7 flat 5. ii chord in minor.' },
   'Aug 7':       { intervals:[0,4,8,10],       intervalNames:['R','3','♯5','♭7'],     category:'seventh',  description:'Dominant with raised 5th.' },
+  'Maj7♯5':      { intervals:[0,4,8,11],       intervalNames:['R','3','♯5','7'],      category:'seventh',  description:'Major 7 with a raised 5th. Lydian augmented colour.' },
   'Dominant 9':  { intervals:[0,4,7,10,14],    intervalNames:['R','3','5','♭7','9'],   category:'extended', description:'Rich dominant extension. R&B.' },
   'Major 9':     { intervals:[0,4,7,11,14],    intervalNames:['R','3','5','7','9'],     category:'extended', description:'Bright and expansive.' },
   'Minor 9':     { intervals:[0,3,7,10,14],    intervalNames:['R','♭3','5','♭7','9'], category:'extended', description:'Lush minor color.' },
@@ -222,6 +227,7 @@ export const CHORDS: Record<string, ChordDef> = {
   'Dom 7♯9':     { intervals:[0,4,7,10,15],        intervalNames:['R','3','5','♭7','♯9'],         category:'extended', description:'The Hendrix chord. Blues, funk and rock.' },
   'Dom 7♯11':    { intervals:[0,4,7,10,18],        intervalNames:['R','3','5','♭7','♯11'],        category:'extended', description:'Lydian dominant. Jazz and fusion staple.' },
   'Maj7♯11':     { intervals:[0,4,7,11,18],        intervalNames:['R','3','5','7','♯11'],         category:'seventh',  description:'Lydian major 7th. Dreamy and floating.' },
+  'Maj9♯11':     { intervals:[0,4,7,11,14,18],     intervalNames:['R','3','5','7','9','♯11'],     category:'extended', description:'Lydian major 9. Floating and cinematic.' },
 };
 
 export interface CagedShape {
