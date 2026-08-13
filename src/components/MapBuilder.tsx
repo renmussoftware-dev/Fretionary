@@ -4,8 +4,6 @@ import {
   StyleSheet, Alert,
 } from 'react-native';
 import { SvgXml } from 'react-native-svg';
-import * as Print from 'expo-print';
-import * as Sharing from 'expo-sharing';
 import { COLORS, FONT_FAMILY, RADIUS, SPACE } from '../constants/theme';
 import { OPEN_STRINGS, SCALES, CHORDS } from '../constants/music';
 import { useStore } from '../store/useStore';
@@ -165,6 +163,13 @@ export default function MapBuilder() {
     }
     setExporting(true);
     try {
+      // Lazy-required, not imported at module scope: expo-print/expo-sharing
+      // are native modules that only exist in builds made after they were
+      // added. A top-level import would crash this whole screen on an older
+      // binary running new JS (dev client mid-update, or a stale OTA pairing);
+      // requiring here confines the failure to the Export button.
+      const Print: typeof import('expo-print') = require('expo-print');
+      const Sharing: typeof import('expo-sharing') = require('expo-sharing');
       // Same renderer as the on-screen preview, light theme for paper.
       const lightSvg = renderDiagramSvg(draft, 'light');
       const html = `<!DOCTYPE html><html><head><meta charset="utf-8"/><style>
@@ -186,7 +191,10 @@ export default function MapBuilder() {
         Alert.alert('Saved to file', uri);
       }
     } catch (e) {
-      Alert.alert('Export failed', 'Could not create the PDF. Please try again.');
+      Alert.alert(
+        'Export failed',
+        'Could not create the PDF. If the app was just updated, PDF export needs the newest app version from the store.',
+      );
     } finally {
       setExporting(false);
     }

@@ -77,23 +77,28 @@ export default function ToolsScreen() {
           <Text style={styles.eyebrow}>Workshop</Text>
           <Text style={styles.title}>Tools</Text>
         </View>
-        <View style={styles.tabs}>
-          {TOOLS.map(t => (
-            <TouchableOpacity
-              key={t.mode}
-              onPress={() => setMode(t.mode)}
-              activeOpacity={0.7}
-              style={[styles.tab, mode === t.mode && styles.tabActive]}
-            >
-              <Text style={[styles.tabText, mode === t.mode && styles.tabTextActive]}>
-                {t.label}
-              </Text>
-              <Text style={[styles.tabSub, mode === t.mode && styles.tabSubActive]}>
-                {t.sub}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </View>
+        {/* Horizontal scroll, natural-width pills. With five tools a
+            flex-share row gives each pill ~66pt on a phone — narrower than
+            the word "Metronome" — so the row has to scroll instead. */}
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.tabs}>
+          <View style={styles.tabsInner}>
+            {TOOLS.map(t => (
+              <TouchableOpacity
+                key={t.mode}
+                onPress={() => setMode(t.mode)}
+                activeOpacity={0.7}
+                style={[styles.tab, mode === t.mode && styles.tabActive]}
+              >
+                <Text style={[styles.tabText, mode === t.mode && styles.tabTextActive]}>
+                  {t.label}
+                </Text>
+                <Text style={[styles.tabSub, mode === t.mode && styles.tabSubActive]}>
+                  {t.sub}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </ScrollView>
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.body}>
@@ -120,13 +125,16 @@ const styles = StyleSheet.create({
   title: { fontSize: 24, fontWeight: '700', color: COLORS.text, letterSpacing: -0.4 },
 
   tabs: {
-    flexDirection: 'row', gap: 4,
     backgroundColor: COLORS.surface,
-    borderRadius: RADIUS.md, padding: 3,
+    borderRadius: RADIUS.md,
     borderWidth: 1, borderColor: COLORS.border,
+    flexGrow: 0,
+  },
+  tabsInner: {
+    flexDirection: 'row', gap: 4, padding: 3,
   },
   tab: {
-    flex: 1, paddingVertical: 8, paddingHorizontal: 6,
+    paddingVertical: 8, paddingHorizontal: 14,
     alignItems: 'center', borderRadius: 7,
   },
   tabActive: { backgroundColor: COLORS.surfaceActive },
