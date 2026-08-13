@@ -144,6 +144,17 @@ export default function MapBuilder() {
     setSheetOpen(false);
   }
 
+  // Clear empties the board but keeps the map's identity (name, id, window) —
+  // unlike New, which starts a fresh map. Confirmed because there's no undo,
+  // and a seeded full-neck map is ~90 dots of work to lose to a stray tap.
+  function handleClear() {
+    if (dots.length === 0) return;
+    Alert.alert('Clear all notes?', `Remove all ${dots.length} notes from the board.`, [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Clear', style: 'destructive', onPress: () => setDots([]) },
+    ]);
+  }
+
   function handleSave() {
     if (dots.length === 0) {
       Alert.alert('Nothing to save', 'Tap the fretboard to place some notes first.');
@@ -278,6 +289,9 @@ export default function MapBuilder() {
         <TouchableOpacity onPress={seedFromChord} style={styles.seedBtn} activeOpacity={0.7}>
           <Text style={styles.seedText}>Seed: {chordRootName(root, chordKey)} {chordKey}</Text>
         </TouchableOpacity>
+        <TouchableOpacity onPress={handleClear} style={styles.clearBtn} activeOpacity={0.7}>
+          <Text style={styles.clearText}>Clear</Text>
+        </TouchableOpacity>
         <TouchableOpacity onPress={resetDraft} style={styles.seedBtn} activeOpacity={0.7}>
           <Text style={styles.seedText}>New</Text>
         </TouchableOpacity>
@@ -397,6 +411,14 @@ const styles = StyleSheet.create({
     borderWidth: 1, borderColor: 'rgba(232,212,77,0.3)',
   },
   seedText: { fontSize: 12, color: '#E8D44D', fontWeight: '600' },
+  // Red-tinted so the destructive action doesn't read as just another seed.
+  clearBtn: {
+    paddingHorizontal: 12, paddingVertical: 8,
+    borderRadius: RADIUS.md,
+    backgroundColor: 'rgba(226,75,74,0.08)',
+    borderWidth: 1, borderColor: 'rgba(226,75,74,0.3)',
+  },
+  clearText: { fontSize: 12, color: '#E24B4A', fontWeight: '600' },
   nameInput: {
     backgroundColor: COLORS.surface,
     borderRadius: RADIUS.md,
