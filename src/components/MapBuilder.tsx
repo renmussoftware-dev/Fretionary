@@ -5,7 +5,7 @@ import {
 } from 'react-native';
 import { SvgXml } from 'react-native-svg';
 import { COLORS, FONT_FAMILY, RADIUS, SPACE } from '../constants/theme';
-import { OPEN_STRINGS, SCALES, CHORDS } from '../constants/music';
+import { NOTES, NOTE_DISPLAY, OPEN_STRINGS, SCALES, CHORDS } from '../constants/music';
 import { useStore } from '../store/useStore';
 import { useProGate } from '../hooks/useProGate';
 import {
@@ -59,6 +59,9 @@ export default function MapBuilder() {
   const [createdAt, setCreatedAt] = useState<number>(() => Date.now());
   const [sheetOpen, setSheetOpen] = useState(false);
   const [exporting, setExporting] = useState(false);
+  // Fill picker: which library it's browsing (null = closed) + chosen root.
+  const [pickerMode, setPickerMode] = useState<'scale' | 'chord' | null>(null);
+  const [pickerRoot, setPickerRoot] = useState(0);
 
   const { start: fretStart, end: fretEnd } = WINDOWS[win];
 
@@ -91,13 +94,13 @@ export default function MapBuilder() {
     });
   }
 
-  // Seed the window from the currently-selected scale/chord (the ones on the
-  // Fretboard tab), colored by interval role and spelled with the same
-  // enharmonics the rest of the app now uses. Answers "build my own scales":
-  // start from a real one, then edit.
-  function seedFromScale() {
-    const notes = getScaleNotes(root, scaleKey);
-    const rl = scaleRootLetter(root, scaleKey);
+  // Fill the window from any scale/chord in the library, colored by interval
+  // role and spelled with the same enharmonics the rest of the app uses.
+  // Answers "build my own scales": start from a real one, then edit. Reached
+  // via the fill picker, which defaults to the Fretboard tab's selection.
+  function fillFromScale(r: number, key: string) {
+    const notes = getScaleNotes(r, key);
+    const rl = scaleRootLetter(r, key);
     const seeded: MapDot[] = [];
     for (let s = 0; s < 6; s++) {
       for (let f = fretStart; f <= fretEnd; f++) {
@@ -106,35 +109,44 @@ export default function MapBuilder() {
         if (idx < 0) continue;
         seeded.push({
           s, f,
-          color: seedColor((pc - root + 12) % 12),
-          label: spellNoteAt(root, scaleDegreeIdxAt(scaleKey, idx), pc, rl),
+          color: seedColor((pc - r + 12) % 12),
+          label: spellNoteAt(r, scaleDegreeIdxAt(key, idx), pc, rl),
         });
       }
     }
     setDots(seeded);
-    if (!name.trim()) setName(`${scaleRootName(root, scaleKey)} ${scaleKey}`);
+    if (!name.trim()) setName(`${scaleRootName(r, key)} ${key}`);
+    setPickerMode(null);
   }
 
-  function seedFromChord() {
-    const ch = CHORDS[chordKey];
+  function fillFromChord(r: number, key: string) {
+    const ch = CHORDS[key];
     if (!ch) return;
-    const rl = chordRootLetter(root, chordKey);
+    const rl = chordRootLetter(r, key);
     const seeded: MapDot[] = [];
     for (let s = 0; s < 6; s++) {
       for (let f = fretStart; f <= fretEnd; f++) {
         const pc = (OPEN_STRINGS[s] + f) % 12;
-        const iv = (pc - root + 12) % 12;
+        const iv = (pc - r + 12) % 12;
         const pos = ch.intervals.map(i => i % 12).indexOf(iv);
         if (pos < 0) continue;
         seeded.push({
           s, f,
           color: seedColor(iv),
-          label: spellNoteAt(root, symbolToDegreeIdx(ch.intervalNames[pos]), pc, rl),
+          label: spellNoteAt(r, symbolToDegreeIdx(ch.intervalNames[pos]), pc, rl),
         });
       }
     }
     setDots(seeded);
-    if (!name.trim()) setName(`${chordRootName(root, chordKey)} ${chordKey}`);
+    if (!name.trim()) setName(`${chordRootName(r, key)} ${key}`);
+    setPickerMode(null);
+  }
+
+  // Open the picker preloaded with the Fretboard tab's current root, so the
+  // common case ("fill what I was just looking at") is two taps.
+  function openPicker(kind: 'scale' | 'chord') {
+    setPickerRoot(root);
+    setPickerMode(kind);
   }
 
   function resetDraft() {
@@ -292,17 +304,14 @@ export default function MapBuilder() {
         </TouchableOpacity>
       </View>
 
-      {/* Seeds. Labeled by SOURCE, not just name — with root C selected, the
-          Major scale and the Major chord both render "C Major", and two
-          identical "Seed: C Major" buttons told the user nothing. */}
+      {/* Fill pickers — the "…" signals a chooser opens (any root, any of the
+          14 scales / 42 chords), rather than an instant fill. */}
       <View style={styles.rowWrap}>
-        <TouchableOpacity onPress={seedFromScale} style={styles.seedBtn} activeOpacity={0.7}>
-          <Text style={styles.seedEyebrow}>FILL FROM SCALE</Text>
-          <Text style={styles.seedText}>{scaleRootName(root, scaleKey)} {scaleKey}</Text>
+        <TouchableOpacity onPress={() => openPicker('scale')} style={styles.seedBtn} activeOpacity={0.7}>
+          <Text style={styles.seedText}>Fill from scale…</Text>
         </TouchableOpacity>
-        <TouchableOpacity onPress={seedFromChord} style={styles.seedBtn} activeOpacity={0.7}>
-          <Text style={styles.seedEyebrow}>FILL FROM CHORD</Text>
-          <Text style={styles.seedText}>{chordRootName(root, chordKey)} {chordKey}</Text>
+        <TouchableOpacity onPress={() => openPicker('chord')} style={styles.seedBtn} activeOpacity={0.7}>
+          <Text style={styles.seedText}>Fill from chord…</Text>
         </TouchableOpacity>
         <TouchableOpacity onPress={handleClear} style={styles.clearBtn} activeOpacity={0.7}>
           <Text style={styles.clearText}>Clear</Text>
@@ -372,6 +381,61 @@ export default function MapBuilder() {
           </View>
         </View>
       </Modal>
+
+      {/* Fill picker — any root x any scale/chord in the library. Defaults to
+          the Fretboard tab's root; the row matching its current selection is
+          highlighted as a landmark. */}
+      <Modal visible={pickerMode !== null} animationType="slide" transparent>
+        <View style={styles.sheetOverlay}>
+          <View style={styles.sheetCard}>
+            <View style={styles.sheetHdr}>
+              <Text style={styles.sheetTitle}>
+                Fill from {pickerMode === 'scale' ? 'scale' : 'chord'}
+              </Text>
+              <TouchableOpacity onPress={() => setPickerMode(null)} activeOpacity={0.7}>
+                <Text style={styles.sheetClose}>Cancel</Text>
+              </TouchableOpacity>
+            </View>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flexGrow: 0, marginBottom: SPACE.md }}>
+              <View style={{ flexDirection: 'row', gap: 6 }}>
+                {NOTES.map((n, i) => (
+                  <TouchableOpacity key={n} onPress={() => setPickerRoot(i)}
+                    style={[styles.pill, pickerRoot === i && styles.pillActive]} activeOpacity={0.7}>
+                    <Text style={[styles.pillText, pickerRoot === i && styles.pillTextActive]}>
+                      {NOTE_DISPLAY[n] || n}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </ScrollView>
+            <ScrollView>
+              {Object.keys(pickerMode === 'scale' ? SCALES : CHORDS).map(key => {
+                const isCurrent = pickerRoot === root &&
+                  (pickerMode === 'scale' ? key === scaleKey : key === chordKey);
+                const rootName = pickerMode === 'scale'
+                  ? scaleRootName(pickerRoot, key)
+                  : chordRootName(pickerRoot, key);
+                const sub = pickerMode === 'scale'
+                  ? SCALES[key].degrees.join(' ')
+                  : CHORDS[key].intervalNames.join(' · ');
+                return (
+                  <TouchableOpacity key={key}
+                    onPress={() => (pickerMode === 'scale'
+                      ? fillFromScale(pickerRoot, key)
+                      : fillFromChord(pickerRoot, key))}
+                    style={[styles.sheetRow, isCurrent && styles.pickerRowCurrent]}
+                    activeOpacity={0.7}>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.sheetName} numberOfLines={1}>{rootName} {key}</Text>
+                      <Text style={styles.sheetMeta} numberOfLines={1}>{sub}</Text>
+                    </View>
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -425,12 +489,12 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(232,212,77,0.08)',
     borderWidth: 1, borderColor: 'rgba(232,212,77,0.3)',
   },
-  seedEyebrow: {
-    fontSize: 8, fontWeight: '700', letterSpacing: 0.8,
-    color: 'rgba(232,212,77,0.65)', fontFamily: FONT_FAMILY.mono,
-    marginBottom: 2,
-  },
   seedText: { fontSize: 12, color: '#E8D44D', fontWeight: '600' },
+  pickerRowCurrent: {
+    backgroundColor: 'rgba(122,90,248,0.10)',
+    borderRadius: RADIUS.sm,
+    paddingHorizontal: 8, marginHorizontal: -8,
+  },
   // Red-tinted so the destructive action doesn't read as just another seed.
   clearBtn: {
     paddingHorizontal: 12, paddingVertical: 8,
