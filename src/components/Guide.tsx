@@ -21,20 +21,22 @@ interface Section {
 const SECTIONS: Section[] = [
   {
     title: 'Fretboard',
-    intro: 'The interactive neck — switch between scales, chords and CAGED views. Color-coded by interval (root / 3rd / 5th / extension).',
+    intro: 'The interactive neck — switch between scales, chords, CAGED and Identify views. Color-coded by interval (root / 3rd / 5th / extension).',
     navTo: '/',
     navLabel: 'Open Fretboard',
     features: [
       { name: 'Scales mode',     desc: '14 scales — Major, modes, pentatonics, blues, harmonic/melodic minor, whole-tone, diminished.', badge: 'mixed' },
-      { name: 'Chords mode',     desc: 'Light up any of 36 chord types across the entire neck.', badge: 'mixed' },
+      { name: 'Chords mode',     desc: 'Light up any of 42 chord types across the entire neck.', badge: 'mixed' },
       { name: 'CAGED mode',      desc: 'See where each of the 5 CAGED shapes lives for any key — with shape detail, caret-fret indicator, and pedagogical tips.', badge: 'mixed' },
-      { name: 'Position lock',   desc: 'Filter the fretboard to a single 5-fret position (Pos 1–5).', badge: 'pro' },
-      { name: 'Note labels',     desc: 'Toggle between note name, scale degree, interval, or no label.', badge: 'free' },
+      { name: 'Identify mode',   desc: 'Tap notes on the neck and the app names what you built — including partial voicings like no-5 and rootless chords.', badge: 'pro' },
+      { name: 'Daily Pick',      desc: 'A new scale or chord to explore every day, with streak tracking.', badge: 'mixed' },
+      { name: 'Position lock',   desc: 'Filter the fretboard to a single 5-fret position (Pos 1–5), aligned with the CAGED shapes.', badge: 'pro' },
+      { name: 'Labels & range',  desc: 'Note name, degree, interval or no labels; three label sizes; fret windows from 0–5 up to a full 24-fret neck.', badge: 'free' },
     ],
   },
   {
     title: 'Chord Library',
-    intro: 'Browse every chord type with a real diagram, multiple voicings up the neck, and pedagogical resolution suggestions.',
+    intro: 'Browse all 42 chord types with real diagrams, multiple voicings up the neck, and pedagogical resolution suggestions.',
     navTo: '/chords',
     navLabel: 'Open Chord Library',
     features: [
@@ -45,14 +47,23 @@ const SECTIONS: Section[] = [
   },
   {
     title: 'Progressions',
-    intro: 'Learn and play 22 common chord progressions across genres, build diatonic sequences, or write your own.',
+    intro: 'Learn and play 64 progressions across 16 genres, plus 18 song-based examples, diatonic sequences, or your own.',
     navTo: '/progressions',
     navLabel: 'Open Progressions',
     features: [
-      { name: 'Common progressions', desc: '22 famous progressions across pop, rock, jazz, blues, folk and more.', badge: 'mixed' },
+      { name: 'Common progressions', desc: '64 progressions — pop, rock, jazz, blues, Latin, Motown, gospel, classical, reggae and more.', badge: 'mixed' },
       { name: 'Diatonic builder',    desc: 'Pick any key and see all 7 diatonic chords.', badge: 'free' },
       { name: 'Custom builder',      desc: 'Stack your own chord sequence.', badge: 'free' },
       { name: 'Audio playback',      desc: 'Play progressions back at any BPM with auto-strumming.', badge: 'pro' },
+    ],
+  },
+  {
+    title: 'Maps',
+    intro: 'Design your own fretboard diagrams under Tools → Maps — tap notes anywhere on the neck, color them, and share the result.',
+    features: [
+      { name: 'Diagram builder', desc: 'Tap to place notes in any of 8 colors. Start blank or seed from any scale or chord and edit from there.', badge: 'pro' },
+      { name: 'My Maps',         desc: 'Save named diagrams and reload them any time.', badge: 'pro' },
+      { name: 'PDF export',      desc: 'Share any map as a clean print-ready PDF — lesson handouts, licks, voicings.', badge: 'pro' },
     ],
   },
   {
@@ -68,10 +79,11 @@ const SECTIONS: Section[] = [
     ],
   },
   {
-    title: 'Metronome',
-    intro: 'Practice in time with a drift-corrected metronome on the Tools tab.',
+    title: 'Progress & Metronome',
+    intro: 'Both live here on the Tools tab.',
     features: [
-      { name: 'Metronome', desc: 'BPM 40–240, six time signatures, accent + offbeat clicks, tap-tempo.', badge: 'free' },
+      { name: 'Progress',  desc: 'Daily streak, plus counters for scales explored, chords learned, and progressions played.', badge: 'free' },
+      { name: 'Metronome', desc: 'BPM 40–240, six time signatures, accent + offbeat clicks, tap-tempo. Drift-corrected.', badge: 'free' },
     ],
   },
   {
