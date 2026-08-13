@@ -13,6 +13,11 @@ import { NOTES, OPEN_STRINGS, STRING_NAMES } from '../constants/music';
 // drifting silently is exactly what broke the CAGED spans, so if you touch
 // this file, keep every consumer on OPEN_STRINGS order.
 
+// horizontal = nut on the left, strings run across (the app's fretboard).
+// vertical = nut on top, strings run down — classic printed chord-chart
+// orientation, low E on the LEFT (chart convention, not screen convention).
+export type MapOrientation = 'horizontal' | 'vertical';
+
 export interface MapDot {
   s: number;              // string index, 0 = high e (OPEN_STRINGS order)
   f: number;              // absolute fret, 0 = open
@@ -27,6 +32,8 @@ export interface FretMap {
   fretStart: number;      // inclusive window
   fretEnd: number;
   showLabels: boolean;
+  // Absent on maps saved before orientation existed → horizontal.
+  orientation?: MapOrientation;
   createdAt: number;
   updatedAt: number;
 }
@@ -46,10 +53,11 @@ export const MAP_PALETTE = [
 ] as const;
 
 // ── Geometry ────────────────────────────────────────────────────────────────
-// Exported as one object so the builder's touch handler computes hit cells
-// from the same numbers the renderer draws with — they cannot drift.
+// One object drives both the SVG drawing and the builder's tap targets, so
+// hits can't drift from the picture. cell() accepts fractional s/f — the
+// inlay markers sit between strings (s=1.5, 2.5, 3.5).
 
-const GEO = {
+const H = {
   L: 34,     // left gutter (string names)
   T: 14,     // top padding
   B: 26,     // bottom strip (fret numbers)
@@ -58,47 +66,83 @@ const GEO = {
   SH: 34,    // string spacing
   NUT: 6,    // nut width
   R: 12,     // right padding
-  DOT: 13,   // dot radius
 };
+
+const V = {
+  T: 30,     // top strip (string names)
+  L: 30,     // left gutter (fret numbers)
+  R: 12,     // right padding
+  B: 14,     // bottom padding
+  SW: 36,    // string spacing (horizontal, across)
+  FH: 44,    // fret cell height
+  OH: 34,    // open-note row height (only when the window starts at 0)
+  NUT: 6,    // nut height
+};
+
+const DOT_R = 13;
 
 export interface DiagramGeometry {
   width: number;
   height: number;
-  // Center of the cell for (s, f), in SVG coordinates.
-  cellX: (f: number) => number;
-  cellY: (s: number) => number;
+  // Center of the cell for (s, f) in SVG coordinates. Fractional s/f OK.
+  cell: (s: number, f: number) => { x: number; y: number };
   // Inverse: point → cell, or null outside the grid. Used by the tap handler.
   cellForPoint: (x: number, y: number) => { s: number; f: number } | null;
-  frets: number[]; // the fret columns this window renders, in order
+  frets: number[]; // the fret columns/rows this window renders, in order
 }
 
-export function diagramGeometry(fretStart: number, fretEnd: number): DiagramGeometry {
+export function diagramGeometry(
+  fretStart: number,
+  fretEnd: number,
+  orientation: MapOrientation = 'horizontal',
+): DiagramGeometry {
   const openCol = fretStart === 0;
   const firstFret = openCol ? 1 : fretStart;
   const frets: number[] = [];
   if (openCol) frets.push(0);
   for (let f = firstFret; f <= fretEnd; f++) frets.push(f);
-
-  const gridLeft = GEO.L + (openCol ? GEO.OW + GEO.NUT : 0);
   const nFrets = fretEnd - firstFret + 1;
-  const width = gridLeft + nFrets * GEO.FW + GEO.R;
-  const height = GEO.T + 5 * GEO.SH + GEO.B;
 
-  const cellX = (f: number) =>
-    f === 0 ? GEO.L + GEO.OW / 2 : gridLeft + (f - firstFret) * GEO.FW + GEO.FW / 2;
-  const cellY = (s: number) => GEO.T + s * GEO.SH;
+  if (orientation === 'horizontal') {
+    const gridLeft = H.L + (openCol ? H.OW + H.NUT : 0);
+    const width = gridLeft + nFrets * H.FW + H.R;
+    const height = H.T + 5 * H.SH + H.B;
 
+    const cell = (s: number, f: number) => ({
+      x: f === 0 ? H.L + H.OW / 2 : gridLeft + (f - firstFret) * H.FW + H.FW / 2,
+      y: H.T + s * H.SH,
+    });
+    const cellForPoint = (x: number, y: number) => {
+      const s = Math.round((y - H.T) / H.SH);
+      if (s < 0 || s > 5) return null;
+      if (openCol && x >= H.L && x < H.L + H.OW) return { s, f: 0 };
+      if (x >= gridLeft && x < gridLeft + nFrets * H.FW) {
+        return { s, f: firstFret + Math.floor((x - gridLeft) / H.FW) };
+      }
+      return null;
+    };
+    return { width, height, cell, cellForPoint, frets };
+  }
+
+  // Vertical: low E leftmost (chord-chart convention), so x runs by (5 - s).
+  const gridTop = V.T + (openCol ? V.OH + V.NUT : 0);
+  const width = V.L + 5 * V.SW + V.R;
+  const height = gridTop + nFrets * V.FH + V.B;
+
+  const cell = (s: number, f: number) => ({
+    x: V.L + (5 - s) * V.SW,
+    y: f === 0 ? V.T + V.OH / 2 : gridTop + (f - firstFret) * V.FH + V.FH / 2,
+  });
   const cellForPoint = (x: number, y: number) => {
-    const s = Math.round((y - GEO.T) / GEO.SH);
+    const s = 5 - Math.round((x - V.L) / V.SW);
     if (s < 0 || s > 5) return null;
-    if (openCol && x >= GEO.L && x < GEO.L + GEO.OW) return { s, f: 0 };
-    if (x >= gridLeft && x < gridLeft + nFrets * GEO.FW) {
-      return { s, f: firstFret + Math.floor((x - gridLeft) / GEO.FW) };
+    if (openCol && y >= V.T && y < V.T + V.OH) return { s, f: 0 };
+    if (y >= gridTop && y < gridTop + nFrets * V.FH) {
+      return { s, f: firstFret + Math.floor((y - gridTop) / V.FH) };
     }
     return null;
   };
-
-  return { width, height, cellX, cellY, cellForPoint, frets };
+  return { width, height, cell, cellForPoint, frets };
 }
 
 // ── Rendering ───────────────────────────────────────────────────────────────
@@ -143,59 +187,90 @@ export function dotDefaultLabel(dot: MapDot): string {
  * builder preview (via SvgXml, dark theme) and the PDF export (light theme
  * embedded in printed HTML) — one renderer means the export is exactly what
  * the user saw, minus the color inversion for paper.
+ *
+ * Both orientations draw labels upright — the vertical layout is its own
+ * geometry, not a rotation, so nothing ends up sideways.
  */
 export function renderDiagramSvg(map: FretMap, theme: DiagramTheme): string {
   const t = THEMES[theme];
-  const g = diagramGeometry(map.fretStart, map.fretEnd);
+  const vertical = map.orientation === 'vertical';
+  const g = diagramGeometry(map.fretStart, map.fretEnd, map.orientation ?? 'horizontal');
   const openCol = map.fretStart === 0;
   const firstFret = openCol ? 1 : map.fretStart;
-  const gridLeft = GEO.L + (openCol ? GEO.OW + GEO.NUT : 0);
-  const gridRight = g.width - GEO.R;
   const parts: string[] = [];
 
   parts.push(`<svg xmlns="http://www.w3.org/2000/svg" width="${g.width}" height="${g.height}" viewBox="0 0 ${g.width} ${g.height}">`);
   if (t.bg !== 'none') parts.push(`<rect width="${g.width}" height="${g.height}" fill="${t.bg}"/>`);
 
-  // Inlays behind everything else
+  // Inlays behind everything else — between the middle strings.
   for (const f of g.frets) {
     if (f === 0) continue;
-    const x = g.cellX(f);
     if (INLAY_DOUBLE.has(f)) {
-      parts.push(`<circle cx="${x}" cy="${g.cellY(1.5)}" r="4" fill="${t.inlay}"/>`);
-      parts.push(`<circle cx="${x}" cy="${g.cellY(3.5)}" r="4" fill="${t.inlay}"/>`);
+      const a = g.cell(1.5, f), b = g.cell(3.5, f);
+      parts.push(`<circle cx="${a.x}" cy="${a.y}" r="4" fill="${t.inlay}"/>`);
+      parts.push(`<circle cx="${b.x}" cy="${b.y}" r="4" fill="${t.inlay}"/>`);
     } else if (INLAY_SINGLE.has(f)) {
-      parts.push(`<circle cx="${x}" cy="${g.cellY(2.5)}" r="4" fill="${t.inlay}"/>`);
+      const c = g.cell(2.5, f);
+      parts.push(`<circle cx="${c.x}" cy="${c.y}" r="4" fill="${t.inlay}"/>`);
     }
   }
 
-  // Strings (s=0 high e on top, thinner; gauge grows toward low E)
+  // Strings + their name labels. Gauge grows toward the low E in both
+  // orientations (s=5 is thickest).
+  const gridNear = g.cell(0, firstFret); // first fretted cell, high-e corner
   for (let s = 0; s < 6; s++) {
-    const y = g.cellY(s);
-    parts.push(`<line x1="${gridLeft - (openCol ? GEO.NUT : 0)}" y1="${y}" x2="${gridRight}" y2="${y}" stroke="${t.string}" stroke-width="${(0.8 + s * 0.35).toFixed(2)}"/>`);
-    parts.push(`<text x="${GEO.L - 10}" y="${y + 4}" text-anchor="middle" font-size="11" font-family="Menlo, monospace" fill="${t.text}">${STRING_NAMES[s]}</text>`);
-  }
-
-  // Nut (only when the window includes the open position) + fret wires
-  if (openCol) {
-    parts.push(`<rect x="${gridLeft - GEO.NUT}" y="${g.cellY(0) - 9}" width="${GEO.NUT}" height="${5 * GEO.SH + 18}" rx="2" fill="${t.nut}"/>`);
-  }
-  for (let f = firstFret; f <= map.fretEnd; f++) {
-    const x = gridLeft + (f - firstFret + 1) * GEO.FW;
-    parts.push(`<line x1="${x}" y1="${g.cellY(0) - 7}" x2="${x}" y2="${g.cellY(5) + 7}" stroke="${t.fret}" stroke-width="1.5"/>`);
-  }
-
-  // Fret numbers under marker frets + window edges
-  for (const f of g.frets) {
-    if (f !== 0 && (INLAY_SINGLE.has(f) || INLAY_DOUBLE.has(f) || f === firstFret || f === map.fretEnd)) {
-      parts.push(`<text x="${g.cellX(f)}" y="${g.height - 8}" text-anchor="middle" font-size="10" font-family="Menlo, monospace" fill="${t.fretNum}">${f}</text>`);
+    const w = (0.8 + s * 0.35).toFixed(2);
+    if (vertical) {
+      const x = g.cell(s, firstFret).x;
+      const y1 = openCol ? V.T + V.OH : V.T;
+      parts.push(`<line x1="${x}" y1="${y1}" x2="${x}" y2="${g.height - V.B}" stroke="${t.string}" stroke-width="${w}"/>`);
+      parts.push(`<text x="${x}" y="${V.T - 10}" text-anchor="middle" font-size="11" font-family="Menlo, monospace" fill="${t.text}">${STRING_NAMES[s]}</text>`);
+    } else {
+      const y = g.cell(s, firstFret).y;
+      const x1 = H.L + (openCol ? H.OW : 0);
+      parts.push(`<line x1="${x1}" y1="${y}" x2="${g.width - H.R}" y2="${y}" stroke="${t.string}" stroke-width="${w}"/>`);
+      parts.push(`<text x="${H.L - 10}" y="${y + 4}" text-anchor="middle" font-size="11" font-family="Menlo, monospace" fill="${t.text}">${STRING_NAMES[s]}</text>`);
     }
   }
 
-  // Dots — drawn last, on top
+  // Nut (only when the window includes the open position) + fret wires.
+  const lowX = g.cell(5, firstFret).x, highX = g.cell(0, firstFret).x;
+  if (vertical) {
+    const left = Math.min(lowX, highX) - 9, span = Math.abs(highX - lowX) + 18;
+    if (openCol) {
+      parts.push(`<rect x="${left}" y="${V.T + V.OH}" width="${span}" height="${V.NUT}" rx="2" fill="${t.nut}"/>`);
+    }
+    for (let f = firstFret; f <= map.fretEnd; f++) {
+      const y = g.cell(0, f).y + V.FH / 2;
+      parts.push(`<line x1="${left}" y1="${y}" x2="${left + span}" y2="${y}" stroke="${t.fret}" stroke-width="1.5"/>`);
+    }
+  } else {
+    const top = gridNear.y - 9, span = 5 * H.SH + 18;
+    if (openCol) {
+      parts.push(`<rect x="${H.L + H.OW}" y="${top}" width="${H.NUT}" height="${span}" rx="2" fill="${t.nut}"/>`);
+    }
+    for (let f = firstFret; f <= map.fretEnd; f++) {
+      const x = g.cell(0, f).x + H.FW / 2;
+      parts.push(`<line x1="${x}" y1="${top + 2}" x2="${x}" y2="${top + span - 2}" stroke="${t.fret}" stroke-width="1.5"/>`);
+    }
+  }
+
+  // Fret numbers at marker frets + window edges — below the board when
+  // horizontal, down the left edge when vertical.
+  for (const f of g.frets) {
+    if (f === 0 || !(INLAY_SINGLE.has(f) || INLAY_DOUBLE.has(f) || f === firstFret || f === map.fretEnd)) continue;
+    if (vertical) {
+      parts.push(`<text x="${V.L - 14}" y="${g.cell(0, f).y + 3.5}" text-anchor="middle" font-size="10" font-family="Menlo, monospace" fill="${t.fretNum}">${f}</text>`);
+    } else {
+      parts.push(`<text x="${g.cell(0, f).x}" y="${g.height - 8}" text-anchor="middle" font-size="10" font-family="Menlo, monospace" fill="${t.fretNum}">${f}</text>`);
+    }
+  }
+
+  // Dots — drawn last, on top.
   for (const dot of map.dots) {
     if (dot.f < map.fretStart || dot.f > map.fretEnd) continue;
-    const x = g.cellX(dot.f), y = g.cellY(dot.s);
-    parts.push(`<circle cx="${x}" cy="${y}" r="${GEO.DOT}" fill="${dot.color}" stroke="${labelColorOn(dot.color) === '#FFFFFF' ? 'rgba(255,255,255,0.25)' : 'rgba(0,0,0,0.25)'}" stroke-width="1"/>`);
+    const { x, y } = g.cell(dot.s, dot.f);
+    parts.push(`<circle cx="${x}" cy="${y}" r="${DOT_R}" fill="${dot.color}" stroke="${labelColorOn(dot.color) === '#FFFFFF' ? 'rgba(255,255,255,0.25)' : 'rgba(0,0,0,0.25)'}" stroke-width="1"/>`);
     if (map.showLabels) {
       const label = dot.label ?? dotDefaultLabel(dot);
       parts.push(`<text x="${x}" y="${y + 3.5}" text-anchor="middle" font-size="${label.length > 2 ? 8 : 10}" font-weight="600" font-family="-apple-system, Helvetica, sans-serif" fill="${labelColorOn(dot.color)}">${esc(label)}</text>`);

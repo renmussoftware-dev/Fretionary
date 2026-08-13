@@ -53,6 +53,7 @@ export default function MapBuilder() {
   const [brush, setBrush] = useState<string>(MAP_PALETTE[0]);
   const [win, setWin] = useState(4); // index into WINDOWS, default Full
   const [showLabels, setShowLabels] = useState(true);
+  const [vertical, setVertical] = useState(false);
   const [name, setName] = useState('');
   const [mapId, setMapId] = useState<string>(() => newId());
   const [createdAt, setCreatedAt] = useState<number>(() => Date.now());
@@ -64,10 +65,14 @@ export default function MapBuilder() {
   const draft: FretMap = useMemo(() => ({
     id: mapId, name: name.trim() || 'Fretboard map', dots,
     fretStart, fretEnd, showLabels,
+    orientation: vertical ? 'vertical' : 'horizontal',
     createdAt, updatedAt: Date.now(),
-  }), [mapId, name, dots, fretStart, fretEnd, showLabels, createdAt]);
+  }), [mapId, name, dots, fretStart, fretEnd, showLabels, vertical, createdAt]);
 
-  const geo = useMemo(() => diagramGeometry(fretStart, fretEnd), [fretStart, fretEnd]);
+  const geo = useMemo(
+    () => diagramGeometry(fretStart, fretEnd, vertical ? 'vertical' : 'horizontal'),
+    [fretStart, fretEnd, vertical],
+  );
   const svg = useMemo(() => renderDiagramSvg(draft, 'dark'), [draft]);
 
   // ── Editing ───────────────────────────────────────────────────────────────
@@ -139,6 +144,8 @@ export default function MapBuilder() {
   function loadMap(m: FretMap) {
     setDots(m.dots); setName(m.name); setMapId(m.id); setCreatedAt(m.createdAt);
     setShowLabels(m.showLabels);
+    // Maps saved before orientation existed have no field → horizontal.
+    setVertical(m.orientation === 'vertical');
     const wi = WINDOWS.findIndex(w => w.start === m.fretStart && w.end === m.fretEnd);
     setWin(wi >= 0 ? wi : 4);
     setSheetOpen(false);
@@ -278,6 +285,10 @@ export default function MapBuilder() {
         <TouchableOpacity onPress={() => setShowLabels(v => !v)}
           style={[styles.pill, showLabels && styles.pillActive]} activeOpacity={0.7}>
           <Text style={[styles.pillText, showLabels && styles.pillTextActive]}>Labels</Text>
+        </TouchableOpacity>
+        <TouchableOpacity onPress={() => setVertical(v => !v)}
+          style={[styles.pill, vertical && styles.pillActive]} activeOpacity={0.7}>
+          <Text style={[styles.pillText, vertical && styles.pillTextActive]}>Vertical</Text>
         </TouchableOpacity>
       </View>
 
