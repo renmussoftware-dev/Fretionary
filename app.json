@@ -2,7 +2,7 @@
   "expo": {
     "name": "Fretionary",
     "slug": "fretionary",
-    "version": "4.0.6",
+    "version": "5.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "dark",
@@ -14,7 +14,7 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.renmussoftware.nodi",
-      "buildNumber": "79",
+      "buildNumber": "81",
       "infoPlist": {
         "UIBackgroundModes": [],
         "ITSAppUsesNonExemptEncryption": false
@@ -28,7 +28,7 @@
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
       "package": "com.renmussoftware.nodi",
-      "versionCode": 19,
+      "versionCode": 20,
       "predictiveBackGestureEnabled": false,
       "permissions": [],
       "blockedPermissions": [
