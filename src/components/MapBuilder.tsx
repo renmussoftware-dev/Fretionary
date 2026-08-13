@@ -292,13 +292,17 @@ export default function MapBuilder() {
         </TouchableOpacity>
       </View>
 
-      {/* Seeds */}
+      {/* Seeds. Labeled by SOURCE, not just name — with root C selected, the
+          Major scale and the Major chord both render "C Major", and two
+          identical "Seed: C Major" buttons told the user nothing. */}
       <View style={styles.rowWrap}>
         <TouchableOpacity onPress={seedFromScale} style={styles.seedBtn} activeOpacity={0.7}>
-          <Text style={styles.seedText}>Seed: {scaleRootName(root, scaleKey)} {scaleKey}</Text>
+          <Text style={styles.seedEyebrow}>FILL FROM SCALE</Text>
+          <Text style={styles.seedText}>{scaleRootName(root, scaleKey)} {scaleKey}</Text>
         </TouchableOpacity>
         <TouchableOpacity onPress={seedFromChord} style={styles.seedBtn} activeOpacity={0.7}>
-          <Text style={styles.seedText}>Seed: {chordRootName(root, chordKey)} {chordKey}</Text>
+          <Text style={styles.seedEyebrow}>FILL FROM CHORD</Text>
+          <Text style={styles.seedText}>{chordRootName(root, chordKey)} {chordKey}</Text>
         </TouchableOpacity>
         <TouchableOpacity onPress={handleClear} style={styles.clearBtn} activeOpacity={0.7}>
           <Text style={styles.clearText}>Clear</Text>
@@ -420,6 +424,11 @@ const styles = StyleSheet.create({
     borderRadius: RADIUS.md,
     backgroundColor: 'rgba(232,212,77,0.08)',
     borderWidth: 1, borderColor: 'rgba(232,212,77,0.3)',
+  },
+  seedEyebrow: {
+    fontSize: 8, fontWeight: '700', letterSpacing: 0.8,
+    color: 'rgba(232,212,77,0.65)', fontFamily: FONT_FAMILY.mono,
+    marginBottom: 2,
   },
   seedText: { fontSize: 12, color: '#E8D44D', fontWeight: '600' },
   // Red-tinted so the destructive action doesn't read as just another seed.
