@@ -9,7 +9,7 @@ import { NOTES, NOTE_DISPLAY, OPEN_STRINGS, SCALES, CHORDS } from '../constants/
 import { useStore } from '../store/useStore';
 import { useProGate } from '../hooks/useProGate';
 import {
-  type FretMap, type MapDot, MAP_PALETTE,
+  type FretMap, type MapDot, type MapLabelMode, MAP_PALETTE,
   diagramGeometry, renderDiagramSvg, demoMap,
 } from '../utils/diagramSvg';
 import {
@@ -52,8 +52,12 @@ export default function MapBuilder() {
   const [dots, setDots] = useState<MapDot[]>([]);
   const [brush, setBrush] = useState<string>(MAP_PALETTE[0]);
   const [win, setWin] = useState(4); // index into WINDOWS, default Full
-  const [showLabels, setShowLabels] = useState(true);
+  const [labelMode, setLabelMode] = useState<MapLabelMode>('notes');
+  const [mapRootPitch, setMapRootPitch] = useState(0);
   const [vertical, setVertical] = useState(false);
+  // Active fingering stamp (1-4). While set, taps write the number onto dots
+  // instead of the add/remove/recolor cycle.
+  const [finger, setFinger] = useState<string | null>(null);
   const [name, setName] = useState('');
   const [mapId, setMapId] = useState<string>(() => newId());
   const [createdAt, setCreatedAt] = useState<number>(() => Date.now());
@@ -67,10 +71,13 @@ export default function MapBuilder() {
 
   const draft: FretMap = useMemo(() => ({
     id: mapId, name: name.trim() || 'Fretboard map', dots,
-    fretStart, fretEnd, showLabels,
+    fretStart, fretEnd,
+    // showLabels mirrors labelMode for anything still reading the old field.
+    showLabels: labelMode !== 'none',
+    labelMode, rootPitch: mapRootPitch,
     orientation: vertical ? 'vertical' : 'horizontal',
     createdAt, updatedAt: Date.now(),
-  }), [mapId, name, dots, fretStart, fretEnd, showLabels, vertical, createdAt]);
+  }), [mapId, name, dots, fretStart, fretEnd, labelMode, mapRootPitch, vertical, createdAt]);
 
   const geo = useMemo(
     () => diagramGeometry(fretStart, fretEnd, vertical ? 'vertical' : 'horizontal'),
@@ -83,14 +90,25 @@ export default function MapBuilder() {
   // Tap rules, Guitar-Scientist style: empty cell → place a dot in the brush
   // color; dot in the brush color → remove it; dot in another color →
   // repaint it. One gesture covers add, delete, and recolor.
+  //
+  // With a fingering stamp active the taps write numbers instead: existing
+  // dot → stamp it (same number again un-stamps), empty cell → place a dot
+  // already stamped. Color rules stay out of it so stamping never destroys
+  // a dot the user just placed.
   function handleTap(x: number, y: number) {
     const cell = geo.cellForPoint(x, y);
     if (!cell) return;
     setDots(prev => {
       const hit = prev.find(d => d.s === cell.s && d.f === cell.f);
+      if (finger) {
+        if (!hit) return [...prev, { s: cell.s, f: cell.f, color: brush, label: finger }];
+        return prev.map(d => (d === hit
+          ? { ...d, label: d.label === finger ? undefined : finger }
+          : d));
+      }
       if (!hit) return [...prev, { s: cell.s, f: cell.f, color: brush }];
       if (hit.color === brush) return prev.filter(d => d !== hit);
-      return prev.map(d => (d === hit ? { ...d, color: brush, label: d.label } : d));
+      return prev.map(d => (d === hit ? { ...d, color: brush } : d));
     });
   }
 
@@ -110,11 +128,14 @@ export default function MapBuilder() {
         seeded.push({
           s, f,
           color: seedColor((pc - r + 12) % 12),
-          label: spellNoteAt(r, scaleDegreeIdxAt(key, idx), pc, rl),
+          // noteName, not label: a label is a user stamp that overrides the
+          // label mode, while the spelling should yield to Intervals/Off.
+          noteName: spellNoteAt(r, scaleDegreeIdxAt(key, idx), pc, rl),
         });
       }
     }
     setDots(seeded);
+    setMapRootPitch(r); // interval symbols now read relative to this fill
     if (!name.trim()) setName(`${scaleRootName(r, key)} ${key}`);
     setPickerMode(null);
   }
@@ -133,11 +154,12 @@ export default function MapBuilder() {
         seeded.push({
           s, f,
           color: seedColor(iv),
-          label: spellNoteAt(r, symbolToDegreeIdx(ch.intervalNames[pos]), pc, rl),
+          noteName: spellNoteAt(r, symbolToDegreeIdx(ch.intervalNames[pos]), pc, rl),
         });
       }
     }
     setDots(seeded);
+    setMapRootPitch(r);
     if (!name.trim()) setName(`${chordRootName(r, key)} ${key}`);
     setPickerMode(null);
   }
@@ -155,9 +177,12 @@ export default function MapBuilder() {
 
   function loadMap(m: FretMap) {
     setDots(m.dots); setName(m.name); setMapId(m.id); setCreatedAt(m.createdAt);
-    setShowLabels(m.showLabels);
-    // Maps saved before orientation existed have no field → horizontal.
+    // Maps from before labelMode/orientation existed carry only showLabels →
+    // derive the mode; missing orientation → horizontal; missing root → C.
+    setLabelMode(m.labelMode ?? (m.showLabels ? 'notes' : 'none'));
+    setMapRootPitch(m.rootPitch ?? 0);
     setVertical(m.orientation === 'vertical');
+    setFinger(null);
     const wi = WINDOWS.findIndex(w => w.start === m.fretStart && w.end === m.fretEnd);
     setWin(wi >= 0 ? wi : 4);
     setSheetOpen(false);
@@ -294,15 +319,52 @@ export default function MapBuilder() {
             <Text style={[styles.pillText, win === i && styles.pillTextActive]}>{w.label}</Text>
           </TouchableOpacity>
         ))}
-        <TouchableOpacity onPress={() => setShowLabels(v => !v)}
-          style={[styles.pill, showLabels && styles.pillActive]} activeOpacity={0.7}>
-          <Text style={[styles.pillText, showLabels && styles.pillTextActive]}>Labels</Text>
-        </TouchableOpacity>
         <TouchableOpacity onPress={() => setVertical(v => !v)}
           style={[styles.pill, vertical && styles.pillActive]} activeOpacity={0.7}>
           <Text style={[styles.pillText, vertical && styles.pillTextActive]}>Vertical</Text>
         </TouchableOpacity>
       </View>
+
+      {/* Notation — what the dots say. Fingering stamps (1-4) write onto
+          individual dots and override whichever symbol set is active. */}
+      <View style={styles.rowWrap}>
+        {([['notes', 'Notes'], ['intervals', 'Intervals'], ['none', 'No labels']] as [MapLabelMode, string][]).map(([m, label]) => (
+          <TouchableOpacity key={m} onPress={() => setLabelMode(m)}
+            style={[styles.pill, labelMode === m && styles.pillActive]} activeOpacity={0.7}>
+            <Text style={[styles.pillText, labelMode === m && styles.pillTextActive]}>{label}</Text>
+          </TouchableOpacity>
+        ))}
+        <View style={styles.fingerDivider} />
+        {['1', '2', '3', '4'].map(n => (
+          <TouchableOpacity key={n} onPress={() => setFinger(f => (f === n ? null : n))}
+            style={[styles.fingerChip, finger === n && styles.fingerChipActive]} activeOpacity={0.7}>
+            <Text style={[styles.fingerText, finger === n && styles.fingerTextActive]}>{n}</Text>
+          </TouchableOpacity>
+        ))}
+      </View>
+      {finger !== null && (
+        <Text style={styles.hint}>
+          Finger {finger} stamp active — tap dots to number them, tap the chip again to stop
+        </Text>
+      )}
+
+      {/* Interval symbols need a root to measure from. Fills set it
+          automatically; hand-built maps pick it here. */}
+      {labelMode === 'intervals' && (
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flexGrow: 0 }}>
+          <View style={{ flexDirection: 'row', gap: 6, alignItems: 'center' }}>
+            <Text style={styles.rootLabel}>Root</Text>
+            {NOTES.map((n, i) => (
+              <TouchableOpacity key={n} onPress={() => setMapRootPitch(i)}
+                style={[styles.pill, mapRootPitch === i && styles.pillActive]} activeOpacity={0.7}>
+                <Text style={[styles.pillText, mapRootPitch === i && styles.pillTextActive]}>
+                  {NOTE_DISPLAY[n] || n}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </ScrollView>
+      )}
 
       {/* Fill pickers — the "…" signals a chooser opens (any root, any of the
           14 scales / 42 chords), rather than an instant fill. */}
@@ -490,6 +552,25 @@ const styles = StyleSheet.create({
     borderWidth: 1, borderColor: 'rgba(232,212,77,0.3)',
   },
   seedText: { fontSize: 12, color: '#E8D44D', fontWeight: '600' },
+  fingerDivider: {
+    width: 1, height: 20, backgroundColor: COLORS.borderLight, marginHorizontal: 4,
+  },
+  fingerChip: {
+    width: 28, height: 28, borderRadius: 14,
+    alignItems: 'center', justifyContent: 'center',
+    backgroundColor: COLORS.surface,
+    borderWidth: 1, borderColor: COLORS.border,
+  },
+  fingerChipActive: {
+    backgroundColor: 'rgba(122,90,248,0.22)',
+    borderColor: '#7A5AF8',
+  },
+  fingerText: { fontSize: 12, fontWeight: '700', color: COLORS.textMuted },
+  fingerTextActive: { color: COLORS.text },
+  rootLabel: {
+    fontSize: 10, fontWeight: '700', letterSpacing: 0.8,
+    color: COLORS.textFaint, marginRight: 2,
+  },
   pickerRowCurrent: {
     backgroundColor: 'rgba(122,90,248,0.10)',
     borderRadius: RADIUS.sm,

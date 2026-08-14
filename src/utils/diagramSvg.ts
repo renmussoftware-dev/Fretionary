@@ -1,4 +1,4 @@
-import { NOTES, OPEN_STRINGS, STRING_NAMES } from '../constants/music';
+import { NOTES, OPEN_STRINGS, STRING_NAMES, INTERVAL_NAMES } from '../constants/music';
 
 // ── Custom fretboard maps (the "Maps" builder in Tools) ─────────────────────
 // A map is a hand-placed set of colored dots at specific string/fret
@@ -18,11 +18,18 @@ import { NOTES, OPEN_STRINGS, STRING_NAMES } from '../constants/music';
 // orientation, low E on the LEFT (chart convention, not screen convention).
 export type MapOrientation = 'horizontal' | 'vertical';
 
+// What the dots say. 'notes' = note names (spelled, when the dot came from a
+// fill), 'intervals' = R/♭3/5-style symbols relative to the map's rootPitch,
+// 'none' = bare colored dots. A per-dot `label` (fingering stamp, custom
+// text) always wins over the mode — that's the point of stamping a dot.
+export type MapLabelMode = 'notes' | 'intervals' | 'none';
+
 export interface MapDot {
   s: number;              // string index, 0 = high e (OPEN_STRINGS order)
   f: number;              // absolute fret, 0 = open
   color: string;          // dot fill, hex
-  label?: string;         // shown on the dot; omitted → note name at render
+  label?: string;         // user override (finger number / custom) — beats labelMode
+  noteName?: string;      // spelled note name, set by fills (E♭ not D#)
 }
 
 export interface FretMap {
@@ -31,7 +38,12 @@ export interface FretMap {
   dots: MapDot[];
   fretStart: number;      // inclusive window
   fretEnd: number;
+  // Legacy toggle from before labelMode existed. Old saved maps have only
+  // this; renderers derive: labelMode ?? (showLabels ? 'notes' : 'none').
   showLabels: boolean;
+  labelMode?: MapLabelMode;
+  // Root for interval symbols. Set automatically by fills; defaults to C.
+  rootPitch?: number;
   // Absent on maps saved before orientation existed → horizontal.
   orientation?: MapOrientation;
   createdAt: number;
@@ -182,6 +194,20 @@ export function dotDefaultLabel(dot: MapDot): string {
   return NOTES[(OPEN_STRINGS[dot.s] + dot.f) % 12];
 }
 
+// Resolve what a dot displays under the map's label mode. Exposed so the
+// builder and any future consumers agree with the renderer. Precedence:
+// 'none' hides everything (a stamp wins over WHICH symbol set is shown, not
+// over labels being off entirely); an explicit per-dot stamp beats the mode;
+// intervals compute against rootPitch; notes prefer the fill's spelling.
+export function dotLabelFor(map: FretMap, dot: MapDot): string | null {
+  const mode: MapLabelMode = map.labelMode ?? (map.showLabels ? 'notes' : 'none');
+  if (mode === 'none') return null;
+  if (dot.label) return dot.label;
+  const pc = (OPEN_STRINGS[dot.s] + dot.f) % 12;
+  if (mode === 'intervals') return INTERVAL_NAMES[(pc - (map.rootPitch ?? 0) + 12) % 12];
+  return dot.noteName ?? NOTES[pc];
+}
+
 /**
  * Render a map to an SVG string. The same function backs the on-screen
  * builder preview (via SvgXml, dark theme) and the PDF export (light theme
@@ -271,8 +297,8 @@ export function renderDiagramSvg(map: FretMap, theme: DiagramTheme): string {
     if (dot.f < map.fretStart || dot.f > map.fretEnd) continue;
     const { x, y } = g.cell(dot.s, dot.f);
     parts.push(`<circle cx="${x}" cy="${y}" r="${DOT_R}" fill="${dot.color}" stroke="${labelColorOn(dot.color) === '#FFFFFF' ? 'rgba(255,255,255,0.25)' : 'rgba(0,0,0,0.25)'}" stroke-width="1"/>`);
-    if (map.showLabels) {
-      const label = dot.label ?? dotDefaultLabel(dot);
+    const label = dotLabelFor(map, dot);
+    if (label !== null) {
       parts.push(`<text x="${x}" y="${y + 3.5}" text-anchor="middle" font-size="${label.length > 2 ? 8 : 10}" font-weight="600" font-family="-apple-system, Helvetica, sans-serif" fill="${labelColorOn(dot.color)}">${esc(label)}</text>`);
     }
   }
