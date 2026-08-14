@@ -40,8 +40,10 @@ const OUT_OF_RANGE_OPACITY = 0.32;
 const OUT_OF_RANGE_SCALE = 0.86;
 
 export default function Fretboard() {
-  const { width: screenW } = useWindowDimensions();
-  const isTablet = screenW >= 768;
+  const { width: screenW, height: screenH } = useWindowDimensions();
+  // Shortest edge — a phone turned landscape must not classify as a tablet.
+  const isTablet = Math.min(screenW, screenH) >= 768;
+  const isLandscape = screenW > screenH;
 
   const { root, scaleKey, chordKey, mode, labelMode, activePosition, activeCaged, tuningId, customNotes, labelSize, fretRange } = useStore();
   const playbackHighlight = useStore(s => s.playbackHighlight);
@@ -71,11 +73,11 @@ export default function Fretboard() {
   const STR_H = isTablet ? 44 : 36;
   const DOT_R = isTablet ? 17 : 14;
 
-  // FRET_W: for the full neck on phone, keep the original fixed 56px (lets
-  // the existing horizontal scroll work). For narrower ranges, or on tablet
-  // at any range, fit the range to the available width so the zoom-in is
-  // actually visible.
-  const isFullRangePhone = fretRange === 'all' && !isTablet;
+  // FRET_W: for the full neck on a portrait phone, keep the original fixed
+  // 56px (lets the existing horizontal scroll work). For narrower ranges, on
+  // tablet, or in landscape — where seeing the whole neck at once is the
+  // point of rotating — fit the range to the available width instead.
+  const isFullRangePhone = fretRange === 'all' && !isTablet && !isLandscape;
   const availableW = screenW - (isTablet ? 100 : 60);
   const FRET_W = isFullRangePhone
     ? 56

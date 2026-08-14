@@ -45,6 +45,19 @@ export default function RootLayout() {
   });
 
   useEffect(() => {
+    // The manifest allows rotation (orientation "default") purely so the
+    // Fretboard tab can opt into landscape — every other screen is designed
+    // portrait-only, so re-lock portrait here at the root. The Fretboard
+    // screen unlocks on focus and re-locks on blur.
+    //
+    // Lazy require + try/catch: expo-screen-orientation is a native module
+    // that only exists in builds made after it was added; a top-level import
+    // would crash older binaries running newer JS.
+    try {
+      const SO: typeof import('expo-screen-orientation') = require('expo-screen-orientation');
+      SO.lockAsync(SO.OrientationLock.PORTRAIT_UP).catch(() => {});
+    } catch {}
+
     // Set audio mode at app root so it's active before any tab loads
     Audio.setAudioModeAsync({
       playsInSilentModeIOS: true,

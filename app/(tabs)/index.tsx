@@ -1,5 +1,6 @@
 import React from 'react';
 import { View, Text, ScrollView, StyleSheet, TouchableOpacity, useWindowDimensions } from 'react-native';
+import { useFocusEffect } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Fretboard from '../../src/components/Fretboard';
 import TopBar from '../../src/components/TopBar';
@@ -60,8 +61,30 @@ const FRET_RANGE_OPTIONS = [
 ];
 
 export default function FretboardScreen() {
-  const { width: screenW } = useWindowDimensions();
-  const isTablet = screenW >= 768;
+  const { width: screenW, height: screenH } = useWindowDimensions();
+  // Shortest edge, not width: a phone turned landscape is 800+ wide and the
+  // old `screenW >= 768` check would have flipped it into the tablet layout.
+  const isTablet = Math.min(screenW, screenH) >= 768;
+  const isLandscape = screenW > screenH;
+
+  // This is the only screen allowed to rotate: unlock while focused, re-lock
+  // portrait on blur so the rest of the app never sees landscape. Lazy
+  // require + try/catch — the native module only exists in builds made after
+  // it was added (see the matching lock in app/_layout.tsx).
+  useFocusEffect(
+    React.useCallback(() => {
+      try {
+        const SO: typeof import('expo-screen-orientation') = require('expo-screen-orientation');
+        SO.unlockAsync().catch(() => {});
+      } catch {}
+      return () => {
+        try {
+          const SO: typeof import('expo-screen-orientation') = require('expo-screen-orientation');
+          SO.lockAsync(SO.OrientationLock.PORTRAIT_UP).catch(() => {});
+        } catch {}
+      };
+    }, []),
+  );
   const { isPro, requirePro } = useProGate();
   const { playScale, stopProgression } = useAudioEngine();
   const [playingScale, setPlayingScale] = React.useState(false);
@@ -483,6 +506,20 @@ export default function FretboardScreen() {
     </>
   );
 
+  // Landscape (phone): the whole point of rotating is seeing the neck, so
+  // the neck is all there is — no controls, no info panel. Fretboard's
+  // sizing fits the full fret window to the long edge. left/right safe-area
+  // edges matter here: that's where the notch lives in landscape.
+  if (isLandscape && !isTablet) {
+    return (
+      <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
+        <View style={styles.landscapeWrap}>
+          <Fretboard />
+        </View>
+      </SafeAreaView>
+    );
+  }
+
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
       <TopBar />
@@ -517,6 +554,7 @@ export default function FretboardScreen() {
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: COLORS.bg },
+  landscapeWrap: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   fbWrap: {
     backgroundColor: COLORS.bgElevated,
     borderBottomWidth: 1,
