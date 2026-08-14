@@ -9,7 +9,7 @@ import { NOTES, NOTE_DISPLAY, OPEN_STRINGS, SCALES, CHORDS } from '../constants/
 import { useStore } from '../store/useStore';
 import { useProGate } from '../hooks/useProGate';
 import {
-  type FretMap, type MapDot, type MapLabelMode, MAP_PALETTE,
+  type FretMap, type MapDot, type MapLabelMode, type StringMark, MAP_PALETTE,
   diagramGeometry, renderDiagramSvg, demoMap,
 } from '../utils/diagramSvg';
 import {
@@ -58,6 +58,8 @@ export default function MapBuilder() {
   // Active fingering stamp (1-4). While set, taps write the number onto dots
   // instead of the add/remove/recolor cycle.
   const [finger, setFinger] = useState<string | null>(null);
+  // ✕/○ chord-chart markers, indexed by string (0 = high e).
+  const [stringMarks, setStringMarks] = useState<(StringMark | null)[]>(() => Array(6).fill(null));
   const [name, setName] = useState('');
   const [mapId, setMapId] = useState<string>(() => newId());
   const [createdAt, setCreatedAt] = useState<number>(() => Date.now());
@@ -75,9 +77,10 @@ export default function MapBuilder() {
     // showLabels mirrors labelMode for anything still reading the old field.
     showLabels: labelMode !== 'none',
     labelMode, rootPitch: mapRootPitch,
+    stringMarks,
     orientation: vertical ? 'vertical' : 'horizontal',
     createdAt, updatedAt: Date.now(),
-  }), [mapId, name, dots, fretStart, fretEnd, labelMode, mapRootPitch, vertical, createdAt]);
+  }), [mapId, name, dots, fretStart, fretEnd, labelMode, mapRootPitch, stringMarks, vertical, createdAt]);
 
   const geo = useMemo(
     () => diagramGeometry(fretStart, fretEnd, vertical ? 'vertical' : 'horizontal'),
@@ -98,6 +101,16 @@ export default function MapBuilder() {
   function handleTap(x: number, y: number) {
     const cell = geo.cellForPoint(x, y);
     if (!cell) return;
+    // Marker strip: cycle none → ✕ → ○ → none. Independent of brush/finger —
+    // it's an annotation layer, not a note.
+    if (cell.f === -1) {
+      setStringMarks(prev => {
+        const next = [...prev];
+        next[cell.s] = prev[cell.s] === null ? 'x' : prev[cell.s] === 'x' ? 'o' : null;
+        return next;
+      });
+      return;
+    }
     setDots(prev => {
       const hit = prev.find(d => d.s === cell.s && d.f === cell.f);
       if (finger) {
@@ -173,6 +186,7 @@ export default function MapBuilder() {
 
   function resetDraft() {
     setDots([]); setName(''); setMapId(newId()); setCreatedAt(Date.now());
+    setStringMarks(Array(6).fill(null));
   }
 
   function loadMap(m: FretMap) {
@@ -181,6 +195,7 @@ export default function MapBuilder() {
     // derive the mode; missing orientation → horizontal; missing root → C.
     setLabelMode(m.labelMode ?? (m.showLabels ? 'notes' : 'none'));
     setMapRootPitch(m.rootPitch ?? 0);
+    setStringMarks(m.stringMarks ?? Array(6).fill(null));
     setVertical(m.orientation === 'vertical');
     setFinger(null);
     const wi = WINDOWS.findIndex(w => w.start === m.fretStart && w.end === m.fretEnd);
@@ -192,11 +207,19 @@ export default function MapBuilder() {
   // unlike New, which starts a fresh map. Confirmed because there's no undo,
   // and a seeded full-neck map is ~90 dots of work to lose to a stray tap.
   function handleClear() {
-    if (dots.length === 0) return;
-    Alert.alert('Clear all notes?', `Remove all ${dots.length} notes from the board.`, [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Clear', style: 'destructive', onPress: () => setDots([]) },
-    ]);
+    const marks = stringMarks.filter(Boolean).length;
+    if (dots.length === 0 && marks === 0) return;
+    Alert.alert(
+      'Clear the board?',
+      `Remove all ${dots.length} notes${marks ? ` and ${marks} string markers` : ''}.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Clear', style: 'destructive', onPress: () => {
+          setDots([]);
+          setStringMarks(Array(6).fill(null));
+        } },
+      ],
+    );
   }
 
   function handleSave() {
@@ -296,7 +319,8 @@ export default function MapBuilder() {
         </Pressable>
       </ScrollView>
       <Text style={styles.hint}>
-        Tap to place a note · tap again to remove · other color repaints
+        Tap to place a note · tap again to remove · other color repaints{'\n'}
+        Tap beside a string name to cycle ✕ (muted) / ○ (open)
       </Text>
 
       {/* Brush palette */}

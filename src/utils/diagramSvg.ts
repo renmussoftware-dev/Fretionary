@@ -32,6 +32,11 @@ export interface MapDot {
   noteName?: string;      // spelled note name, set by fills (E♭ not D#)
 }
 
+// Chord-chart string markers, drawn in a strip before the nut: ✕ = don't
+// play this string, ○ = play it open. Independent of dots — a separate
+// annotation layer, not derived from fret-0 dots.
+export type StringMark = 'x' | 'o';
+
 export interface FretMap {
   id: string;
   name: string;
@@ -44,6 +49,9 @@ export interface FretMap {
   labelMode?: MapLabelMode;
   // Root for interval symbols. Set automatically by fills; defaults to C.
   rootPitch?: number;
+  // Per-string ✕/○ markers, indexed by s (OPEN_STRINGS order). Absent or
+  // null entries draw nothing.
+  stringMarks?: (StringMark | null)[];
   // Absent on maps saved before orientation existed → horizontal.
   orientation?: MapOrientation;
   createdAt: number;
@@ -71,6 +79,7 @@ export const MAP_PALETTE = [
 
 const H = {
   L: 34,     // left gutter (string names)
+  MARK: 18,  // ✕/○ marker strip, between names and the grid
   T: 14,     // top padding
   B: 26,     // bottom strip (fret numbers)
   FW: 56,    // fret cell width
@@ -82,6 +91,7 @@ const H = {
 
 const V = {
   T: 30,     // top strip (string names)
+  MARK: 18,  // ✕/○ marker strip, between names and the grid
   L: 30,     // left gutter (fret numbers)
   R: 12,     // right padding
   B: 14,     // bottom padding
@@ -97,8 +107,10 @@ export interface DiagramGeometry {
   width: number;
   height: number;
   // Center of the cell for (s, f) in SVG coordinates. Fractional s/f OK.
+  // f = -1 is the ✕/○ marker strip for that string.
   cell: (s: number, f: number) => { x: number; y: number };
-  // Inverse: point → cell, or null outside the grid. Used by the tap handler.
+  // Inverse: point → cell, or null outside the grid. Marker-strip taps come
+  // back as f = -1. Used by the tap handler.
   cellForPoint: (x: number, y: number) => { s: number; f: number } | null;
   frets: number[]; // the fret columns/rows this window renders, in order
 }
@@ -116,18 +128,23 @@ export function diagramGeometry(
   const nFrets = fretEnd - firstFret + 1;
 
   if (orientation === 'horizontal') {
-    const gridLeft = H.L + (openCol ? H.OW + H.NUT : 0);
+    // names | marks | (open col | nut)? | frets
+    const openLeft = H.L + H.MARK;
+    const gridLeft = openLeft + (openCol ? H.OW + H.NUT : 0);
     const width = gridLeft + nFrets * H.FW + H.R;
     const height = H.T + 5 * H.SH + H.B;
 
     const cell = (s: number, f: number) => ({
-      x: f === 0 ? H.L + H.OW / 2 : gridLeft + (f - firstFret) * H.FW + H.FW / 2,
+      x: f === -1 ? H.L + H.MARK / 2
+        : f === 0 ? openLeft + H.OW / 2
+        : gridLeft + (f - firstFret) * H.FW + H.FW / 2,
       y: H.T + s * H.SH,
     });
     const cellForPoint = (x: number, y: number) => {
       const s = Math.round((y - H.T) / H.SH);
       if (s < 0 || s > 5) return null;
-      if (openCol && x >= H.L && x < H.L + H.OW) return { s, f: 0 };
+      if (x >= H.L && x < openLeft) return { s, f: -1 };
+      if (openCol && x >= openLeft && x < openLeft + H.OW) return { s, f: 0 };
       if (x >= gridLeft && x < gridLeft + nFrets * H.FW) {
         return { s, f: firstFret + Math.floor((x - gridLeft) / H.FW) };
       }
@@ -137,18 +154,23 @@ export function diagramGeometry(
   }
 
   // Vertical: low E leftmost (chord-chart convention), so x runs by (5 - s).
-  const gridTop = V.T + (openCol ? V.OH + V.NUT : 0);
+  // names / marks / (open row | nut)? / frets, top to bottom.
+  const openTop = V.T + V.MARK;
+  const gridTop = openTop + (openCol ? V.OH + V.NUT : 0);
   const width = V.L + 5 * V.SW + V.R;
   const height = gridTop + nFrets * V.FH + V.B;
 
   const cell = (s: number, f: number) => ({
     x: V.L + (5 - s) * V.SW,
-    y: f === 0 ? V.T + V.OH / 2 : gridTop + (f - firstFret) * V.FH + V.FH / 2,
+    y: f === -1 ? V.T + V.MARK / 2
+      : f === 0 ? openTop + V.OH / 2
+      : gridTop + (f - firstFret) * V.FH + V.FH / 2,
   });
   const cellForPoint = (x: number, y: number) => {
     const s = 5 - Math.round((x - V.L) / V.SW);
     if (s < 0 || s > 5) return null;
-    if (openCol && y >= V.T && y < V.T + V.OH) return { s, f: 0 };
+    if (y >= V.T && y < openTop) return { s, f: -1 };
+    if (openCol && y >= openTop && y < openTop + V.OH) return { s, f: 0 };
     if (y >= gridTop && y < gridTop + nFrets * V.FH) {
       return { s, f: firstFret + Math.floor((y - gridTop) / V.FH) };
     }
@@ -248,14 +270,29 @@ export function renderDiagramSvg(map: FretMap, theme: DiagramTheme): string {
     const w = (0.8 + s * 0.35).toFixed(2);
     if (vertical) {
       const x = g.cell(s, firstFret).x;
-      const y1 = openCol ? V.T + V.OH : V.T;
+      const y1 = V.T + V.MARK + (openCol ? V.OH : 0);
       parts.push(`<line x1="${x}" y1="${y1}" x2="${x}" y2="${g.height - V.B}" stroke="${t.string}" stroke-width="${w}"/>`);
       parts.push(`<text x="${x}" y="${V.T - 10}" text-anchor="middle" font-size="11" font-family="Menlo, monospace" fill="${t.text}">${STRING_NAMES[s]}</text>`);
     } else {
       const y = g.cell(s, firstFret).y;
-      const x1 = H.L + (openCol ? H.OW : 0);
+      const x1 = H.L + H.MARK + (openCol ? H.OW : 0);
       parts.push(`<line x1="${x1}" y1="${y}" x2="${g.width - H.R}" y2="${y}" stroke="${t.string}" stroke-width="${w}"/>`);
       parts.push(`<text x="${H.L - 10}" y="${y + 4}" text-anchor="middle" font-size="11" font-family="Menlo, monospace" fill="${t.text}">${STRING_NAMES[s]}</text>`);
+    }
+  }
+
+  // ✕/○ string markers in their strip before the grid. Drawn as primitives
+  // (crossed lines / stroked ring) rather than text so they read at any size
+  // and can't be confused with note-name labels.
+  for (let s = 0; s < 6; s++) {
+    const mark = map.stringMarks?.[s];
+    if (!mark) continue;
+    const { x, y } = g.cell(s, -1);
+    if (mark === 'x') {
+      parts.push(`<line x1="${x - 4}" y1="${y - 4}" x2="${x + 4}" y2="${y + 4}" stroke="${t.text}" stroke-width="1.6"/>`);
+      parts.push(`<line x1="${x - 4}" y1="${y + 4}" x2="${x + 4}" y2="${y - 4}" stroke="${t.text}" stroke-width="1.6"/>`);
+    } else {
+      parts.push(`<circle cx="${x}" cy="${y}" r="4.5" fill="none" stroke="${t.text}" stroke-width="1.6"/>`);
     }
   }
 
@@ -264,7 +301,7 @@ export function renderDiagramSvg(map: FretMap, theme: DiagramTheme): string {
   if (vertical) {
     const left = Math.min(lowX, highX) - 9, span = Math.abs(highX - lowX) + 18;
     if (openCol) {
-      parts.push(`<rect x="${left}" y="${V.T + V.OH}" width="${span}" height="${V.NUT}" rx="2" fill="${t.nut}"/>`);
+      parts.push(`<rect x="${left}" y="${V.T + V.MARK + V.OH}" width="${span}" height="${V.NUT}" rx="2" fill="${t.nut}"/>`);
     }
     for (let f = firstFret; f <= map.fretEnd; f++) {
       const y = g.cell(0, f).y + V.FH / 2;
@@ -273,7 +310,7 @@ export function renderDiagramSvg(map: FretMap, theme: DiagramTheme): string {
   } else {
     const top = gridNear.y - 9, span = 5 * H.SH + 18;
     if (openCol) {
-      parts.push(`<rect x="${H.L + H.OW}" y="${top}" width="${H.NUT}" height="${span}" rx="2" fill="${t.nut}"/>`);
+      parts.push(`<rect x="${H.L + H.MARK + H.OW}" y="${top}" width="${H.NUT}" height="${span}" rx="2" fill="${t.nut}"/>`);
     }
     for (let f = firstFret; f <= map.fretEnd; f++) {
       const x = g.cell(0, f).x + H.FW / 2;
