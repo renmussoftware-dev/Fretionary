@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Fretionary — Guitar Scales, Chords, CAGED & Progressions for iOS and Android</title>
-<meta name="description" content="Fretionary is the fretboard dictionary for guitarists. Explore 14 scales and modes, 36 chord types with diagrams, the full CAGED system, and 22 chord progressions — across every key, on every fret. Free download for iOS and Android.">
+<meta name="description" content="Fretionary is the fretboard dictionary for guitarists. Explore 14 scales and modes, 42 chord types with diagrams, the full CAGED system, 64 chord progressions, and a custom diagram builder with PDF export — across every key, on every fret. Free download for iOS and Android.">
 <meta name="theme-color" content="#0a0a0b">
 <link rel="canonical" href="https://fretionary.com/">
 
@@ -17,7 +17,7 @@
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://fretionary.com/">
 <meta property="og:title" content="Fretionary — Guitar Scales, Chords, CAGED & Progressions">
-<meta property="og:description" content="The fretboard dictionary for guitarists. 14 scales, 36 chord types with diagrams, full CAGED, and 22 progressions — across every key.">
+<meta property="og:description" content="The fretboard dictionary for guitarists. 14 scales, 42 chord types with diagrams, full CAGED, 64 progressions, and custom printable fretboard maps — across every key.">
 <meta property="og:image" content="https://fretionary.com/og-image.png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
@@ -26,7 +26,7 @@
 <!-- Twitter Card -->
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="Fretionary — Guitar Scales, Chords, CAGED & Progressions">
-<meta name="twitter:description" content="The fretboard dictionary for guitarists. 14 scales, 36 chord types with diagrams, full CAGED, and 22 progressions — across every key.">
+<meta name="twitter:description" content="The fretboard dictionary for guitarists. 14 scales, 42 chord types with diagrams, full CAGED, 64 progressions, and custom printable fretboard maps — across every key.">
 <meta name="twitter:image" content="https://fretionary.com/og-image.png">
 
 <!-- Structured data: lets Google show rich snippets (rating, price, app store links) -->
@@ -38,12 +38,13 @@
   "operatingSystem": ["iOS", "Android"],
   "applicationCategory": "EducationalApplication",
   "applicationSubCategory": "Music",
-  "description": "Fretionary is a fretboard dictionary for guitarists — explore 14 scales and modes, 36 chord types with diagrams, the full CAGED system, and 22 chord progressions across every key on the neck.",
+  "description": "Fretionary is a fretboard dictionary for guitarists — explore 14 scales and modes, 42 chord types with diagrams, the full CAGED system, 64 chord progressions, and a custom fretboard map builder with PDF export across every key on the neck.",
   "url": "https://fretionary.com/",
   "image": "https://fretionary.com/og-image.png",
   "offers": [
     { "@type": "Offer", "price": "0", "priceCurrency": "USD", "description": "Free tier" },
-    { "@type": "Offer", "priceCurrency": "USD", "description": "Fretionary Pro — monthly subscription or one-time Lifetime" }
+    { "@type": "Offer", "price": "7.99", "priceCurrency": "USD", "description": "Fretionary Pro — monthly subscription" },
+    { "@type": "Offer", "price": "44.99", "priceCurrency": "USD", "description": "Fretionary Pro — one-time Lifetime purchase" }
   ],
   "installUrl": "https://apps.apple.com/us/app/fretionary/id6761344883",
   "downloadUrl": "https://play.google.com/store/apps/details?id=com.renmussoftware.nodi",
@@ -629,6 +630,44 @@
     text-align: center;
   }
 
+  /* ── FREE vs PRO COMPARISON ── */
+  .compare-wrap {
+    max-width: 720px;
+    margin: 56px auto 0;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+    text-align: left;
+  }
+  .compare-table { width: 100%; border-collapse: collapse; }
+  .compare-table th {
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--border);
+    text-align: center;
+  }
+  .compare-table th:first-child { text-align: left; color: var(--muted); }
+  .compare-table th.col-free { color: var(--text); }
+  .compare-table th.col-pro { color: var(--gold); background: var(--gold-faint); }
+  .compare-table td {
+    font-size: 13px;
+    color: var(--muted);
+    padding: 12px 20px;
+    border-bottom: 1px solid rgba(255,255,255,0.03);
+    text-align: center;
+  }
+  .compare-table tr:last-child td { border-bottom: none; }
+  .compare-table td:first-child { text-align: left; color: var(--text); font-weight: 500; }
+  .compare-table td.col-pro { background: var(--gold-faint); color: var(--gold); font-weight: 600; }
+  .compare-table td .no { color: var(--faint); }
+  @media (max-width: 640px) {
+    .compare-table th, .compare-table td { padding: 10px 10px; font-size: 12px; }
+  }
+
   .pricing-cards {
     display: flex;
     gap: 20px;
@@ -900,7 +939,7 @@
     </div>
     <h1>Every note on<br>the neck has<br><em>a name.</em></h1>
     <p class="hero-sub">
-      The most visual, interactive guitar theory companion. Scales, chords, CAGED, real progressions, alternate tunings, and built-in practice drills — all connected, all in one place.
+      The most visual, interactive guitar theory companion. Scales, chords, CAGED, real progressions, alternate tunings, practice drills, and custom printable fretboard maps — all connected, all in one place.
     </p>
     <div class="hero-actions">
       <a href="https://apps.apple.com/us/app/fretionary/id6761344883" class="btn-primary" target="_blank" rel="noopener">
@@ -953,7 +992,7 @@
     </div>
     <div class="feature-card" style="--accent-color:var(--red);--icon-bg:rgba(226,75,74,0.08);--icon-border:rgba(226,75,74,0.2)">
       <div class="feature-icon">🎵</div>
-      <h3>36 Chord Types</h3>
+      <h3>42 Chord Types</h3>
       <p>From basic triads to altered dominants and 13th jazz chords. Every chord shows curated, physically playable fingering diagrams across open, mid, and high neck positions.</p>
     </div>
     <div class="feature-card" style="--accent-color:var(--blue);--icon-bg:rgba(55,138,221,0.08);--icon-border:rgba(55,138,221,0.2)">
@@ -963,8 +1002,8 @@
     </div>
     <div class="feature-card" style="--accent-color:var(--green);--icon-bg:rgba(29,158,117,0.08);--icon-border:rgba(29,158,117,0.2)">
       <div class="feature-icon">🎼</div>
-      <h3>22 Chord Progressions</h3>
-      <p>Named progressions across Pop, Rock, Blues, Jazz, and more — plus a custom builder that lets you stack any chord from any key. Hit Play and hear real guitar audio as the fretboard updates live.</p>
+      <h3>64 Chord Progressions</h3>
+      <p>Named progressions across 16 genres — Pop, Rock, Blues, Jazz, Latin, Motown, Gospel, Reggae and more — plus 18 song-based examples and a custom builder. Hit Play and hear real guitar audio as the fretboard updates live.</p>
     </div>
     <div class="feature-card" style="--accent-color:var(--gold);--icon-bg:rgba(232,200,77,0.08);--icon-border:rgba(232,200,77,0.2)">
       <div class="feature-icon">🎯</div>
@@ -979,13 +1018,56 @@
   </div>
 </section>
 
-<!-- WHAT'S NEW IN 2.0 -->
+<!-- WHAT'S NEW IN 5.0 -->
 <section class="features-section" id="whats-new" style="padding-top:0">
   <div class="features-header reveal">
-    <span class="section-label" style="color:var(--gold)">New in 2.0</span>
-    <h2>The biggest update<br>since launch</h2>
+    <span class="section-label" style="color:var(--gold)">New in 5.0</span>
+    <h2>Design your own<br>fretboard maps</h2>
     <p style="color:var(--muted);font-size:15px;margin-top:14px;max-width:540px;line-height:1.65">
-      Six new features that make Fretionary work the way real guitarists practice — across tunings, with smart suggestions, and built-in tools to keep you sharp.
+      The biggest update yet: build and share your own diagrams, identify any chord you can play, track your practice streak, and see the whole neck just by turning your phone.
+    </p>
+  </div>
+  <div class="features-grid reveal">
+    <div class="feature-card" style="--accent-color:var(--gold);--icon-bg:rgba(232,200,77,0.08);--icon-border:rgba(232,200,77,0.2)">
+      <div class="feature-icon">🗺️</div>
+      <h3>Maps — Custom Diagrams</h3>
+      <p>Tap notes anywhere on the neck and color-code them with 8 colors. Start blank or fill from any of the 14 scales and 42 chords, then edit. Horizontal or classic chord-chart vertical layout.</p>
+    </div>
+    <div class="feature-card" style="--accent-color:var(--blue);--icon-bg:rgba(55,138,221,0.08);--icon-border:rgba(55,138,221,0.2)">
+      <div class="feature-icon">📄</div>
+      <h3>PDF Export &amp; Sharing</h3>
+      <p>Turn any map into a clean, print-ready PDF — lesson handouts, licks, voicings. Note names, interval symbols, or fingering numbers on every dot, plus ✕/○ string markers, chord-chart style.</p>
+    </div>
+    <div class="feature-card" style="--accent-color:var(--red);--icon-bg:rgba(226,75,74,0.08);--icon-border:rgba(226,75,74,0.2)">
+      <div class="feature-icon">🔍</div>
+      <h3>Identify Mode</h3>
+      <p>Tap the notes you're playing and Fretionary names the chord — including partial voicings like no-5 shells and jazz rootless shapes. Reverse-engineer anything you stumble into.</p>
+    </div>
+    <div class="feature-card" style="--accent-color:var(--gold);--icon-bg:rgba(232,200,77,0.08);--icon-border:rgba(232,200,77,0.2)">
+      <div class="feature-icon">🔥</div>
+      <h3>Progress &amp; Streaks</h3>
+      <p>A daily pick to explore, a streak that grows with every day you practice, and counters for the scales, chords, and progressions you've actually played. Practice becomes a habit.</p>
+    </div>
+    <div class="feature-card" style="--accent-color:var(--green);--icon-bg:rgba(29,158,117,0.08);--icon-border:rgba(29,158,117,0.2)">
+      <div class="feature-icon">📱</div>
+      <h3>Landscape Mode</h3>
+      <p>Turn your phone sideways on the Fretboard tab and the whole neck fills the screen — all 15 frets at once, no scrolling. Rotate back and the app returns to normal.</p>
+    </div>
+    <div class="feature-card" style="--accent-color:var(--blue);--icon-bg:rgba(55,138,221,0.08);--icon-border:rgba(55,138,221,0.2)">
+      <div class="feature-icon">🎼</div>
+      <h3>Proper Note Spelling</h3>
+      <p>C Dorian reads E♭ and B♭ — not D♯ and A♯. Every scale, chord, and key is spelled the way a musician writes it, flat keys included, everywhere in the app.</p>
+    </div>
+  </div>
+</section>
+
+<!-- PRACTICE TOOLKIT -->
+<section class="features-section" style="padding-top:0">
+  <div class="features-header reveal">
+    <span class="section-label">The practice toolkit</span>
+    <h2>Everything around<br>the fretboard</h2>
+    <p style="color:var(--muted);font-size:15px;margin-top:14px;max-width:540px;line-height:1.65">
+      Tools that make Fretionary work the way real guitarists practice — across tunings, with smart suggestions, and built-in drills to keep you sharp.
     </p>
   </div>
   <div class="features-grid reveal">
@@ -1258,7 +1340,7 @@
     <span class="section-label">Chord Progressions</span>
     <h2>Hear how chords<br>work together</h2>
     <p style="color:var(--muted);font-size:15px;margin-top:12px;max-width:480px;line-height:1.65">
-      22 progressions across every genre — plus a custom builder that lets you stack any chord from any key. Hit Play and hear real guitar audio while the fretboard shows you every chord shape in sequence.
+      64 progressions across 16 genres, plus 18 song-based examples — and a custom builder that lets you stack any chord from any key. Hit Play and hear real guitar audio while the fretboard shows you every chord shape in sequence.
     </p>
   </div>
   <div class="prog-list reveal">
@@ -1309,8 +1391,8 @@
     </div>
     <div class="prog-item" style="border-top:1px solid var(--border);margin-top:2px;padding-top:16px">
       <div class="prog-item-left">
-        <span class="prog-genre" style="color:var(--gold)">+ 17 more</span>
-        <span class="prog-name" style="color:var(--muted)">Country, R&B, Modal, and more — plus your own custom builds</span>
+        <span class="prog-genre" style="color:var(--gold)">+ 59 more</span>
+        <span class="prog-name" style="color:var(--muted)">Latin, Motown, Gospel, Classical, Reggae, Country, R&B and more — plus 18 song-based examples and your own custom builds</span>
       </div>
       <a href="#pricing" style="font-size:12px;color:var(--gold);text-decoration:none;font-weight:600">Explore →</a>
     </div>
@@ -1336,6 +1418,8 @@
         <li>Standard + Drop D tunings</li>
         <li>Smart resolution hints</li>
         <li>CAGED system guide</li>
+        <li>Built-in metronome</li>
+        <li>Progress, streaks &amp; daily pick</li>
         <li>Favorites &amp; recents</li>
         <li>Practice — Name the Note (Beginner)</li>
       </ul>
@@ -1343,17 +1427,18 @@
     </div>
     <div class="pricing-card reveal">
       <div class="pricing-tier">Monthly</div>
-      <div class="pricing-price">$3<span style="font-size:20px">.99</span></div>
+      <div class="pricing-price">$7<span style="font-size:20px">.99</span></div>
       <div class="pricing-per">per month — cancel anytime</div>
       <ul class="pricing-features">
         <li>Everything in Free</li>
         <li>All 14 scales &amp; modes</li>
-        <li>Full chord library (36 types)</li>
-        <li>All 22 progressions + custom builder</li>
+        <li>Full chord library (42 types)</li>
+        <li>All 64 progressions + 18 song examples</li>
+        <li>Maps — custom diagrams with PDF export</li>
+        <li>Identify — name any chord you tap</li>
         <li>9 alternate tunings (Drop C, DADGAD, Open D/G/E…)</li>
         <li>Real guitar audio playback</li>
         <li>All Practice modes &amp; difficulties</li>
-        <li>Built-in metronome</li>
         <li>Position highlighting (Pos 1–5)</li>
       </ul>
       <a href="/download" class="pricing-btn">Subscribe Monthly</a>
@@ -1373,13 +1458,42 @@
       <a href="/download" class="pricing-btn">Buy Lifetime</a>
     </div>
   </div>
+  <div class="compare-wrap reveal">
+    <table class="compare-table">
+      <thead>
+        <tr>
+          <th>What you get</th>
+          <th class="col-free">Free</th>
+          <th class="col-pro">Pro</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td>Interactive fretboard</td><td>✓</td><td class="col-pro">✓</td></tr>
+        <tr><td>Scales &amp; modes</td><td>4</td><td class="col-pro">All 14</td></tr>
+        <tr><td>Chord types with voicings</td><td>8</td><td class="col-pro">All 42</td></tr>
+        <tr><td>Chord progressions</td><td>4</td><td class="col-pro">64 + 18 song examples</td></tr>
+        <tr><td>Custom &amp; diatonic progression builders</td><td>✓</td><td class="col-pro">✓</td></tr>
+        <tr><td>Progression audio playback</td><td><span class="no">—</span></td><td class="col-pro">✓</td></tr>
+        <tr><td>Maps — custom diagrams &amp; PDF export</td><td><span class="no">—</span></td><td class="col-pro">✓</td></tr>
+        <tr><td>Identify — name any chord you tap</td><td><span class="no">—</span></td><td class="col-pro">✓</td></tr>
+        <tr><td>Tunings</td><td>2</td><td class="col-pro">All 9</td></tr>
+        <tr><td>CAGED system guide</td><td>✓</td><td class="col-pro">✓</td></tr>
+        <tr><td>Position highlighting (Pos 1–5)</td><td><span class="no">—</span></td><td class="col-pro">✓</td></tr>
+        <tr><td>Practice drills</td><td>Name the Note (Beginner)</td><td class="col-pro">All modes &amp; difficulties</td></tr>
+        <tr><td>Metronome</td><td>✓</td><td class="col-pro">✓</td></tr>
+        <tr><td>Progress, streaks &amp; daily pick</td><td>✓</td><td class="col-pro">✓</td></tr>
+        <tr><td>Landscape full-neck view</td><td>✓</td><td class="col-pro">✓</td></tr>
+        <tr><td>Favorites &amp; recents</td><td>✓</td><td class="col-pro">✓</td></tr>
+      </tbody>
+    </table>
+  </div>
   <p style="margin-top:32px;font-size:12px;color:var(--faint)">Available on iOS and Android.</p>
 </section>
 
 <!-- FOOTER -->
 <footer>
   <div class="footer-logo">Fretionary<span>.</span></div>
-  <div class="footer-copy">© 2025 Renmus Software LLC. All rights reserved.</div>
+  <div class="footer-copy">© 2026 Renmus Software LLC. All rights reserved.</div>
 </footer>
 
 <script>
