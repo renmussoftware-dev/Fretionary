@@ -79,7 +79,21 @@ export default function Metronome() {
   const tapTimesRef = useRef<number[]>([]);
   const pulseAnim = useRef(new Animated.Value(0)).current;
 
-  // Self-correcting tick scheduler: targets absolute tick times to avoid drift
+  // The scheduler reads tempo and beat count through refs so changing
+  // either doesn't tear down and restart the tick loop. Restarting on a
+  // +/- tap used to fire an extra off-schedule click each time — part of
+  // the "jumps too fast" the loop is meant to prevent. The effect below
+  // depends only on `running`; these keep it current.
+  const bpmRef = useRef(bpm);
+  const beatsRef = useRef(sig.beats);
+  useEffect(() => { bpmRef.current = bpm; }, [bpm]);
+  useEffect(() => { beatsRef.current = sig.beats; }, [sig.beats]);
+
+  // Absolute-time tick scheduler. Each tick targets a fixed time grid so
+  // per-tick JS jitter can't accumulate into drift, and the next tick is
+  // armed BEFORE any React/animation work so a slow re-render can't shrink
+  // the interval. Depends only on `running` — tempo/beats come through refs
+  // (see above), so adjusting them never restarts the loop.
   useEffect(() => {
     if (!running) {
       if (timerRef.current) clearTimeout(timerRef.current);
@@ -92,41 +106,45 @@ export default function Metronome() {
     nextTickRef.current = Date.now();
 
     function tick() {
+      const now = Date.now();
+      const interval = 60_000 / bpmRef.current;
       const beat = beatRef.current;
-      const isAccent = beat === 0;
-      playClick(isAccent);
-      setBeatIdx(beat);
 
+      // 1) Sound first — the click is the product; nothing may delay it.
+      playClick(beat === 0);
+
+      // 2) Arm the next tick before the UI work below. Sampling `now` and
+      //    scheduling here — rather than after setBeatIdx + Animated.start —
+      //    is the fix for the metronome running fast: the old code measured
+      //    `now` after the re-render, counting render time as lateness and
+      //    shortening every interval.
+      beatRef.current = (beat + 1) % beatsRef.current;
+      nextTickRef.current += interval;
+      // Fell a whole beat behind (GC pause, backgrounded, heavy render on
+      // another screen): skip the missed beats and resume one full interval
+      // from now, instead of firing catch-up ticks in a burst.
+      if (nextTickRef.current <= now) {
+        nextTickRef.current = now + interval;
+      }
+      timerRef.current = setTimeout(tick, nextTickRef.current - now);
+
+      // 3) Visual updates last — if they're slow they delay only themselves,
+      //    never the audio grid.
+      setBeatIdx(beat);
       Animated.sequence([
         Animated.timing(pulseAnim, { toValue: 1, duration: 60, useNativeDriver: true }),
         Animated.timing(pulseAnim, { toValue: 0, duration: 180, useNativeDriver: true }),
       ]).start();
-
-      beatRef.current = (beat + 1) % sig.beats;
-      const interval = 60_000 / bpm;
-      nextTickRef.current += interval;
-      // Skip-forward safety: if the JS thread stalled (app backgrounded, GC
-      // pause, heavy animation on another screen), Date.now() will have
-      // jumped past nextTickRef by more than a full beat. The base scheduler
-      // would then fire a burst of catch-up ticks — a machine-gun click that
-      // makes the metronome go audibly off-tempo. Instead, re-anchor to now
-      // when we've fallen more than half an interval behind. Small drift
-      // corrections still work through the normal path.
-      const now = Date.now();
-      if (nextTickRef.current < now - interval / 2) {
-        nextTickRef.current = now;
-      }
-      const delay = Math.max(0, nextTickRef.current - now);
-      timerRef.current = setTimeout(tick, delay);
     }
-    // First tick immediately
+    // First tick fires immediately on Start (beat 1).
     tick();
 
     return () => {
       if (timerRef.current) clearTimeout(timerRef.current);
       timerRef.current = null;
     };
-  }, [running, bpm, sig.beats, pulseAnim]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- tempo/beats via refs by design
+  }, [running]);
 
   function bumpBpm(delta: number) {
     setBpm(b => Math.max(BPM_MIN, Math.min(BPM_MAX, b + delta)));
