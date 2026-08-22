@@ -26,132 +26,201 @@ const BPM_MIN = 40;
 const BPM_MAX = 240;
 const TAP_WINDOW_MS = 2500;  // taps older than this expire
 
+// Lookahead scheduler (audio-api path). We schedule every click due in the
+// next SCHEDULE_AHEAD seconds against the audio clock, refilling on a coarse
+// LOOKAHEAD_MS JS interval. The interval's own jitter is irrelevant - it only
+// tops up the queue; each click still fires at its exact scheduled audio time.
+const SCHEDULE_AHEAD = 0.1;  // seconds of audio scheduled in advance
+const LOOKAHEAD_MS = 25;     // how often the queue is refilled
+
 export default function Metronome() {
+  // -- Audio engines --------------------------------------------------------
+  // Primary: react-native-audio-api. Its Web Audio context gives a
+  // sample-accurate audio clock and start(when) scheduling, so each click
+  // fires on the audio thread at its exact appointed time - immune to the
+  // JS-thread jitter the setTimeout scheduler could never escape.
+  //
+  // Fallback: the previous expo-av + setTimeout scheduler, used when the
+  // audio-api native module isn't present (a dev client built before it was
+  // added) or fails to init on some device. Keeps the metronome working -
+  // with the old jitter - rather than going silent.
+  const engineRef = useRef<'audioapi' | 'expoav' | null>(null);
+  const [engineReady, setEngineReady] = useState(false);
+
+  // audio-api refs (typed loosely - the module is lazy-required so we never
+  // import its types statically, which would break older binaries at load).
+  const ctxRef = useRef<any>(null);
+  const clickBufRef = useRef<any>(null);
+  const accentGainRef = useRef<any>(null);
+  const offbeatGainRef = useRef<any>(null);
+  const nextNoteTimeRef = useRef(0);              // next click, audio-clock seconds
+  const visualQueueRef = useRef<{ beat: number; time: number }[]>([]);
+  const lookaheadRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // expo-av fallback refs
   const accentSoundRef = useRef<Sound | null>(null);
   const offbeatSoundRef = useRef<Sound | null>(null);
-
-  // Load two Sound instances of the wood-block sample at different volumes —
-  // pre-loading avoids per-tick volume change latency.
-  useEffect(() => {
-    let cancelled = false;
-    async function load() {
-      await ensureAudioSession();
-      const [{ sound: accent }, { sound: offbeat }] = await Promise.all([
-        Audio.Sound.createAsync(CLICK_SAMPLE, { shouldPlay: false, volume: ACCENT_VOLUME }),
-        Audio.Sound.createAsync(CLICK_SAMPLE, { shouldPlay: false, volume: OFFBEAT_VOLUME }),
-      ]);
-      if (cancelled) {
-        accent.unloadAsync();
-        offbeat.unloadAsync();
-        return;
-      }
-      accentSoundRef.current = accent;
-      offbeatSoundRef.current = offbeat;
-    }
-    load();
-    return () => {
-      cancelled = true;
-      accentSoundRef.current?.unloadAsync();
-      offbeatSoundRef.current?.unloadAsync();
-      accentSoundRef.current = null;
-      offbeatSoundRef.current = null;
-    };
-  }, []);
-
-  function playClick(accent: boolean) {
-    const sound = accent ? accentSoundRef.current : offbeatSoundRef.current;
-    if (!sound) return;
-    // replayAsync is a single native call that restarts the sample from the
-    // beginning even if it's still ringing out — much more reliable at high
-    // BPMs than setPositionAsync(0) + playAsync().
-    sound.replayAsync().catch(() => {});
-  }
-
-  const [bpm, setBpm] = useState(100);
-  const [sigIdx, setSigIdx] = useState(2); // default 4/4
-  const [running, setRunning] = useState(false);
-  // Current beat as an Animated.Value, NOT React state: the tick used to
-  // call setBeatIdx every beat, forcing a full component re-render on the
-  // JS thread that then delayed the next timer callback — the residual
-  // "jumps around". Driving the dots off an Animated.Value (native driver)
-  // means the hot path never re-renders. -1 = stopped (no dot lit).
-
-  const sig = TIME_SIGS[sigIdx];
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const nextTickRef = useRef<number>(0);
+
+  // shared
   const beatRef = useRef(0);
   const tapTimesRef = useRef<number[]>([]);
   const pulseAnim = useRef(new Animated.Value(0)).current;
   const beatAnim = useRef(new Animated.Value(-1)).current;
 
-  // The scheduler reads tempo and beat count through refs so changing
-  // either doesn't tear down and restart the tick loop. Restarting on a
-  // +/- tap used to fire an extra off-schedule click each time — part of
-  // the "jumps too fast" the loop is meant to prevent. The effect below
-  // depends only on `running`; these keep it current.
+  const [bpm, setBpm] = useState(100);
+  const [sigIdx, setSigIdx] = useState(2); // default 4/4
+  const [running, setRunning] = useState(false);
+  const sig = TIME_SIGS[sigIdx];
+
+  // Scheduler reads tempo/beats through refs so changing them never restarts
+  // the loop (a restart used to fire an off-schedule click on every +/- tap).
   const bpmRef = useRef(bpm);
   const beatsRef = useRef(sig.beats);
   useEffect(() => { bpmRef.current = bpm; }, [bpm]);
   useEffect(() => { beatsRef.current = sig.beats; }, [sig.beats]);
 
-  // Absolute-time tick scheduler. Each tick targets a fixed time grid so
-  // per-tick JS jitter can't accumulate into drift, and the next tick is
-  // armed BEFORE any React/animation work so a slow re-render can't shrink
-  // the interval. Depends only on `running` — tempo/beats come through refs
-  // (see above), so adjusting them never restarts the loop.
+  // One visual helper for both engines: light the current dot (native-driven
+  // Animated.Value, no re-render) and fire the scale pulse. Called at each
+  // beat's real sounding time.
+  function showBeat(beat: number) {
+    beatAnim.setValue(beat);
+    Animated.sequence([
+      Animated.timing(pulseAnim, { toValue: 1, duration: 60, useNativeDriver: true }),
+      Animated.timing(pulseAnim, { toValue: 0, duration: 180, useNativeDriver: true }),
+    ]).start();
+  }
+
+  // expo-av fallback click.
+  function playClick(accent: boolean) {
+    const sound = accent ? accentSoundRef.current : offbeatSoundRef.current;
+    sound?.replayAsync().catch(() => {});
+  }
+
+  // -- Load: pick an engine -------------------------------------------------
+  useEffect(() => {
+    let cancelled = false;
+    async function init() {
+      // Try the precise engine first.
+      try {
+        const { AudioContext } = require('react-native-audio-api');
+        const ctx = new AudioContext();
+        const accentGain = ctx.createGain();
+        accentGain.gain.value = ACCENT_VOLUME;
+        accentGain.connect(ctx.destination);
+        const offbeatGain = ctx.createGain();
+        offbeatGain.gain.value = OFFBEAT_VOLUME;
+        offbeatGain.connect(ctx.destination);
+        const buf = await ctx.decodeAudioData(CLICK_SAMPLE);
+        if (cancelled) { ctx.close?.(); return; }
+        ctxRef.current = ctx;
+        clickBufRef.current = buf;
+        accentGainRef.current = accentGain;
+        offbeatGainRef.current = offbeatGain;
+        engineRef.current = 'audioapi';
+        setEngineReady(true);
+        return;
+      } catch (e) {
+        if (__DEV__) console.warn('[metronome] audio-api unavailable, using expo-av', e);
+      }
+      // Fallback: expo-av.
+      try {
+        await ensureAudioSession();
+        const [{ sound: accent }, { sound: offbeat }] = await Promise.all([
+          Audio.Sound.createAsync(CLICK_SAMPLE, { shouldPlay: false, volume: ACCENT_VOLUME }),
+          Audio.Sound.createAsync(CLICK_SAMPLE, { shouldPlay: false, volume: OFFBEAT_VOLUME }),
+        ]);
+        if (cancelled) { accent.unloadAsync(); offbeat.unloadAsync(); return; }
+        accentSoundRef.current = accent;
+        offbeatSoundRef.current = offbeat;
+        engineRef.current = 'expoav';
+        setEngineReady(true);
+      } catch {}
+    }
+    init();
+    return () => {
+      cancelled = true;
+      if (lookaheadRef.current) clearInterval(lookaheadRef.current);
+      if (timerRef.current) clearTimeout(timerRef.current);
+      accentSoundRef.current?.unloadAsync();
+      offbeatSoundRef.current?.unloadAsync();
+      accentSoundRef.current = null;
+      offbeatSoundRef.current = null;
+      ctxRef.current?.close?.().catch?.(() => {});
+      ctxRef.current = null;
+    };
+  }, []);
+
+  // -- Run: start/stop the active engine's scheduler ------------------------
   useEffect(() => {
     if (!running) {
-      if (timerRef.current) clearTimeout(timerRef.current);
-      timerRef.current = null;
+      if (lookaheadRef.current) { clearInterval(lookaheadRef.current); lookaheadRef.current = null; }
+      if (timerRef.current) { clearTimeout(timerRef.current); timerRef.current = null; }
       beatAnim.setValue(-1);
       return;
     }
+    if (!engineReady) return;  // re-runs when the engine finishes loading
 
     beatRef.current = 0;
+
+    // -- Precise path: lookahead against the audio clock --
+    if (engineRef.current === 'audioapi') {
+      const ctx = ctxRef.current;
+      ctx.resume?.();
+      visualQueueRef.current = [];
+      // Start a hair in the future so the first click isn't clipped.
+      nextNoteTimeRef.current = ctx.currentTime + 0.06;
+
+      const schedule = () => {
+        const c = ctxRef.current;
+        if (!c) return;
+        // Fill the audio queue up to SCHEDULE_AHEAD out.
+        while (nextNoteTimeRef.current < c.currentTime + SCHEDULE_AHEAD) {
+          const beat = beatRef.current;
+          const t = nextNoteTimeRef.current;
+          const src = c.createBufferSource();
+          src.buffer = clickBufRef.current;
+          src.connect(beat === 0 ? accentGainRef.current : offbeatGainRef.current);
+          src.start(t);  // fires at exactly t on the audio thread
+          visualQueueRef.current.push({ beat, time: t });
+          beatRef.current = (beat + 1) % beatsRef.current;
+          nextNoteTimeRef.current += 60 / bpmRef.current;
+        }
+        // Fire visuals whose audio time has arrived (cosmetic; ~LOOKAHEAD_MS
+        // resolution, imperceptible).
+        const now = c.currentTime;
+        const q = visualQueueRef.current;
+        while (q.length && q[0].time <= now) showBeat(q.shift()!.beat);
+      };
+      schedule();
+      lookaheadRef.current = setInterval(schedule, LOOKAHEAD_MS);
+
+      return () => {
+        if (lookaheadRef.current) { clearInterval(lookaheadRef.current); lookaheadRef.current = null; }
+      };
+    }
+
+    // -- Fallback path: expo-av absolute-grid setTimeout --
     beatAnim.setValue(0);
     nextTickRef.current = Date.now();
-
     function tick() {
       const now = Date.now();
       const interval = 60_000 / bpmRef.current;
       const beat = beatRef.current;
-
-      // 1) Sound first — the click is the product; nothing may delay it.
       playClick(beat === 0);
-
-      // 2) Arm the next tick before the UI work below. Sampling `now` and
-      //    scheduling here — rather than after setBeatIdx + Animated.start —
-      //    is the fix for the metronome running fast: the old code measured
-      //    `now` after the re-render, counting render time as lateness and
-      //    shortening every interval.
       beatRef.current = (beat + 1) % beatsRef.current;
       nextTickRef.current += interval;
-      // Fell a whole beat behind (GC pause, backgrounded, heavy render on
-      // another screen): skip the missed beats and resume one full interval
-      // from now, instead of firing catch-up ticks in a burst.
-      if (nextTickRef.current <= now) {
-        nextTickRef.current = now + interval;
-      }
+      if (nextTickRef.current <= now) nextTickRef.current = now + interval;
       timerRef.current = setTimeout(tick, nextTickRef.current - now);
-
-      // 3) Visual updates last — if they're slow they delay only themselves,
-      //    never the audio grid. setValue on a native-driven Animated.Value
-      //    updates the dots without a React re-render.
-      beatAnim.setValue(beat);
-      Animated.sequence([
-        Animated.timing(pulseAnim, { toValue: 1, duration: 60, useNativeDriver: true }),
-        Animated.timing(pulseAnim, { toValue: 0, duration: 180, useNativeDriver: true }),
-      ]).start();
+      showBeat(beat);
     }
-    // First tick fires immediately on Start (beat 1).
     tick();
-
     return () => {
-      if (timerRef.current) clearTimeout(timerRef.current);
-      timerRef.current = null;
+      if (timerRef.current) { clearTimeout(timerRef.current); timerRef.current = null; }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- tempo/beats via refs by design
-  }, [running]);
+  }, [running, engineReady]);
 
   function bumpBpm(delta: number) {
     setBpm(b => Math.max(BPM_MIN, Math.min(BPM_MAX, b + delta)));

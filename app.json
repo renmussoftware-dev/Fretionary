@@ -78,7 +78,8 @@
         }
       ],
       "./plugins/withAdIdPermission",
-      "./plugins/withMinifyRelease"
+      "./plugins/withMinifyRelease",
+      "react-native-audio-api"
     ],
     "scheme": "fretionary",
     "experiments": {
