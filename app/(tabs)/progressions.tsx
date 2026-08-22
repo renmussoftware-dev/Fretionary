@@ -327,11 +327,18 @@ export default function ProgressionsScreen() {
       Animated.timing(fadeAnim, { toValue: 0.3, duration: 60, useNativeDriver: true }),
       Animated.timing(fadeAnim, { toValue: 1, duration: 160, useNativeDriver: true }),
     ]).start();
-    // Play the chord audio on manual step
+    // Play the chord audio on manual step — Pro only. Progression audio
+    // playback is a Pro feature (the Play button gates it via requirePro),
+    // but stepping through cards was reaching playChord directly and handing
+    // out the same audio for free. Navigation stays free — a non-Pro user can
+    // still step through and SEE each shape — only the sound is gated. We gate
+    // silently rather than through requirePro because tapping cards is
+    // navigation; popping the paywall on every step (requirePro pushes it each
+    // time) would stack modals. The locked Play button is the paywall surface.
     const chordRoot = progRoots[i] ?? 0;
     const chordType = activeProg.chordTypes[i] ?? 'Major';
     const voicings = getChordVoicings(chordRoot, chordType);
-    if (voicings.length > 0) playChord(voicings[0].frets);
+    if (isPro && voicings.length > 0) playChord(voicings[0].frets);
   }
 
   function pickProg(p: Progression) {
