@@ -70,7 +70,11 @@ export default function Metronome() {
   const [bpm, setBpm] = useState(100);
   const [sigIdx, setSigIdx] = useState(2); // default 4/4
   const [running, setRunning] = useState(false);
-  const [beatIdx, setBeatIdx] = useState(0);
+  // Current beat as an Animated.Value, NOT React state: the tick used to
+  // call setBeatIdx every beat, forcing a full component re-render on the
+  // JS thread that then delayed the next timer callback — the residual
+  // "jumps around". Driving the dots off an Animated.Value (native driver)
+  // means the hot path never re-renders. -1 = stopped (no dot lit).
 
   const sig = TIME_SIGS[sigIdx];
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -78,6 +82,7 @@ export default function Metronome() {
   const beatRef = useRef(0);
   const tapTimesRef = useRef<number[]>([]);
   const pulseAnim = useRef(new Animated.Value(0)).current;
+  const beatAnim = useRef(new Animated.Value(-1)).current;
 
   // The scheduler reads tempo and beat count through refs so changing
   // either doesn't tear down and restart the tick loop. Restarting on a
@@ -98,11 +103,12 @@ export default function Metronome() {
     if (!running) {
       if (timerRef.current) clearTimeout(timerRef.current);
       timerRef.current = null;
+      beatAnim.setValue(-1);
       return;
     }
 
     beatRef.current = 0;
-    setBeatIdx(0);
+    beatAnim.setValue(0);
     nextTickRef.current = Date.now();
 
     function tick() {
@@ -129,8 +135,9 @@ export default function Metronome() {
       timerRef.current = setTimeout(tick, nextTickRef.current - now);
 
       // 3) Visual updates last — if they're slow they delay only themselves,
-      //    never the audio grid.
-      setBeatIdx(beat);
+      //    never the audio grid. setValue on a native-driven Animated.Value
+      //    updates the dots without a React re-render.
+      beatAnim.setValue(beat);
       Animated.sequence([
         Animated.timing(pulseAnim, { toValue: 1, duration: 60, useNativeDriver: true }),
         Animated.timing(pulseAnim, { toValue: 0, duration: 180, useNativeDriver: true }),
@@ -174,17 +181,26 @@ export default function Metronome() {
 
         <View style={styles.beatRow}>
           {Array.from({ length: sig.beats }, (_, i) => {
-            const isCurrent = running && i === beatIdx;
             const isAccent = i === 0;
+            // Lit overlay opacity is driven by how close beatAnim is to this
+            // dot's index — 1 on the current beat, 0 otherwise. setValue jumps
+            // between integers, so exactly one dot lights at a time. Native
+            // driver keeps it off the JS thread entirely.
+            const litOpacity = beatAnim.interpolate({
+              inputRange: [i - 0.5, i, i + 0.5],
+              outputRange: [0, 1, 0],
+              extrapolate: 'clamp',
+            });
             return (
-              <View
-                key={i}
-                style={[
-                  styles.beatDot,
-                  isAccent && styles.beatDotAccent,
-                  isCurrent && (isAccent ? styles.beatDotAccentLit : styles.beatDotLit),
-                ]}
-              />
+              <View key={i} style={[styles.beatDot, isAccent && styles.beatDotAccent]}>
+                <Animated.View
+                  style={[
+                    styles.beatDotFill,
+                    isAccent ? styles.beatDotAccentLit : styles.beatDotLit,
+                    { opacity: litOpacity },
+                  ]}
+                />
+              </View>
             );
           })}
         </View>
@@ -284,6 +300,14 @@ const styles = StyleSheet.create({
     width: 14, height: 14, borderRadius: 7,
     backgroundColor: COLORS.surfaceHigh,
     borderWidth: 1, borderColor: COLORS.border,
+  },
+  // Lit color sits as an absolute fill over the base dot; its opacity is
+  // animated (native driver) so lighting a beat never re-renders. Negative
+  // insets cover the base dot's 1px border edge-to-edge.
+  beatDotFill: {
+    position: 'absolute',
+    top: -1, left: -1, right: -1, bottom: -1,
+    borderRadius: 7,
   },
   beatDotAccent: { borderColor: COLORS.textMuted },
   beatDotLit: {
