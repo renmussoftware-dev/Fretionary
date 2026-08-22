@@ -3,6 +3,7 @@ import {
   View, Text, TouchableOpacity, StyleSheet, Animated,
 } from 'react-native';
 import { Audio } from 'expo-av';
+import { ensureAudioSession } from '../utils/audioSession';
 import { Sound } from 'expo-av/build/Audio';
 import { COLORS, FONT_FAMILY, RADIUS, SPACE } from '../constants/theme';
 
@@ -34,12 +35,7 @@ export default function Metronome() {
   useEffect(() => {
     let cancelled = false;
     async function load() {
-      await Audio.setAudioModeAsync({
-        playsInSilentModeIOS: true,
-        allowsRecordingIOS: false,
-        staysActiveInBackground: false,
-        shouldDuckAndroid: true,
-      });
+      await ensureAudioSession();
       const [{ sound: accent }, { sound: offbeat }] = await Promise.all([
         Audio.Sound.createAsync(CLICK_SAMPLE, { shouldPlay: false, volume: ACCENT_VOLUME }),
         Audio.Sound.createAsync(CLICK_SAMPLE, { shouldPlay: false, volume: OFFBEAT_VOLUME }),

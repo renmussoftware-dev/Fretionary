@@ -1,8 +1,9 @@
 import { useEffect, useRef, useCallback } from 'react';
-import { Platform } from 'react-native';
+import { AppState, Platform } from 'react-native';
 import { Audio } from 'expo-av';
 import { Sound } from 'expo-av/build/Audio';
 import { Asset } from 'expo-asset';
+import { ensureAudioSession } from '../utils/audioSession';
 // Android-only low-latency polyphonic playback via SoundPool. The functions
 // no-op on iOS (the module isn't loaded there) so it's safe to call from
 // shared code paths — we still gate at the useEffect / playMidi level to
@@ -125,6 +126,13 @@ export function useAudioEngine() {
   const soundsRef = useRef<Record<string, Sound>>({});
   const loadedRef = useRef(false);
   const progressionTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // iOS: the audio session can be silently deactivated while we're
+  // backgrounded or after another app takes audio focus, which makes a
+  // later playAsync() run into a dead session and produce no sound. We
+  // re-assert the session on every foreground return and once before each
+  // Hear-Scale / progression run. This ref throttles the pre-play re-assert
+  // to once per playback burst so single notes stay snappy.
+  const sessionDirtyRef = useRef(true);
 
   useEffect(() => {
     async function loadAll() {
@@ -156,14 +164,8 @@ export function useAudioEngine() {
         return;
       }
 
-      // iOS path — unchanged from what's been shipping. AVPlayer handles
-      // polyphony cleanly so we keep expo-av exactly as it was.
-      await Audio.setAudioModeAsync({
-        playsInSilentModeIOS: true,
-        allowsRecordingIOS: false,
-        staysActiveInBackground: false,
-        shouldDuckAndroid: true,
-      });
+      // iOS path. AVPlayer handles polyphony cleanly so expo-av stays.
+      await ensureAudioSession();
 
       // Small delay to let audio session fully activate on iPad
       await new Promise(resolve => setTimeout(resolve, 100));
@@ -194,7 +196,22 @@ export function useAudioEngine() {
     }
     loadAll();
 
+    // Re-assert the audio session whenever the app comes back to the
+    // foreground. This is the primary fix for the intermittent iOS
+    // "no sound" reports: another audio app (or a call, or backgrounding)
+    // deactivates our AVAudioSession, and without this the session stays
+    // dead until an app relaunch. Android's session model doesn't need it.
+    const sub = Platform.OS === 'ios'
+      ? AppState.addEventListener('change', (state) => {
+          if (state === 'active') {
+            sessionDirtyRef.current = true;
+            ensureAudioSession();
+          }
+        })
+      : null;
+
     return () => {
+      sub?.remove();
       if (Platform.OS === 'android') {
         soundPoolUnloadAll();
       } else {
@@ -217,13 +234,22 @@ export function useAudioEngine() {
       return;
     }
 
-    // iOS path — unchanged. AVPlayer-backed Sound from expo-av.
+    // iOS path. AVPlayer-backed Sound from expo-av.
+    // Re-assert the audio session once per playback burst if it may have
+    // gone stale (initial load, or a foreground return). Cheap and
+    // idempotent; the throttle keeps rapid scale notes from each paying
+    // the round-trip. This is what makes Hear Scale reliably audible
+    // after another app has held audio focus.
+    if (sessionDirtyRef.current) {
+      sessionDirtyRef.current = false;
+      await ensureAudioSession();
+    }
     let sound = soundsRef.current[name];
 
     // If sound wasn't loaded (iPad race condition), try loading it now
     if (!sound && AUDIO_FILES[name]) {
       try {
-        await Audio.setAudioModeAsync({ playsInSilentModeIOS: true, allowsRecordingIOS: false, staysActiveInBackground: false });
+        await ensureAudioSession();
         const { sound: newSound } = await Audio.Sound.createAsync(
           AUDIO_FILES[name], { shouldPlay: false, volume: 1.0 }
         );
@@ -245,6 +271,9 @@ export function useAudioEngine() {
 
   const playChord = useCallback(async (frets: (number | null)[]) => {
     const notes = fretstToMidiNotes(frets);
+    // Re-arm the iOS session check so the first note of this run re-asserts
+    // the session even if it went stale while we stayed foregrounded.
+    if (Platform.OS === 'ios') sessionDirtyRef.current = true;
     // Strum effect: slight delay between strings (low to high)
     await Promise.all(
       notes.map((midi, i) =>
@@ -303,6 +332,9 @@ export function useAudioEngine() {
     onFinish: () => void,
   ) => {
     stopProgression();
+    // Re-arm the iOS session check so the first note of this run re-asserts
+    // the session even if it went stale while we stayed foregrounded.
+    if (Platform.OS === 'ios') sessionDirtyRef.current = true;
     let idx = 0;
 
     function step() {

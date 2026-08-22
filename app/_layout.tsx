@@ -3,7 +3,7 @@ import { StatusBar } from 'expo-status-bar';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { StyleSheet, View } from 'react-native';
 import { useEffect, useState } from 'react';
-import { Audio } from 'expo-av';
+import { ensureAudioSession } from '../src/utils/audioSession';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   useFonts,
@@ -59,12 +59,7 @@ export default function RootLayout() {
     } catch {}
 
     // Set audio mode at app root so it's active before any tab loads
-    Audio.setAudioModeAsync({
-      playsInSilentModeIOS: true,
-      allowsRecordingIOS: false,
-      staysActiveInBackground: false,
-      shouldDuckAndroid: true,
-    }).catch(() => {});
+    ensureAudioSession();
 
     // Initialize Meta SDK (syncs advertiser-tracking with current ATT status —
     // does NOT prompt). Safe to call before ATT decision; we re-sync after.
