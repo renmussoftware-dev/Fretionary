@@ -19,7 +19,7 @@ import { ProBanner } from '../../src/components/ProLock';
 import { isProgressionFree } from '../../src/constants/subscription';
 import {
   getChordVoicings, spellNoteAt, symbolToDegreeIdx, chordRootLetter, chordRootName,
-  scaleRootName, diatonicChordRootName,
+  scaleRootName, diatonicChordRootName, chordSymbol, progressionChordRootName,
 } from '../../src/utils/theory';
 import StandardTuningNotice from '../../src/components/StandardTuningNotice';
 import HeartButton from '../../src/components/HeartButton';
@@ -42,8 +42,8 @@ const DIATONIC_MAJOR = [
 // Fretboard constants (base — overridden inside component for tablet)
 const INLAYS = [3, 5, 7, 9, 12];
 
-function ProgFretboard({ chordRoot, chordKey, animVal }: {
-  chordRoot: number; chordKey: string; animVal: Animated.Value;
+function ProgFretboard({ chordRoot, chordKey, rootLetter, animVal }: {
+  chordRoot: number; chordKey: string; rootLetter?: string; animVal: Animated.Value;
 }) {
   const { width: screenW, height: screenH } = useWindowDimensions();
   const isTablet = screenW >= 768;
@@ -109,7 +109,7 @@ function ProgFretboard({ chordRoot, chordKey, animVal }: {
               // Spell by the interval role resolved above so a min7 chord in
               // the progression reads E♭/B♭ rather than D#/A#.
               const noteName = symbol
-                ? spellNoteAt(chordRoot, symbolToDegreeIdx(symbol), ni, chordRootLetter(chordRoot, chordKey))
+                ? spellNoteAt(chordRoot, symbolToDegreeIdx(symbol), ni, rootLetter ?? chordRootLetter(chordRoot, chordKey))
                 : NOTES[ni];
               return (
                 <G key={`${s}-${f}`}>
@@ -254,8 +254,23 @@ export default function ProgressionsScreen() {
       ? (selectedExample?.chords.map(c => c.root) ?? [])
       : selectedProg.degrees.map(d => (root + d) % 12);
 
+  // Root names per step. Transposing progressions are spelled in their key
+  // (the IV of D♭ is G♭, not F#); a lowercase tonic numeral means a minor
+  // key, which picks its own signature (C# minor rather than D♭ major).
+  const transposes = subMode !== 'custom' && subMode !== 'examples';
+  const tonicIdx = selectedProg.degrees.indexOf(0);
+  const keyScale = tonicIdx >= 0 && selectedProg.numerals[tonicIdx].startsWith('i')
+    ? 'Natural Minor' : 'Major';
+  const progRootNames: string[] = progRoots.map((r, i) => {
+    const type = activeProg.chordTypes[i] ?? 'Major';
+    return transposes
+      ? progressionChordRootName(root, selectedProg.degrees[i], type, keyScale)
+      : chordRootName(r, type);
+  });
+
   const count = activeProg.degrees.length;
   const currentRoot = progRoots[activeIdx] ?? 0;
+  const currentRootName = progRootNames[activeIdx] ?? '';
   const currentType = activeProg.chordTypes[activeIdx] ?? 'Major';
   const currentNumeral = activeProg.numerals[activeIdx] ?? '';
 
@@ -433,15 +448,31 @@ export default function ProgressionsScreen() {
                         : isNamedProg ? selectedProg.name : 'Custom'}
                     </Text>
                     <Text style={styles.activeMeta}>
-                      Key of {subMode === 'examples' ? (selectedExample?.key ?? scaleRootName(root, 'Major')) : scaleRootName(root, 'Major')} · {bpm} BPM
+                      Key of {subMode === 'examples' && selectedExample
+                        ? selectedExample.key
+                        : `${scaleRootName(root, keyScale)}${keyScale === 'Major' ? '' : ' minor'}`} · {bpm} BPM
                     </Text>
                   </View>
-                  <Text style={styles.activeName}>{chordRootName(currentRoot, currentType)} {currentType}</Text>
+                  {/* Whole progression spelled out in the current key —
+                      C · G · Am · F — so it reads at a glance. Tap to jump. */}
+                  <View style={styles.chordStrip}>
+                    {progRoots.map((rootI, i) => (
+                      <TouchableOpacity key={i} onPress={() => goTo(i)} activeOpacity={0.7}
+                        hitSlop={{ top: 4, bottom: 4 }}
+                        style={[styles.chordChip, i === activeIdx && styles.chordChipActive]}>
+                        <Text style={[styles.chordChipTxt, i === activeIdx && styles.chordChipTxtActive]}>
+                          {chordSymbol(rootI, activeProg.chordTypes[i] ?? 'Major', progRootNames[i])}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                  <Text style={styles.activeName}>{currentRootName} {currentType}</Text>
                   <Text style={styles.activeIntervals}>{CHORDS[currentType]?.intervalNames.join('  ·  ')}</Text>
                 </View>
 
                 <View style={styles.fbWrap}>
-                  <ProgFretboard chordRoot={currentRoot} chordKey={currentType} animVal={fadeAnim} />
+                  <ProgFretboard chordRoot={currentRoot} chordKey={currentType}
+                    rootLetter={currentRootName[0]} animVal={fadeAnim} />
                 </View>
 
                 <View style={styles.ctrlRow}>
@@ -837,6 +868,22 @@ const styles = StyleSheet.create({
                     fontSize: 11, color: COLORS.textMuted,
                     fontFamily: FONT_FAMILY.mono, letterSpacing: 0.3,
                   },
+  chordStrip:     {
+                    flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center',
+                    gap: 6, marginTop: SPACE.xs,
+                  },
+  chordChip:      {
+                    paddingHorizontal: 9, paddingVertical: 4,
+                    borderRadius: RADIUS.full,
+                    borderWidth: 1, borderColor: COLORS.border,
+                    backgroundColor: COLORS.surfaceHigh,
+                  },
+  chordChipActive:{ borderColor: '#E8D44D' },
+  chordChipTxt:   {
+                    fontSize: 13, fontWeight: '600', color: COLORS.textMuted,
+                    fontFamily: FONT_FAMILY.mono,
+                  },
+  chordChipTxtActive: { color: '#E8D44D' },
   activeName:     { fontSize: 24, fontWeight: '700', color: COLORS.text, marginTop: SPACE.sm },
   activeIntervals:{ fontSize: 11, color: COLORS.textMuted, letterSpacing: 0.4, marginTop: 3 },
   activeProgName: { fontSize: 11, color: COLORS.textFaint, marginTop: 6, fontWeight: '600' },

@@ -279,6 +279,54 @@ export function chordRootName(root: number, chordKey: string): string {
   return spellNoteAt(root, 0, root, chordRootLetter(root, chordKey));
 }
 
+// Lead-sheet suffix per chord type — "Minor 7" → "m7". Anything not listed
+// falls back to the full chord-type name.
+const CHORD_SUFFIX: Record<string, string> = {
+  'Major': '', 'Minor': 'm', 'Diminished': 'dim', 'Augmented': 'aug',
+  'Sus2': 'sus2', 'Sus4': 'sus4', 'Dom 7sus4': '7sus4', '7sus2': '7sus2',
+  'Maj7sus2': 'maj7sus2', 'Maj7sus4': 'maj7sus4', '9sus4': '9sus4',
+  'Power (5)': '5', 'Major 6': '6', 'Minor 6': 'm6',
+  'Dominant 7': '7', 'Major 7': 'maj7', 'Minor 7': 'm7', 'Minor Maj7': 'm(maj7)',
+  'Dim 7': 'dim7', 'Half-Dim 7': 'm7♭5', 'Aug 7': '7♯5', 'Maj7♯5': 'maj7♯5',
+  'Dominant 9': '9', 'Major 9': 'maj9', 'Minor 9': 'm9', 'Add9': 'add9',
+  'Dominant 11': '11', 'Major 11': 'maj11', 'Minor 11': 'm11',
+  'Dominant 13': '13', 'Major 13': 'maj13', 'Minor 13': 'm13',
+  'Minor Add9': 'm(add9)', 'Add11': 'add11', '6/9': '6/9', 'Minor 6/9': 'm6/9',
+  'Dom 7♭5': '7♭5', 'Dom 7♭9': '7♭9', 'Dom 7♯9': '7♯9', 'Dom 7♯11': '7♯11',
+  'Maj7♯11': 'maj7♯11', 'Maj9♯11': 'maj9♯11',
+};
+
+// Compact chord symbol — "Am", "G7", "Cmaj7" — for at-a-glance chord lists.
+// rootName overrides the chord's standalone spelling (e.g. a key-aware G♭).
+export function chordSymbol(root: number, chordKey: string, rootName?: string): string {
+  const suffix = CHORD_SUFFIX[chordKey];
+  return (rootName ?? chordRootName(root, chordKey)) + (suffix ?? ` ${chordKey}`);
+}
+
+// Which letter of the key a chord root takes, by semitone offset from the
+// tonic. Chromatic roots read as flats (♭II, ♭III, ♭VI, ♭VII) except the
+// tritone, which progressions use as ♯IV.
+const OFFSET_DEGREE_IDX = [0, 1, 1, 2, 2, 3, 3, 4, 5, 5, 6, 6];
+const AWKWARD_ROOTS = new Set(['C♭', 'F♭', 'E#', 'B#']);
+
+// Root name of a progression chord, spelled in its key: the IV of D♭ is G♭,
+// not the F# that chordRootName gives the chord on its own. keyScale picks
+// the key signature — C# minor and D♭ major share a tonic pitch but not a
+// spelling. Roots the key would spell awkwardly (F♭, double accidentals) fall
+// back to the standalone name.
+export function progressionChordRootName(
+  keyRoot: number,
+  offset: number,
+  chordKey: string,
+  keyScale: 'Major' | 'Natural Minor',
+): string {
+  const chordRoot = (keyRoot + offset) % 12;
+  const name = spellNoteAt(
+    keyRoot, OFFSET_DEGREE_IDX[offset % 12], chordRoot, scaleRootLetter(keyRoot, keyScale),
+  );
+  return name.length > 2 || AWKWARD_ROOTS.has(name) ? chordRootName(chordRoot, chordKey) : name;
+}
+
 // Name a chord sitting on a degree of a key. Spelling a chord in isolation
 // isn't always enough inside a progression: chordRootName(6, 'Major') is
 // F# on its own, but the IV of D♭ major is G♭. degreeIdx is the chord's
