@@ -55,7 +55,7 @@ export const PROGRESSIONS: Progression[] = [
     degrees: [0, 4, 5, 7],
     chordTypes: ['Major', 'Minor', 'Major', 'Major'],
     genre: 'Pop',
-    description: 'Smooth descending feel. Used in many ballads.',
+    description: 'Smooth stepwise climb from iii up to V. Used in many ballads.',
   },
   // ── Blues ────────────────────────────────────────────────
   {
@@ -113,7 +113,7 @@ export const PROGRESSIONS: Progression[] = [
     degrees: [0, 5, 4, 9],
     chordTypes: ['Major 7', 'Major 7', 'Minor 7', 'Dominant 7'],
     genre: 'Jazz',
-    description: 'Chromatic descending bass motion. Lush jazz sound.',
+    description: 'Half-step IV → iii bass drop into a VI7 secondary dominant. Lush jazz sound.',
   },
   // ── Minor / Dark ─────────────────────────────────────────
   {
@@ -382,7 +382,7 @@ export const PROGRESSIONS: Progression[] = [
     degrees: [0, 4, 9, 7],
     chordTypes: ['Major 7', 'Minor 7', 'Minor 7', 'Dominant 7'],
     genre: 'R&B',
-    description: 'Descending-fifth movement. Quiet-storm ballad feel.',
+    description: 'iii7 falls a fifth to vi7, then steps down to V7. Quiet-storm ballad feel.',
   },
 
   // ── Motown ─────────────────────────────────────────────
@@ -579,7 +579,7 @@ export const EXAMPLE_PROGRESSIONS: ExampleProgression[] = [
   // ── Shoegaze ─────────────────────────────────────────────
   {
     name: 'Dreamy descent',
-    description: 'Stepwise minor-7 walk with a maj7 lift. Slowdive territory.',
+    description: 'Imaj7 falls through vi7 and iii7, then a half-step IVmaj7 lift. Slowdive territory.',
     genre: 'Shoegaze',
     key: 'D major',
     chords: [
@@ -615,7 +615,7 @@ export const EXAMPLE_PROGRESSIONS: ExampleProgression[] = [
   },
   {
     name: 'Modal float',
-    description: 'Mixolydian ♭VII descent. Beach House drift.',
+    description: 'Imaj7 with a borrowed ♭VII–IV descent. Beach House drift.',
     genre: 'Shoegaze',
     key: 'G major',
     chords: [
@@ -641,7 +641,7 @@ export const EXAMPLE_PROGRESSIONS: ExampleProgression[] = [
   },
   {
     name: 'Quiet melancholy',
-    description: 'Vi root with diatonic walk-up. The National vibe.',
+    description: 'Minor-7 i root with a diatonic ♭VI–♭III–♭VII turn. The National vibe.',
     genre: 'Indie',
     key: 'A minor',
     chords: [
@@ -772,9 +772,9 @@ export const EXAMPLE_PROGRESSIONS: ExampleProgression[] = [
   // ── R&B ──────────────────────────────────────────────────
   {
     name: 'Neo-soul groove',
-    description: 'Maj7 root → diatonic descent → V9 lift. D’Angelo, Erykah Badu.',
+    description: 'IVmaj7 → diatonic descent → V9 lift. D’Angelo, Erykah Badu.',
     genre: 'R&B',
-    key: 'F major',
+    key: 'C major',
     chords: [
       { root: 5, chordType: 'Major 7' },    // Fmaj7
       { root: 4, chordType: 'Minor 7' },    // Em7
