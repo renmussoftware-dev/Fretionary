@@ -1,8 +1,10 @@
+import { useMemo } from 'react';
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as StoreReview from 'expo-store-review';
 import type { FretMap } from '../utils/diagramSvg';
+import { getTuning, tuningNoteClasses } from '../constants/tunings';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const REVIEW_MIN_ACTIONS = 3;
@@ -82,6 +84,37 @@ export type SavedItemInput = DistributiveOmit<SavedItem, 'addedAt'>;
 
 const RECENTS_MAX = 20;
 
+// Highest fret a tapped Identify position can live on (the 24-fret range).
+const CUSTOM_MAX_FRET = 24;
+
+// Pitch class (0-11) of a "string:fret" Identify cell under the given tuning.
+export function cellPitch(key: string, noteClasses: number[]): number {
+  const [s, f] = key.split(':').map(Number);
+  return (noteClasses[s] + f) % 12;
+}
+
+// Every pitch class selected in Identify mode — pill picks plus the pitches
+// of individually tapped positions — sorted and de-duplicated. This is what
+// the chord/interval identifier and the info panel read.
+export function identifyPitchClasses(
+  customNotes: number[], customCells: string[], noteClasses: number[],
+): number[] {
+  const set = new Set(customNotes);
+  for (const k of customCells) set.add(cellPitch(k, noteClasses));
+  return Array.from(set).sort((a, b) => a - b);
+}
+
+// Hook form of identifyPitchClasses, bound to the active tuning.
+export function useIdentifyNotes(): number[] {
+  const customNotes = useStore(s => s.customNotes);
+  const customCells = useStore(s => s.customCells);
+  const tuningId = useStore(s => s.tuningId);
+  return useMemo(
+    () => identifyPitchClasses(customNotes, customCells, tuningNoteClasses(getTuning(tuningId))),
+    [customNotes, customCells, tuningId],
+  );
+}
+
 function itemKey(it: SavedItemInput): string {
   switch (it.kind) {
     case 'scale':       return `s:${it.root}:${it.scaleKey}`;
@@ -101,7 +134,14 @@ interface AppState {
   showAllFrets: boolean;
   isPro: boolean;
   tuningId: string;
+  // Identify mode has two kinds of selection. customNotes are pitch classes
+  // picked from the note pills — every instance lights up across the neck.
+  // customCells are individual "string:fret" positions tapped on the
+  // fretboard — only that one spot lights up, so the user can fill in the
+  // neck themselves (note memorization) or build a specific voicing.
+  // Identification runs on the union of both.
   customNotes: number[];
+  customCells: string[];
 
   favorites: SavedItem[];
   recents: SavedItem[];
@@ -177,6 +217,7 @@ interface AppState {
   setIsPro: (v: boolean) => void;
   setTuningId: (id: string) => void;
   toggleCustomNote: (n: number) => void;
+  toggleCustomCell: (string: number, fret: number, noteClasses: number[]) => void;
   clearCustomNotes: () => void;
   setCustomNotes: (notes: number[]) => void;
 
@@ -206,6 +247,7 @@ export const useStore = create<AppState>()(
       isPro: false,
       tuningId: 'standard',
       customNotes: [],
+      customCells: [],
 
       favorites: [],
       recents: [],
@@ -308,14 +350,53 @@ export const useStore = create<AppState>()(
       setIsPro: (isPro) => set({ isPro }),
       setTuningId: (tuningId) => set({ tuningId }),
 
+      // Pill tap. Removing a note clears it entirely — both the neck-wide
+      // pill selection and any individually tapped positions of that pitch —
+      // so the pill's "off" state always matches what's on the neck.
       toggleCustomNote: (n) => {
-        const current = get().customNotes;
-        const next = current.includes(n)
-          ? current.filter(x => x !== n)
-          : [...current, n].sort((a, b) => a - b);
-        set({ customNotes: next });
+        const { customNotes, customCells, tuningId } = get();
+        const noteClasses = tuningNoteClasses(getTuning(tuningId));
+        const present = customNotes.includes(n)
+          || customCells.some(k => cellPitch(k, noteClasses) === n);
+        if (present) {
+          set({
+            customNotes: customNotes.filter(x => x !== n),
+            customCells: customCells.filter(k => cellPitch(k, noteClasses) !== n),
+          });
+        } else {
+          set({ customNotes: [...customNotes, n].sort((a, b) => a - b) });
+        }
       },
-      clearCustomNotes: () => set({ customNotes: [] }),
+      // Fretboard tap — toggles just this position. If the dot is showing
+      // because its pitch was picked neck-wide via a pill, expand that pill
+      // into individual positions minus this one, so tapping still removes
+      // exactly the dot the user touched.
+      toggleCustomCell: (string, fret, noteClasses) => {
+        const { customNotes, customCells } = get();
+        const key = `${string}:${fret}`;
+        const pc = (noteClasses[string] + fret) % 12;
+        if (customNotes.includes(pc)) {
+          const expanded: string[] = [];
+          for (let s = 0; s < noteClasses.length; s++) {
+            for (let f = 0; f <= CUSTOM_MAX_FRET; f++) {
+              if ((noteClasses[s] + f) % 12 === pc && !(s === string && f === fret)) {
+                expanded.push(`${s}:${f}`);
+              }
+            }
+          }
+          set({
+            customNotes: customNotes.filter(x => x !== pc),
+            customCells: Array.from(new Set([...customCells, ...expanded])),
+          });
+          return;
+        }
+        set({
+          customCells: customCells.includes(key)
+            ? customCells.filter(k => k !== key)
+            : [...customCells, key],
+        });
+      },
+      clearCustomNotes: () => set({ customNotes: [], customCells: [] }),
       setCustomNotes: (customNotes) => set({ customNotes }),
 
       toggleFavorite: (item) => {
@@ -362,6 +443,7 @@ export const useStore = create<AppState>()(
         favorites: s.favorites,
         recents: s.recents,
         customNotes: s.customNotes,
+        customCells: s.customCells,
         installedAt: s.installedAt,
         positiveActionCount: s.positiveActionCount,
         lastPromptedAt: s.lastPromptedAt,

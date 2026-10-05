@@ -13,7 +13,7 @@ import {
   getScaleNotes, getChordNotes, getScalePositions,
   getCagedFretRange, noteLabel,
 } from '../utils/theory';
-import { useStore, FRET_RANGES, type LabelSize } from '../store/useStore';
+import { useStore, useIdentifyNotes, FRET_RANGES, type LabelSize } from '../store/useStore';
 import { getTuning, tuningNoteClasses, STANDARD_TUNING } from '../constants/tunings';
 
 const TOTAL_FRETS = 24;
@@ -45,11 +45,13 @@ export default function Fretboard() {
   const isTablet = Math.min(screenW, screenH) >= 768;
   const isLandscape = screenW > screenH;
 
-  const { root, scaleKey, chordKey, mode, labelMode, activePosition, activeCaged, tuningId, customNotes, labelSize, fretRange } = useStore();
+  const { root, scaleKey, chordKey, mode, labelMode, activePosition, activeCaged, tuningId, customNotes, customCells, labelSize, fretRange } = useStore();
+  const identifyNotes = useIdentifyNotes();
   const playbackHighlight = useStore(s => s.playbackHighlight);
   // Only used in Custom mode — every fret position becomes a tap target
-  // that toggles the note class at that position on/off.
-  const toggleCustomNote = useStore(s => s.toggleCustomNote);
+  // that toggles just that one position on/off (not every instance of the
+  // pitch), so the user can fill in the neck themselves.
+  const toggleCustomCell = useStore(s => s.toggleCustomCell);
   // Custom mode is Pro; non-Pro users see the Fretboard in read-only shape
   // (no tap-to-edit, no ghost dots) so the interactive tap-to-add doesn't
   // leak the feature outside the paywall. The Identify preview panel in
@@ -112,9 +114,16 @@ export default function Fretboard() {
 
   const activeNotes = useMemo(() => {
     if (mode === 'chords') return getChordNotes(root, chordKey);
-    if (mode === 'custom') return customNotes;
+    if (mode === 'custom') return identifyNotes;
     return getScaleNotes(root, scaleKey);
-  }, [root, scaleKey, chordKey, mode, customNotes]);
+  }, [root, scaleKey, chordKey, mode, identifyNotes]);
+
+  // Custom mode: a position is lit only if its pitch was picked neck-wide
+  // from the pills, or that exact string/fret was tapped.
+  const customCellSet = useMemo(() => new Set(customCells), [customCells]);
+  function isCustomSelected(s: number, f: number, ni: number) {
+    return customNotes.includes(ni) || customCellSet.has(`${s}:${f}`);
+  }
 
   const positions = useMemo(() =>
     mode === 'scales' ? getScalePositions(root, scaleKey, noteClasses) : [],
@@ -380,7 +389,9 @@ export default function Fretboard() {
           Array.from({ length: TOTAL_FRETS + 1 }, (_, f) => {
             if (f < winStart || f > winEnd) return null;
             const ni = (noteClasses[s] + f) % 12;
-            const col = getNoteColor(ni, f);
+            const col = mode === 'custom' && !isCustomSelected(s, f, ni)
+              ? null
+              : getNoteColor(ni, f);
             // Custom mode is Pro. Non-Pro users still see the mode but the
             // fretboard falls back to non-interactive (no ghost dots, no
             // onPress) — the controls area shows a preview + upsell.
@@ -454,7 +465,7 @@ export default function Fretboard() {
             );
 
             return isCustom ? (
-              <G key={`${s}-${f}`} opacity={col?.opacity ?? 1} onPress={() => toggleCustomNote(ni)}>
+              <G key={`${s}-${f}`} opacity={col?.opacity ?? 1} onPress={() => toggleCustomCell(s, f, noteClasses)}>
                 {inner}
               </G>
             ) : (

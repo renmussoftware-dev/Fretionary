@@ -25,7 +25,7 @@ import {
   SCALES, CHORDS, CAGED_ORDER, CAGED_COLORS, CAGED_SHAPES,
   CAGED_SHAPE_TIPS, POSITION_COLORS,
 } from '../../src/constants/music';
-import { useStore, SCALE_SPEED_MS, ScalePlaybackSpeed } from '../../src/store/useStore';
+import { useStore, useIdentifyNotes, SCALE_SPEED_MS, ScalePlaybackSpeed } from '../../src/store/useStore';
 import {
   getScalePositions, getCagedCaretFret, getCagedFretRange, identifyCustomSelection,
   spellNoteAt, symbolToDegreeIdx, chordRootName, chordRootLetter,
@@ -94,9 +94,11 @@ export default function FretboardScreen() {
     chordKey, setChordKey, labelMode, setLabelMode,
     activePosition, setActivePosition,
     activeCaged, setActiveCaged,
-    customNotes, toggleCustomNote, clearCustomNotes,
+    toggleCustomNote, clearCustomNotes,
     labelSize, setLabelSize, fretRange, setFretRange,
   } = useStore();
+  // Pill picks + individually tapped neck positions, as pitch classes.
+  const customNotes = useIdentifyNotes();
   const setPlaybackHighlight = useStore(s => s.setPlaybackHighlight);
   const scalePlaybackSpeed = useStore(s => s.scalePlaybackSpeed);
   const setScalePlaybackSpeed = useStore(s => s.setScalePlaybackSpeed);
@@ -397,7 +399,7 @@ export default function FretboardScreen() {
             })()}
 
             <Text style={styles.customHint}>
-              Tap the note pills above or tap positions directly on the fretboard to add or remove them. Use the root selector above to set your key — the root note is colored differently when included.
+              Tap a spot on the fretboard to mark just that position — great for building a voicing or quizzing yourself on the neck. Tap a note pill to light up that note everywhere. Use the root selector above to set your key — the root is colored differently when included.
             </Text>
           </View>
         )}

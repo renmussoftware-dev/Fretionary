@@ -2,7 +2,7 @@ import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { COLORS, FONT_FAMILY, SPACE } from '../constants/theme';
 import { NOTES, SCALES, CHORDS } from '../constants/music';
-import { useStore } from '../store/useStore';
+import { useStore, useIdentifyNotes } from '../store/useStore';
 import {
   getScaleNotes, getChordNotes, spellNoteAt, symbolToDegreeIdx,
   scaleDegreeIdxAt, scaleRootLetter, chordRootLetter,
@@ -11,7 +11,8 @@ import {
 const INTERVAL_NAMES = ['R','♭2','2','♭3','3','4','♭5','5','♭6','6','♭7','7'];
 
 export default function InfoPanel() {
-  const { root, scaleKey, chordKey, mode, activeCaged, customNotes } = useStore();
+  const { root, scaleKey, chordKey, mode, activeCaged } = useStore();
+  const customNotes = useIdentifyNotes();
 
   // CAGED overlays the MAJOR scale on the neck — that's what noteLabel spells
   // against and what the Formula/Degrees columns below already report. This
@@ -87,7 +88,7 @@ export default function InfoPanel() {
     formulaLabel = 'Intervals';
     degreesLabel = 'Count';
     description = customNotes.length === 0
-      ? 'Tap notes below to build your own scale or chord shape.'
+      ? 'Tap the neck or the note pills to build a chord, scale, or shape.'
       : `Custom selection in ${NOTES[root]}`;
   }
 

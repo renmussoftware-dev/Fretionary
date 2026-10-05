@@ -28,7 +28,7 @@ const SECTIONS: Section[] = [
       { name: 'Scales mode',     desc: '14 scales — Major, modes, pentatonics, blues, harmonic/melodic minor, whole-tone, diminished.', badge: 'mixed' },
       { name: 'Chords mode',     desc: 'Light up any of 42 chord types across the entire neck.', badge: 'mixed' },
       { name: 'CAGED mode',      desc: 'See where each of the 5 CAGED shapes lives for any key — with shape detail, caret-fret indicator, and pedagogical tips.', badge: 'mixed' },
-      { name: 'Identify mode',   desc: 'Tap notes on the neck and the app names what you built — including partial voicings like no-5 and rootless chords.', badge: 'pro' },
+      { name: 'Identify mode',   desc: 'Tap spots on the neck to build a voicing (or quiz yourself filling in the fretboard) and the app names what you built — including partial voicings like no-5 and rootless chords.', badge: 'pro' },
       { name: 'Daily Pick',      desc: 'A new scale or chord to explore every day, with streak tracking.', badge: 'mixed' },
       { name: 'Position lock',   desc: 'Filter the fretboard to a single 5-fret position (Pos 1–5), aligned with the CAGED shapes.', badge: 'pro' },
       { name: 'Labels & range',  desc: 'Note name, degree, interval or no labels; three label sizes; fret windows from 0–5 up to a full 24-fret neck.', badge: 'free' },
