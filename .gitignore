@@ -35,3 +35,6 @@ credentials/
 *.p8
 *.p12
 *.mobileprovision
+# TikTok creatives: rendered images and intermediate HTML are regenerable
+marketing/tiktok/out/
+marketing/tiktok/.build/
