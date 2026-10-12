@@ -12,6 +12,7 @@ import { useStore } from '../../store/useStore';
 import NameTheNoteDrill from './NameTheNoteDrill';
 import FindTheNoteDrill from './FindTheNoteDrill';
 import StringDrill from './StringDrill';
+import Exercises from './Exercises';
 import { DIFFICULTY, type RoundResult } from './practiceConfig';
 
 const MODES: { mode: PracticeMode; title: string; tagline: string }[] = [
@@ -24,13 +25,27 @@ const DIFFICULTIES: PracticeDifficulty[] = ['beginner', 'intermediate', 'advance
 
 type Stage = 'menu' | 'drill' | 'results';
 
-export default function Practice() {
+// Drills are tap-to-answer quizzes; Exercises are guitar-in-hand play-alongs.
+type Tab = 'drills' | 'exercises';
+const TABS: { tab: Tab; label: string }[] = [
+  { tab: 'exercises', label: 'Exercises' },
+  { tab: 'drills',    label: 'Drills' },
+];
+
+interface Props {
+  // Scrolls the screen back to the top — the menus are long enough that
+  // opening a drill or exercise from the bottom would otherwise land mid-page.
+  onScrollTop?: () => void;
+}
+
+export default function Practice({ onScrollTop = () => {} }: Props) {
   const { isPro, requirePro } = useProGate();
   const recordPositiveAction = useStore(s => s.recordPositiveAction);
   const [stage, setStage] = useState<Stage>('menu');
   const [activeMode, setActiveMode] = useState<PracticeMode>('name');
   const [activeDifficulty, setActiveDifficulty] = useState<PracticeDifficulty>('beginner');
   const [result, setResult] = useState<RoundResult | null>(null);
+  const [tab, setTab] = useState<Tab>('exercises');
 
   function startDrill(mode: PracticeMode, difficulty: PracticeDifficulty) {
     const free = isPracticeFree(mode, difficulty);
@@ -89,9 +104,29 @@ export default function Practice() {
     );
   }
 
+  const tabs = (
+    <View style={styles.tabs}>
+      {TABS.map(t => (
+        <TouchableOpacity
+          key={t.tab}
+          onPress={() => setTab(t.tab)}
+          activeOpacity={0.8}
+          style={[styles.tab, tab === t.tab && styles.tabActive]}
+        >
+          <Text style={[styles.tabText, tab === t.tab && styles.tabTextActive]}>{t.label}</Text>
+        </TouchableOpacity>
+      ))}
+    </View>
+  );
+
+  if (tab === 'exercises') {
+    return <Exercises tabs={tabs} onScrollTop={onScrollTop} />;
+  }
+
   // Menu
   return (
     <View style={styles.wrap}>
+      {tabs}
       <Text style={styles.intro}>
         Sharpen your fretboard knowledge — drill notes, find positions, master one string at a time.
       </Text>
@@ -146,6 +181,16 @@ export default function Practice() {
 const styles = StyleSheet.create({
   wrap: { paddingHorizontal: SPACE.lg, paddingVertical: SPACE.md },
   intro: { fontSize: 13, color: COLORS.textMuted, lineHeight: 19, marginBottom: SPACE.lg },
+
+  tabs: {
+    flexDirection: 'row', padding: 3, marginBottom: SPACE.lg,
+    borderRadius: RADIUS.full, borderWidth: 1, borderColor: COLORS.border,
+    backgroundColor: COLORS.surface,
+  },
+  tab: { flex: 1, paddingVertical: 8, alignItems: 'center', borderRadius: RADIUS.full },
+  tabActive: { backgroundColor: COLORS.accent },
+  tabText: { fontSize: 13, fontWeight: '600', color: COLORS.textMuted },
+  tabTextActive: { color: '#fff', fontWeight: '700' },
 
   proHint: {
     padding: SPACE.md, marginBottom: SPACE.lg,

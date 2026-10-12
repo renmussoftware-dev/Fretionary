@@ -72,3 +72,18 @@ export type PracticeDifficulty = 'beginner' | 'intermediate' | 'advanced';
 export function isPracticeFree(mode: PracticeMode, difficulty: PracticeDifficulty): boolean {
   return mode === 'name' && difficulty === 'beginner';
 }
+
+// ── EXERCISES ────────────────────────────────────────────────────────────────
+// Free: the first exercise in each category, plus whichever exercise opens
+// today's guided session (that one is decided at the call site).
+// Pro:  the rest of the library and the full daily session.
+export const FREE_EXERCISES = new Set([
+  'warmup-chromatic',
+  'interval-octaves',
+  'triad-major',
+  'sequence-updown',
+]);
+
+export function isExerciseFree(exerciseId: string): boolean {
+  return FREE_EXERCISES.has(exerciseId);
+}

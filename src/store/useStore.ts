@@ -30,7 +30,7 @@ function dateKey(d: Date): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
-function todayKey(): string {
+export function todayKey(): string {
   return dateKey(new Date());
 }
 
@@ -83,6 +83,19 @@ type DistributiveOmit<T, K extends keyof any> = T extends any ? Omit<T, K> : nev
 export type SavedItemInput = DistributiveOmit<SavedItem, 'addedAt'>;
 
 const RECENTS_MAX = 20;
+
+// Per-exercise practice record. Exercises are self-reported (the app can't
+// hear the guitar), so the number that tracks progress is the fastest tempo
+// the user has marked as clean, not a score.
+export interface ExerciseStat {
+  completions: number;
+  totalSec: number;
+  bestBpm: number | null;   // fastest tempo marked "felt clean"
+  nextBpm: number;          // tempo the player opens at next time
+}
+
+// How far the player nudges the tempo up after a clean run.
+const CLEAN_BPM_STEP = 4;
 
 // Highest fret a tapped Identify position can live on (the 24-fret range).
 const CUSTOM_MAX_FRET = 24;
@@ -180,6 +193,17 @@ interface AppState {
   recordChordLearned: (chordKey: string) => void;
   recordProgressionPlayed: (name: string) => void;
 
+  // Practice → Exercises. exerciseStats is keyed by exercise id.
+  // exerciseSession tracks which of today's guided-session exercises are
+  // done; `date` is a local YYYY-MM-DD key and a stale date means nothing
+  // is done yet today.
+  exerciseStats: Record<string, ExerciseStat>;
+  exerciseSession: { date: string; done: string[] };
+  recordExerciseDone: (
+    id: string,
+    result: { bpm: number; seconds: number; clean: boolean; inSession: boolean },
+  ) => void;
+
   // Transient pitch class (0-11) of the currently-playing note during scale
   // playback. The Fretboard reads this to render an extra glow + larger dot
   // on every matching position. null when nothing is playing. Not persisted —
@@ -261,6 +285,8 @@ export const useStore = create<AppState>()(
       scalesExplored: [],
       chordsLearned: [],
       progressionsPlayed: [],
+      exerciseStats: {},
+      exerciseSession: { date: '', done: [] },
       playbackHighlight: null,
       scalePlaybackSpeed: 'normal',
       labelSize: 'md',
@@ -309,6 +335,27 @@ export const useStore = create<AppState>()(
         const list = get().progressionsPlayed;
         if (list.includes(name)) return;
         set({ progressionsPlayed: [...list, name] });
+      },
+
+      recordExerciseDone: (id, { bpm, seconds, clean, inSession }) => {
+        const state = get();
+        const prev = state.exerciseStats[id];
+        const stat: ExerciseStat = {
+          completions: (prev?.completions ?? 0) + 1,
+          totalSec: (prev?.totalSec ?? 0) + seconds,
+          bestBpm: clean ? Math.max(prev?.bestBpm ?? 0, bpm) : prev?.bestBpm ?? null,
+          nextBpm: clean ? bpm + CLEAN_BPM_STEP : bpm,
+        };
+        const today = todayKey();
+        const doneToday = state.exerciseSession.date === today ? state.exerciseSession.done : [];
+        set({
+          exerciseStats: { ...state.exerciseStats, [id]: stat },
+          exerciseSession: inSession && !doneToday.includes(id)
+            ? { date: today, done: [...doneToday, id] }
+            : { date: today, done: doneToday },
+        });
+        // Practicing counts as showing up today, same as opening the app.
+        get().recordActivity();
       },
 
       recordPositiveAction: () => {
@@ -457,6 +504,8 @@ export const useStore = create<AppState>()(
         scalesExplored: s.scalesExplored,
         chordsLearned: s.chordsLearned,
         progressionsPlayed: s.progressionsPlayed,
+        exerciseStats: s.exerciseStats,
+        exerciseSession: s.exerciseSession,
         savedMaps: s.savedMaps,
       }),
     },

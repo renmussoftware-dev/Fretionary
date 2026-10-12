@@ -102,8 +102,16 @@ const CONTENT: Record<HelpTab, Content> = {
 
   practice: {
     headline: 'Practice',
-    sub: 'Interactive drills to sharpen your fretboard knowledge.',
+    sub: 'Drills to sharpen your fretboard knowledge, and exercises to play along with.',
     sections: [
+      {
+        title: 'Exercises',
+        bullets: [
+          'Guitar in hand: each exercise shows a pattern on the neck and runs a click. Play one note per click.',
+          "Today's session is a short guided routine that changes every day.",
+          'Tap Felt clean when a run goes well. It saves that tempo as your best and starts you a little faster next time.',
+        ],
+      },
       {
         title: 'Three drill types',
         bullets: [

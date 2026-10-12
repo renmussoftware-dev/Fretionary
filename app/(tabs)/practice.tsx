@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useCallback, useRef, useState } from 'react';
 import { View, Text, ScrollView, StyleSheet, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { COLORS, SPACE } from '../../src/constants/theme';
@@ -7,6 +7,10 @@ import HelpSheet from '../../src/components/HelpSheet';
 
 export default function PracticeScreen() {
   const [helpOpen, setHelpOpen] = useState(false);
+  const scrollRef = useRef<ScrollView>(null);
+  const scrollTop = useCallback(() => {
+    scrollRef.current?.scrollTo({ y: 0, animated: false });
+  }, []);
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
@@ -21,10 +25,11 @@ export default function PracticeScreen() {
         </TouchableOpacity>
       </View>
       <ScrollView
+        ref={scrollRef}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.body}
       >
-        <Practice />
+        <Practice onScrollTop={scrollTop} />
       </ScrollView>
       <HelpSheet visible={helpOpen} onClose={() => setHelpOpen(false)} tab="practice" />
     </SafeAreaView>
