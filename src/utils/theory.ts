@@ -674,3 +674,65 @@ export function identifyCustomSelection(
     ...(omittedRoot ? { omittedRoot: true } : {}),
   };
 }
+
+// ── Triads inside a scale ───────────────────────────────────────────────────
+// Every major/minor triad whose three notes all live in the scale. Built by
+// checking each scale tone as a chord root rather than stacking thirds, so
+// it works for any scale: C Major → C, F, G and Dm, Em, Am (the textbook
+// diatonic set), A Pentatonic Minor → Am and C, Whole Tone → nothing.
+export type TriadQuality = 'major' | 'minor';
+
+export interface ScaleTriad {
+  root: number;          // pitch class of the chord root
+  notes: number[];       // [root, third, fifth] as pitch classes
+  quality: TriadQuality;
+  name: string;          // "Dm", "B♭" — spelled in the scale's key
+  roman: string;         // "ii", "♭VII" — degree of the chord root in the scale
+  spelled: string[];     // chord tones spelled in key, e.g. ['D', 'F', 'A']
+}
+
+const ROMAN = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII'];
+
+export function getScaleTriads(root: number, scaleKey: string): ScaleTriad[] {
+  const sc = SCALES[scaleKey];
+  if (!sc) return [];
+  const notes = getScaleNotes(root, scaleKey);
+  const rootLetter = scaleRootLetter(root, scaleKey);
+  const letterIdx = (i: number) => scaleDegreeIdxAt(scaleKey, i);
+  // In a 7-note scale each letter appears once, so a real triad stacks
+  // letter-wise thirds: in A harmonic minor F–G♯–C matches Fm's pitches but
+  // G♯ is an augmented 2nd above F, not a third, so it isn't Fm. Scales with
+  // more or fewer notes (pentatonic, blues, diminished) skip or double
+  // letters and are judged by pitch alone.
+  const heptatonic = notes.length === 7;
+  const out: ScaleTriad[] = [];
+  notes.forEach((chordRoot, i) => {
+    const symbol = sc.degrees[i] ?? String(i + 1);
+    const accidental = symbol.replace(/[0-9]/g, '');
+    const numeral = ROMAN[symbolToDegreeIdx(symbol)];
+    for (const quality of ['major', 'minor'] as const) {
+      const third = (chordRoot + (quality === 'major' ? 4 : 3)) % 12;
+      const fifth = (chordRoot + 7) % 12;
+      const ti = notes.indexOf(third);
+      const fi = notes.indexOf(fifth);
+      if (ti < 0 || fi < 0) continue;
+      if (heptatonic && (
+        letterIdx(ti) !== (letterIdx(i) + 2) % 7 ||
+        letterIdx(fi) !== (letterIdx(i) + 4) % 7
+      )) continue;
+      const rootName = spellNoteAt(root, letterIdx(i), chordRoot, rootLetter);
+      // Spell the 3rd and 5th up from the chord's own root letter — always
+      // a clean third/fifth, even where the scale's spelling is enharmonic.
+      const spell = (pc: number, deg: number) => spellNoteAt(chordRoot, deg, pc, rootName[0]);
+      out.push({
+        root: chordRoot,
+        notes: [chordRoot, third, fifth],
+        quality,
+        name: rootName + (quality === 'minor' ? 'm' : ''),
+        roman: accidental + (quality === 'minor' ? numeral.toLowerCase() : numeral),
+        spelled: [rootName, spell(third, 2), spell(fifth, 4)],
+      });
+    }
+  });
+  return out;
+}

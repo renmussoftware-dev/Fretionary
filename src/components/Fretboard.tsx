@@ -1,5 +1,5 @@
-import React, { useMemo } from 'react';
-import { ScrollView, View, StyleSheet, useWindowDimensions } from 'react-native';
+import React, { useEffect, useMemo, useRef } from 'react';
+import { Animated, Easing, ScrollView, View, StyleSheet, useWindowDimensions } from 'react-native';
 import Svg, {
   Rect, Circle, Line, Text as SvgText, G, Defs, LinearGradient, RadialGradient, Stop,
 } from 'react-native-svg';
@@ -39,6 +39,14 @@ const IN_RANGE_OPACITY = 1;
 const OUT_OF_RANGE_OPACITY = 0.32;
 const OUT_OF_RANGE_SCALE = 0.86;
 
+// Triad highlight: scale notes outside the active triad fade back so the
+// three chord tones read as a shape inside the scale.
+const TRIAD_DIM_OPACITY = 0.22;
+const TRIAD_DIM_SCALE = 0.82;
+const TRIAD_PULSE_MS = 1000;
+
+const AnimatedCircle = Animated.createAnimatedComponent(Circle);
+
 export default function Fretboard() {
   const { width: screenW, height: screenH } = useWindowDimensions();
   // Shortest edge — a phone turned landscape must not classify as a tablet.
@@ -48,6 +56,27 @@ export default function Fretboard() {
   const { root, scaleKey, chordKey, mode, labelMode, activePosition, activeCaged, tuningId, customNotes, customCells, labelSize, fretRange } = useStore();
   const identifyNotes = useIdentifyNotes();
   const playbackHighlight = useStore(s => s.playbackHighlight);
+  const triadHighlight = useStore(s => s.triadHighlight);
+  // Triads only make sense against a scale.
+  const triad = mode === 'scales' ? triadHighlight : null;
+  const triadKey = triad ? triad.join(',') : '';
+
+  // One shared 0→1 loop drives every triad ring so they pulse in unison.
+  // Restarts from 0 whenever the triad changes so each new chord "lands"
+  // with a fresh pulse.
+  const pulse = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    if (!triadKey) return;
+    pulse.setValue(0);
+    const loop = Animated.loop(
+      Animated.timing(pulse, {
+        toValue: 1, duration: TRIAD_PULSE_MS,
+        easing: Easing.out(Easing.quad), useNativeDriver: false,
+      }),
+    );
+    loop.start();
+    return () => loop.stop();
+  }, [triadKey, pulse]);
   // Only used in Custom mode — every fret position becomes a tap target
   // that toggles just that one position on/off (not every instance of the
   // pitch), so the user can fill in the neck themselves.
@@ -413,7 +442,15 @@ export default function Fretboard() {
             // simultaneously. Lets the user see where the note they're hearing
             // lives across the entire fretboard.
             const isPlaying = col && playbackHighlight !== null && ni === playbackHighlight;
-            const r = col ? DOT_R * col.scale * (isPlaying ? 1.35 : 1) : DOT_R;
+            // Triad highlight: chord tones get a pulsing ring (the triad's
+            // own root also gets a solid one), everything else fades back.
+            const inTriad = !!col && !!triad && triad.includes(ni);
+            const isTriadRoot = inTriad && ni === triad![0];
+            const triadDim = !!col && !!triad && !inTriad;
+            const r = col
+              ? DOT_R * col.scale * (isPlaying ? 1.35 : 1) * (triadDim ? TRIAD_DIM_SCALE : 1)
+              : DOT_R;
+            const groupOpacity = (col?.opacity ?? 1) * (triadDim ? TRIAD_DIM_OPACITY : 1);
 
             const inner = (
               <>
@@ -443,11 +480,21 @@ export default function Fretboard() {
                     {isPlaying && (
                       <Circle cx={x} cy={y} r={DOT_R + 10} fill="url(#playGlow)" />
                     )}
+                    {inTriad && (
+                      <AnimatedCircle
+                        cx={x} cy={y}
+                        r={pulse.interpolate({ inputRange: [0, 1], outputRange: [r, r + 9] })}
+                        fill="none"
+                        stroke={isTriadRoot ? '#ffffff' : col.fill}
+                        strokeWidth={2}
+                        strokeOpacity={pulse.interpolate({ inputRange: [0, 1], outputRange: [0.9, 0] })}
+                      />
+                    )}
                     <Circle
                       cx={x} cy={y} r={r}
                       fill={col.fill}
-                      stroke={isPlaying ? '#ffffff' : col.stroke}
-                      strokeWidth={isPlaying ? 2.5 : 1}
+                      stroke={isPlaying || isTriadRoot ? '#ffffff' : col.stroke}
+                      strokeWidth={isPlaying ? 2.5 : isTriadRoot ? 2 : 1}
                     />
                     {label ? (
                       <SvgText
@@ -465,11 +512,11 @@ export default function Fretboard() {
             );
 
             return isCustom ? (
-              <G key={`${s}-${f}`} opacity={col?.opacity ?? 1} onPress={() => toggleCustomCell(s, f, noteClasses)}>
+              <G key={`${s}-${f}`} opacity={groupOpacity} onPress={() => toggleCustomCell(s, f, noteClasses)}>
                 {inner}
               </G>
             ) : (
-              <G key={`${s}-${f}`} opacity={col!.opacity}>
+              <G key={`${s}-${f}`} opacity={groupOpacity}>
                 {inner}
               </G>
             );

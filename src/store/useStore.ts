@@ -211,6 +211,12 @@ interface AppState {
   playbackHighlight: number | null;
   setPlaybackHighlight: (pitchClass: number | null) => void;
 
+  // Transient [root, third, fifth] pitch classes of the scale triad the
+  // Fretboard should pulse (Scales mode "Triads" control). null when off.
+  // Not persisted.
+  triadHighlight: number[] | null;
+  setTriadHighlight: (notes: number[] | null) => void;
+
   // User-selected playback speed for the scale Play button. Persisted —
   // sticks across launches the way the user's tuning/labels do.
   scalePlaybackSpeed: ScalePlaybackSpeed;
@@ -288,6 +294,7 @@ export const useStore = create<AppState>()(
       exerciseStats: {},
       exerciseSession: { date: '', done: [] },
       playbackHighlight: null,
+      triadHighlight: null,
       scalePlaybackSpeed: 'normal',
       labelSize: 'md',
       fretRange: 'all',
@@ -298,6 +305,7 @@ export const useStore = create<AppState>()(
       markPaywallPromptShown: () => set({ paywallPromptShownAt: Date.now() }),
 
       setPlaybackHighlight: (playbackHighlight) => set({ playbackHighlight }),
+      setTriadHighlight: (triadHighlight) => set({ triadHighlight }),
 
       setScalePlaybackSpeed: (scalePlaybackSpeed) => set({ scalePlaybackSpeed }),
       setLabelSize: (labelSize) => set({ labelSize }),
