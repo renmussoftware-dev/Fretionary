@@ -2,7 +2,7 @@ import React from 'react';
 import { View, Text, ScrollView, StyleSheet, TouchableOpacity, useWindowDimensions } from 'react-native';
 import { useFocusEffect } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import Fretboard from '../../src/components/Fretboard';
+import Fretboard, { INVERSION_COLORS } from '../../src/components/Fretboard';
 import TopBar from '../../src/components/TopBar';
 import InfoPanel from '../../src/components/InfoPanel';
 import PillSelector from '../../src/components/PillSelector';
@@ -60,6 +60,26 @@ const TRIAD_OPTIONS = [
   { label: 'Major', value: 'major' },
   { label: 'Minor', value: 'minor' },
   { label: 'All',   value: 'all'   },
+];
+
+const TRIAD_LABEL_OPTIONS = [
+  { label: 'R · 3 · 5', value: 'roles' },
+  { label: 'Scale',     value: 'scale' },
+];
+// 3-string sets, named by string number (1 = high e). Value is the top
+// string's index.
+const STRING_SET_OPTIONS = [
+  { label: 'Whole neck', value: 'neck' },
+  { label: '1–3', value: '0' },
+  { label: '2–4', value: '1' },
+  { label: '3–5', value: '2' },
+  { label: '4–6', value: '3' },
+];
+const INVERSION_OPTIONS = [
+  { label: 'All', value: 'all' },
+  { label: 'Root', value: '0', dotColor: INVERSION_COLORS[0], color: INVERSION_COLORS[0] },
+  { label: '1st inv', value: '1', dotColor: INVERSION_COLORS[1], color: INVERSION_COLORS[1] },
+  { label: '2nd inv', value: '2', dotColor: INVERSION_COLORS[2], color: INVERSION_COLORS[2] },
 ];
 
 const FRET_RANGE_OPTIONS = [
@@ -182,6 +202,11 @@ export default function FretboardScreen() {
   const setTriadHighlight = useStore(s => s.setTriadHighlight);
   const [triadFilter, setTriadFilter] = React.useState<TriadFilter>('off');
   const [triadIdx, setTriadIdx] = React.useState<number | null>(null);
+  // How the selected triad is shown — kept across triad picks so a student
+  // can step I → IV → V on the same string set.
+  const [triadRoles, setTriadRoles] = React.useState(true);
+  const [triadStringSet, setTriadStringSet] = React.useState<number | null>(null);
+  const [triadInversion, setTriadInversion] = React.useState<0 | 1 | 2 | null>(null);
   const shownTriads = React.useMemo(() => {
     if (mode !== 'scales' || triadFilter === 'off') return [];
     return getScaleTriads(root, scaleKey)
@@ -195,9 +220,14 @@ export default function FretboardScreen() {
 
   const activeTriadKey = activeTriad ? activeTriad.notes.join(',') : '';
   React.useEffect(() => {
-    setTriadHighlight(activeTriad ? activeTriad.notes : null);
+    setTriadHighlight(activeTriad ? {
+      notes: activeTriad.notes,
+      roleLabels: triadRoles,
+      stringSet: triadStringSet,
+      inversion: triadStringSet === null ? null : triadInversion,
+    } : null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeTriadKey]);
+  }, [activeTriadKey, triadRoles, triadStringSet, triadInversion]);
   React.useEffect(() => () => setTriadHighlight(null), [setTriadHighlight]);
 
   // Arpeggiate the triad (R-3-5) then strum it, voiced in the same octave
@@ -509,6 +539,33 @@ export default function FretboardScreen() {
                     </>
                   ) : 'Tap a chord to see and hear it inside the scale.'}
                 </Text>
+                {activeTriad && (
+                  <>
+                    <View style={styles.triadSub}>
+                      <PillSelector label="Label triad as" options={TRIAD_LABEL_OPTIONS}
+                        value={triadRoles ? 'roles' : 'scale'}
+                        onChange={v => v && setTriadRoles(v === 'roles')}
+                        allowDeselect={false} />
+                    </View>
+                    <View style={styles.triadSub}>
+                      <PillSelector label="String set · 1 = high e" options={STRING_SET_OPTIONS}
+                        value={triadStringSet === null ? 'neck' : String(triadStringSet)}
+                        onChange={v => v && setTriadStringSet(v === 'neck' ? null : Number(v))}
+                        allowDeselect={false} />
+                    </View>
+                    {triadStringSet !== null && (
+                      <View style={styles.triadSub}>
+                        <PillSelector label="Inversion" options={INVERSION_OPTIONS}
+                          value={triadInversion === null ? 'all' : String(triadInversion)}
+                          onChange={v => v && setTriadInversion(v === 'all' ? null : Number(v) as 0 | 1 | 2)}
+                          allowDeselect={false} />
+                        <Text style={styles.triadHint}>
+                          The lowest string names the inversion: root position has the R on the bottom, 1st inversion the {activeTriad.quality === 'minor' ? '♭3' : '3'}, 2nd inversion the 5.
+                        </Text>
+                      </View>
+                    )}
+                  </>
+                )}
               </>
             ))}
           </View>
@@ -716,6 +773,9 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.surface,
     borderWidth: 1,
     borderColor: 'transparent',
+  },
+  triadSub: {
+    marginTop: SPACE.md,
   },
   triadRoman: {
     fontSize: 11,

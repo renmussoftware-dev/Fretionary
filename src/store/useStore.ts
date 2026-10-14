@@ -43,6 +43,13 @@ function yesterdayKey(): string {
 export type AppMode = 'scales' | 'chords' | 'caged' | 'custom';
 export type LabelMode = 'name' | 'degree' | 'interval' | 'none';
 export type ScalePlaybackSpeed = 'slow' | 'normal' | 'fast';
+export interface TriadHighlight {
+  notes: number[];                 // [root, third, fifth] pitch classes
+  roleLabels: boolean;             // label + color tones as R / 3 / 5
+  stringSet: number | null;        // top string of a 3-string set (0 = high e); null = whole neck
+  inversion: 0 | 1 | 2 | null;     // only with stringSet; null = all inversions
+}
+
 export type LabelSize = 'sm' | 'md' | 'lg';
 export type FretRange = 'all' | 'open' | 'low' | 'mid' | 'high' | 'extended';
 
@@ -211,11 +218,10 @@ interface AppState {
   playbackHighlight: number | null;
   setPlaybackHighlight: (pitchClass: number | null) => void;
 
-  // Transient [root, third, fifth] pitch classes of the scale triad the
-  // Fretboard should pulse (Scales mode "Triads" control). null when off.
-  // Not persisted.
-  triadHighlight: number[] | null;
-  setTriadHighlight: (notes: number[] | null) => void;
+  // Transient: the scale triad the Fretboard should pulse (Scales mode
+  // "Triads" control). null when off. Not persisted.
+  triadHighlight: TriadHighlight | null;
+  setTriadHighlight: (triad: TriadHighlight | null) => void;
 
   // User-selected playback speed for the scale Play button. Persisted —
   // sticks across launches the way the user's tuning/labels do.

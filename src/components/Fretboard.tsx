@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef } from 'react';
 import { Animated, Easing, ScrollView, View, StyleSheet, useWindowDimensions } from 'react-native';
 import Svg, {
-  Rect, Circle, Line, Text as SvgText, G, Defs, LinearGradient, RadialGradient, Stop,
+  Rect, Circle, Line, Polyline, Text as SvgText, G, Defs, LinearGradient, RadialGradient, Stop,
 } from 'react-native-svg';
 import {
   NOTES, SCALES, CHORDS,
@@ -11,7 +11,7 @@ import {
 import { COLORS, FONT_FAMILY } from '../constants/theme';
 import {
   getScaleNotes, getChordNotes, getScalePositions,
-  getCagedFretRange, noteLabel,
+  getCagedFretRange, noteLabel, getTriadShapes, triadRoleLabel,
 } from '../utils/theory';
 import { useStore, useIdentifyNotes, FRET_RANGES, type LabelSize } from '../store/useStore';
 import { getTuning, tuningNoteClasses, STANDARD_TUNING } from '../constants/tunings';
@@ -47,6 +47,10 @@ const TRIAD_PULSE_MS = 1000;
 
 const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 
+// Outline colors for triad shapes on a string set, by inversion
+// (root position / 1st / 2nd). Exported so the controls can show a legend.
+export const INVERSION_COLORS = [POSITION_COLORS[0].fill, POSITION_COLORS[1].fill, POSITION_COLORS[3].fill];
+
 export default function Fretboard() {
   const { width: screenW, height: screenH } = useWindowDimensions();
   // Shortest edge — a phone turned landscape must not classify as a tablet.
@@ -59,7 +63,10 @@ export default function Fretboard() {
   const triadHighlight = useStore(s => s.triadHighlight);
   // Triads only make sense against a scale.
   const triad = mode === 'scales' ? triadHighlight : null;
-  const triadKey = triad ? triad.join(',') : '';
+  const triadNotes = triad?.notes ?? null;
+  const triadKey = triad
+    ? `${triad.notes.join(',')}|${triad.stringSet}|${triad.inversion}`
+    : '';
 
   // One shared 0→1 loop drives every triad ring so they pulse in unison.
   // Restarts from 0 whenever the triad changes so each new chord "lands"
@@ -158,6 +165,20 @@ export default function Fretboard() {
     mode === 'scales' ? getScalePositions(root, scaleKey, noteClasses) : [],
     [root, scaleKey, mode, noteClasses],
   );
+
+  // String-set mode: only the closed triad shapes on those three strings
+  // count as "in the triad". Keyed by "s:f" → inversion for the dot loop.
+  const triadShapes = useMemo(() => {
+    if (!triad || triad.stringSet === null) return null;
+    const all = getTriadShapes(triad.notes, triad.stringSet, noteClasses, TOTAL_FRETS);
+    return triad.inversion === null ? all : all.filter(sh => sh.inversion === triad.inversion);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [triadKey, noteClasses]);
+  const triadShapeCells = useMemo(() => {
+    const m = new Map<string, number>();
+    triadShapes?.forEach(sh => sh.cells.forEach(c => m.set(`${c.s}:${c.f}`, sh.inversion)));
+    return m;
+  }, [triadShapes]);
 
   const cagedRange = useMemo(() =>
     (mode === 'caged' && activeCaged)
@@ -409,6 +430,19 @@ export default function Fretboard() {
           </SvgText>
         ))}
 
+        {/* Triad shape outlines — a soft band joining each shape's three
+            notes, colored by inversion. Drawn under the dots. Shapes that
+            fall partly outside the fret window are skipped. */}
+        {triadShapes?.map((sh, i) => {
+          if (sh.cells.some(c => c.f < winStart || c.f > winEnd)) return null;
+          const pts = sh.cells.map(c => `${fretX(c.f)},${strY(c.s)}`).join(' ');
+          return (
+            <Polyline key={i} points={pts} fill="none"
+              stroke={INVERSION_COLORS[sh.inversion]} strokeOpacity={0.35}
+              strokeWidth={DOT_R * 2 + 6} strokeLinecap="round" strokeLinejoin="round" />
+          );
+        })}
+
         {/* Note dots — skip frets outside the visible window so we don't
             paint hidden notes into negative or oversized canvas regions.
             In Custom mode, every position renders (as a tap target with a
@@ -418,9 +452,22 @@ export default function Fretboard() {
           Array.from({ length: TOTAL_FRETS + 1 }, (_, f) => {
             if (f < winStart || f > winEnd) return null;
             const ni = (noteClasses[s] + f) % 12;
-            const col = mode === 'custom' && !isCustomSelected(s, f, ni)
+            const baseCol = mode === 'custom' && !isCustomSelected(s, f, ni)
               ? null
               : getNoteColor(ni, f);
+            // Triad highlight: chord tones get a pulsing ring (the triad's
+            // own root also gets a solid one), everything else fades back.
+            // On a string set only the shape notes count.
+            const inTriad = !!baseCol && !!triadNotes && (
+              triadShapes ? triadShapeCells.has(`${s}:${f}`) : triadNotes.includes(ni)
+            );
+            const isTriadRoot = inTriad && ni === triadNotes![0];
+            const triadDim = !!baseCol && !!triadNotes && !inTriad;
+            // R / 3 / 5 view recolors chord tones by their role in the triad
+            // (same palette as Chords mode) instead of their scale degree.
+            const roleIdx = inTriad && triad!.roleLabels ? triadNotes!.indexOf(ni) : -1;
+            const roleCol = roleIdx === 0 ? MUSIC_COLORS.root : roleIdx === 1 ? MUSIC_COLORS.third : roleIdx === 2 ? MUSIC_COLORS.fifth : null;
+            const col = baseCol && roleCol ? { ...baseCol, ...roleCol, isRoot: roleIdx === 0 } : baseCol;
             // Custom mode is Pro. Non-Pro users still see the mode but the
             // fretboard falls back to non-interactive (no ghost dots, no
             // onPress) — the controls area shows a preview + upsell.
@@ -431,7 +478,9 @@ export default function Fretboard() {
             if (!col && !isCustom) return null;
             const x = fretX(f);
             const y = strY(s);
-            const label = col ? noteLabel(ni, root, labelMode, scaleKey, chordKey, mode) : '';
+            const label = !col ? ''
+              : roleCol ? triadRoleLabel(triadNotes!, ni)
+              : noteLabel(ni, root, labelMode, scaleKey, chordKey, mode);
             // User-controlled font size — the support-email request was that
             // labels were hard to read. Defaults to 'md' (11pt/9pt), one tier
             // above the old 'sm' baseline (9pt/7pt).
@@ -442,11 +491,6 @@ export default function Fretboard() {
             // simultaneously. Lets the user see where the note they're hearing
             // lives across the entire fretboard.
             const isPlaying = col && playbackHighlight !== null && ni === playbackHighlight;
-            // Triad highlight: chord tones get a pulsing ring (the triad's
-            // own root also gets a solid one), everything else fades back.
-            const inTriad = !!col && !!triad && triad.includes(ni);
-            const isTriadRoot = inTriad && ni === triad![0];
-            const triadDim = !!col && !!triad && !inTriad;
             const r = col
               ? DOT_R * col.scale * (isPlaying ? 1.35 : 1) * (triadDim ? TRIAD_DIM_SCALE : 1)
               : DOT_R;

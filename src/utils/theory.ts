@@ -736,3 +736,61 @@ export function getScaleTriads(root: number, scaleKey: string): ScaleTriad[] {
   });
   return out;
 }
+
+// ── Triad shapes on a string set ────────────────────────────────────────────
+// Every closed triad voicing on three adjacent strings: one chord tone per
+// string, each tone used once, within a playable stretch. The bass note
+// (lowest-pitched string) names the inversion — R = root position, 3rd =
+// 1st inversion, 5th = 2nd inversion.
+export type TriadInversion = 0 | 1 | 2;
+
+export interface TriadShape {
+  cells: { s: number; f: number }[];  // high string first
+  inversion: TriadInversion;
+}
+
+const TRIAD_MAX_SPAN = 4;
+
+// topString: 0 = high e, so 0 → strings 1-2-3, 3 → strings 4-5-6.
+export function getTriadShapes(
+  triadNotes: number[],
+  topString: number,
+  noteClasses: number[],
+  maxFret = 24,
+): TriadShape[] {
+  const strings = [topString, topString + 1, topString + 2];
+  const fretsFor = (s: number) => {
+    const out: { f: number; tone: number }[] = [];
+    for (let f = 0; f <= maxFret; f++) {
+      const tone = triadNotes.indexOf((noteClasses[s] + f) % 12);
+      if (tone >= 0) out.push({ f, tone });
+    }
+    return out;
+  };
+  const [top, mid, low] = strings.map(fretsFor);
+  const shapes: TriadShape[] = [];
+  for (const b of low) {
+    for (const m of mid) {
+      if (m.tone === b.tone || Math.abs(m.f - b.f) > TRIAD_MAX_SPAN) continue;
+      for (const t of top) {
+        if (t.tone === b.tone || t.tone === m.tone) continue;
+        const frets = [b.f, m.f, t.f];
+        if (Math.max(...frets) - Math.min(...frets) > TRIAD_MAX_SPAN) continue;
+        shapes.push({
+          cells: [{ s: strings[0], f: t.f }, { s: strings[1], f: m.f }, { s: strings[2], f: b.f }],
+          inversion: b.tone as TriadInversion,
+        });
+      }
+    }
+  }
+  return shapes;
+}
+
+// Chord-role label for a triad tone: R, 3 / ♭3, or 5.
+export function triadRoleLabel(triadNotes: number[], pc: number): string {
+  const i = triadNotes.indexOf(pc);
+  if (i === 0) return 'R';
+  if (i === 1) return (triadNotes[1] - triadNotes[0] + 12) % 12 === 3 ? '♭3' : '3';
+  if (i === 2) return '5';
+  return '';
+}
