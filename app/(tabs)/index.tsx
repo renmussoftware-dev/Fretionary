@@ -52,7 +52,7 @@ const LABEL_SIZE_OPTIONS = [
 // renderer can't drift. Order matches All → narrow → mid → high → 24-fret
 // extended. Default 'All' stays at 15 frets so scale mode doesn't feel
 // cluttered on phones; 24 is opt-in for users who need the full range.
-// Triads-in-scale control. 'all' walks every major + minor triad in scale
+// Triads-in-scale control. 'all' lists every major + minor triad in scale
 // order (I, ii, iii, IV...), which is the classic harmonized-scale lesson.
 type TriadFilter = 'off' | 'major' | 'minor' | 'all';
 const TRIAD_OPTIONS = [
@@ -61,8 +61,6 @@ const TRIAD_OPTIONS = [
   { label: 'Minor', value: 'minor' },
   { label: 'All',   value: 'all'   },
 ];
-// How long each triad stays lit while auto-cycling.
-const TRIAD_CYCLE_MS = 2400;
 
 const FRET_RANGE_OPTIONS = [
   { label: 'All',  value: 'all'      },
@@ -178,30 +176,22 @@ export default function FretboardScreen() {
   const positions = mode === 'scales' ? getScalePositions(root, scaleKey) : [];
 
   // ── Triads in scale ──
-  // Off by default. With a filter on, the Fretboard pulses one triad at a
-  // time and auto-cycles through the rest; tapping a chip holds that triad
-  // (and plays it), tapping it again resumes the cycle.
+  // Off by default. With a filter on, the matching triads show as chips;
+  // tapping one pulses it on the Fretboard (and plays it), tapping it again
+  // clears it so the whole scale is back.
   const setTriadHighlight = useStore(s => s.setTriadHighlight);
   const [triadFilter, setTriadFilter] = React.useState<TriadFilter>('off');
-  const [triadIdx, setTriadIdx] = React.useState(0);
-  const [triadHeld, setTriadHeld] = React.useState(false);
+  const [triadIdx, setTriadIdx] = React.useState<number | null>(null);
   const shownTriads = React.useMemo(() => {
     if (mode !== 'scales' || triadFilter === 'off') return [];
     return getScaleTriads(root, scaleKey)
       .filter(t => triadFilter === 'all' || t.quality === triadFilter);
   }, [mode, root, scaleKey, triadFilter]);
-  const activeTriad = shownTriads.length ? shownTriads[triadIdx % shownTriads.length] : null;
+  const activeTriad = triadIdx !== null ? shownTriads[triadIdx] ?? null : null;
 
   React.useEffect(() => {
-    setTriadIdx(0);
-    setTriadHeld(false);
+    setTriadIdx(null);
   }, [root, scaleKey, triadFilter]);
-
-  React.useEffect(() => {
-    if (triadHeld || shownTriads.length < 2) return;
-    const id = setInterval(() => setTriadIdx(i => (i + 1) % shownTriads.length), TRIAD_CYCLE_MS);
-    return () => clearInterval(id);
-  }, [triadHeld, shownTriads]);
 
   const activeTriadKey = activeTriad ? activeTriad.notes.join(',') : '';
   React.useEffect(() => {
@@ -220,12 +210,11 @@ export default function FretboardScreen() {
   }
 
   function handleTriadTap(i: number) {
-    if (triadHeld && i === triadIdx % shownTriads.length) {
-      setTriadHeld(false);
+    if (i === triadIdx) {
+      setTriadIdx(null);
       return;
     }
     setTriadIdx(i);
-    setTriadHeld(true);
     playTriad(shownTriads[i]);
   }
 
@@ -502,7 +491,7 @@ export default function FretboardScreen() {
                     return (
                       <TouchableOpacity key={`${t.root}-${t.quality}`}
                         onPress={() => handleTriadTap(i)}
-                        style={[styles.triadChip, active && styles.pillActive, active && triadHeld && styles.triadChipHeld]}
+                        style={[styles.triadChip, active && styles.pillActive]}
                         activeOpacity={0.7}>
                         <Text style={[styles.triadRoman, active && styles.triadRomanActive]}>{t.roman}</Text>
                         <Text style={[styles.pillText, active && styles.pillTextActive]}>{t.name}</Text>
@@ -510,19 +499,16 @@ export default function FretboardScreen() {
                     );
                   })}
                 </ScrollView>
-                {activeTriad && (
-                  <Text style={styles.triadHint}>
-                    <Text style={styles.triadHintStrong}>
-                      {activeTriad.name} = {activeTriad.spelled.join(' · ')}
-                    </Text>
-                    {'  '}the {activeTriad.roman} chord.{' '}
-                    {triadHeld
-                      ? 'Tap it again to keep cycling.'
-                      : shownTriads.length > 1
-                        ? 'Cycling through each one — tap a chord to hold and hear it.'
-                        : 'Tap it to hear it.'}
-                  </Text>
-                )}
+                <Text style={styles.triadHint}>
+                  {activeTriad ? (
+                    <>
+                      <Text style={styles.triadHintStrong}>
+                        {activeTriad.name} = {activeTriad.spelled.join(' · ')}
+                      </Text>
+                      {'  '}the {activeTriad.roman} chord. Tap it again to clear.
+                    </>
+                  ) : 'Tap a chord to see and hear it inside the scale.'}
+                </Text>
               </>
             ))}
           </View>
@@ -730,9 +716,6 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.surface,
     borderWidth: 1,
     borderColor: 'transparent',
-  },
-  triadChipHeld: {
-    borderWidth: 2,
   },
   triadRoman: {
     fontSize: 11,
