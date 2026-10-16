@@ -52,18 +52,20 @@ const POSITION_ORDER: readonly CagedLetter[] = ['E', 'D', 'C', 'A', 'G'];
  * fret, and the result was the constant 0-4/3-7/6-10/9-13/12-16 for all 12
  * roots and every scale — the boxes never moved when you changed key.
  *
- * scaleKey no longer participates: two scales sharing a root share their
- * hand positions, and it's the notes lit inside the window that differ.
- * noteClasses likewise — CAGED geometry is standard tuning (which is what
- * the CAGED tab pins), so in an alternate tuning these stay put as hand
- * positions while the notes inside them follow the tuning. Both are kept in
- * the signature because callers pass them.
+ * Pentatonic and blues scales don't use these windows — see
+ * getPentatonicBoxes. For everything else the windows are CAGED geometry in
+ * standard tuning (which is what the CAGED tab pins), so in an alternate
+ * tuning they stay put as hand positions while the notes inside them follow
+ * the tuning.
  */
 export function getScalePositions(
   root: number,
-  _scaleKey?: string,
-  _noteClasses?: readonly number[],
-) {
+  scaleKey?: string,
+  noteClasses: readonly number[] = OPEN_STRINGS,
+): ScalePosition[] {
+  const boxes = scaleKey ? getPentatonicBoxes(root, scaleKey, noteClasses) : null;
+  if (boxes) return boxes;
+
   const starts: number[] = [];
   for (const shape of POSITION_ORDER) {
     let start = getCagedCaretFret(root, shape) + CAGED_SHAPES[shape].fretSpan[0];
@@ -79,6 +81,98 @@ export function getScalePositions(
   if (starts[4] - 12 >= 0) starts[4] -= 12;
 
   return starts.map(start => ({ start, end: Math.min(start + POSITION_SPAN, 24) }));
+}
+
+export interface ScalePosition {
+  start: number;
+  end: number;
+  // Exact "s:f" cells in the box. When present, only these are in the
+  // position; without it, every fret from start to end is.
+  cells?: ReadonlySet<string>;
+}
+
+// The 5-note shape each box-based scale is built on. Blues is minor
+// pentatonic plus the ♭5, which rides along inside each box.
+const PENTATONIC_BASE: Record<string, string> = {
+  'Pentatonic Major': 'Pentatonic Major',
+  'Pentatonic Minor': 'Pentatonic Minor',
+  'Blues': 'Pentatonic Minor',
+};
+
+/**
+ * The five pentatonic boxes, built note by note: two notes per string.
+ *
+ * A fixed fret window can't describe a box. The shape reaches one fret
+ * further on the B and high e strings, and a 5-fret rectangle also picks up
+ * a third note on some strings that belongs to the next box (G minor box 1
+ * at 3–7 lit the D at fret 7 on the G string). So each box starts on a scale
+ * note on the lowest string and walks up the scale in pitch order, putting
+ * two notes on each string. This follows the actual tuning.
+ *
+ * Box 1 starts on the root, box 2 on the next scale note, and so on up the
+ * neck. Box 5 drops an octave to sit behind box 1 when it fits above the
+ * nut. Any box that would cross the nut moves up an octave. Returns null for
+ * scales that aren't box-based.
+ */
+function getPentatonicBoxes(
+  root: number,
+  scaleKey: string,
+  noteClasses: readonly number[],
+): ScalePosition[] | null {
+  const baseKey = PENTATONIC_BASE[scaleKey];
+  if (!baseKey) return null;
+  const shape = getScaleNotes(root, baseKey);
+  const extras = getScaleNotes(root, scaleKey).filter(n => !shape.includes(n));
+
+  // Each string's open pitch in semitones above the lowest string.
+  const low = noteClasses.length - 1;
+  const openPitch: number[] = [];
+  openPitch[low] = 0;
+  for (let s = low - 1; s >= 0; s--) {
+    openPitch[s] = openPitch[s + 1] + (((noteClasses[s] - noteClasses[s + 1]) % 12 + 12) % 12 || 12);
+  }
+
+  // Frets for a box whose first note is at `startFret` on the lowest string.
+  function walk(startFret: number) {
+    const cells: { s: number; f: number }[] = [];
+    let pitch = startFret;
+    for (let s = low; s >= 0; s--) {
+      for (let i = 0; i < 2; i++) {
+        if (cells.length > 0) {
+          do pitch++; while (!shape.includes(((noteClasses[low] + pitch) % 12 + 12) % 12));
+        }
+        cells.push({ s, f: pitch - openPitch[s] });
+      }
+    }
+    return cells;
+  }
+  const fits = (cells: { f: number }[]) => cells.every(c => c.f >= 0 && c.f <= 24);
+
+  const starts: number[] = [];
+  for (let k = 0; k < shape.length; k++) {
+    let start = ((shape[k] - noteClasses[low]) % 12 + 12) % 12;
+    const prev = starts[starts.length - 1];
+    if (prev !== undefined) while (start <= prev) start += 12;
+    if (!fits(walk(start))) start += 12;
+    starts.push(start);
+  }
+  // Box 5 is usually taught behind box 1 rather than up past box 4.
+  if (fits(walk(starts[4] - 12))) starts[4] -= 12;
+
+  return starts.map(start => {
+    const cells = walk(start);
+    const frets = cells.map(c => c.f);
+    const lo = Math.min(...frets);
+    const hi = Math.max(...frets);
+    const keys = new Set(cells.map(c => `${c.s}:${c.f}`));
+    // Blue notes join the box anywhere inside its fret span.
+    for (let s = 0; s <= low; s++) {
+      for (let f = lo; f <= hi; f++) {
+        if (extras.includes((noteClasses[s] + f) % 12)) keys.add(`${s}:${f}`);
+      }
+    }
+    return { start: lo, end: hi, cells: keys };
+  });
 }
 
 export function getCagedCaretFret(root: number, shape: CagedLetter): number {

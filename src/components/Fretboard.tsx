@@ -192,10 +192,13 @@ export default function Fretboard() {
     [root, mode],
   );
 
-  function isInRange(fret: number): boolean {
+  function isInRange(string: number, fret: number): boolean {
     if (mode === 'scales' && activePosition !== null) {
       const pos = positions[activePosition];
-      return !!pos && fret >= pos.start && fret <= pos.end;
+      if (!pos) return false;
+      // Pentatonic boxes list their exact cells; other scales are a fret window.
+      if (pos.cells) return pos.cells.has(`${string}:${fret}`);
+      return fret >= pos.start && fret <= pos.end;
     }
     if (mode === 'caged' && cagedRange) {
       return fret >= cagedRange.start && fret <= cagedRange.end;
@@ -203,10 +206,10 @@ export default function Fretboard() {
     return true;
   }
 
-  function getNoteColor(noteIdx: number, fret: number) {
+  function getNoteColor(noteIdx: number, string: number, fret: number) {
     const notes = mode === 'caged' ? cagedNotes : activeNotes;
     if (!notes.includes(noteIdx)) return null;
-    const inRange = isInRange(fret);
+    const inRange = isInRange(string, fret);
     const opacity = inRange ? IN_RANGE_OPACITY : OUT_OF_RANGE_OPACITY;
     const scale = inRange ? 1 : OUT_OF_RANGE_SCALE;
 
@@ -454,7 +457,7 @@ export default function Fretboard() {
             const ni = (noteClasses[s] + f) % 12;
             const baseCol = mode === 'custom' && !isCustomSelected(s, f, ni)
               ? null
-              : getNoteColor(ni, f);
+              : getNoteColor(ni, s, f);
             // Triad highlight: chord tones get a pulsing ring (the triad's
             // own root also gets a solid one), everything else fades back.
             // On a string set only the shape notes count.
