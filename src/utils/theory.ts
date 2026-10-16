@@ -25,6 +25,9 @@ export function getChordNotes(root: number, chordKey: string): number[] {
 // which is one hand span without shifting.
 const POSITION_SPAN = 4;
 
+// Box 1 is the E shape (root on low E); the rest follow up the neck.
+const POSITION_ORDER: readonly CagedLetter[] = ['E', 'D', 'C', 'A', 'G'];
+
 /**
  * The five scale positions, aligned to the five CAGED shapes for this root.
  *
@@ -32,8 +35,15 @@ const POSITION_SPAN = 4;
  * to a 5-fret hand span, which is the stretch of scale you actually play
  * around that shape. Anchoring to CAGED means the Positions pills and the
  * CAGED tab describe the same neck instead of two unrelated griddings, and
- * it lands on the shapes players already know — for A minor pentatonic,
- * position 1 comes out at fret 5, the classic box.
+ * it lands on the shapes players already know.
+ *
+ * Numbering follows the standard pentatonic box convention: position 1 is
+ * the E-shape window (root on the low E under the index finger — fret 5 for
+ * A minor, fret 8 for C minor), then 2–5 climb the neck in CAGED order
+ * E → D → C → A → G. Position 5 sits an octave down, directly behind
+ * position 1, whenever that fits above the nut. The old ascending-fret
+ * numbering gave the same box a different number in every key (C minor's
+ * 5–8 box came out "Pos 3" instead of Box 5).
  *
  * This replaced a sliding-window search whose two filters could never fail
  * (`maxF - startFret <= 4` was tautological because f never exceeded
@@ -54,17 +64,21 @@ export function getScalePositions(
   _scaleKey?: string,
   _noteClasses?: readonly number[],
 ) {
-  const starts = CAGED_ORDER
-    .map(shape => getCagedFretRange(root, shape).start)
-    .sort((a, b) => a - b);
-
-  const out: { start: number; end: number }[] = [];
-  for (const start of starts) {
-    // Two shapes can resolve to the same start; one window is enough.
-    if (out.some(p => p.start === start)) continue;
-    out.push({ start, end: Math.min(start + POSITION_SPAN, 24) });
+  const starts: number[] = [];
+  for (const shape of POSITION_ORDER) {
+    let start = getCagedCaretFret(root, shape) + CAGED_SHAPES[shape].fretSpan[0];
+    // Each box sits above the previous one, within an octave of it.
+    const prev = starts[starts.length - 1];
+    if (prev !== undefined) {
+      while (start < prev) start += 12;
+      while (start - 12 >= prev) start -= 12;
+    }
+    starts.push(start);
   }
-  return out;
+  // Box 5 is usually taught behind box 1 rather than up past box 4.
+  if (starts[4] - 12 >= 0) starts[4] -= 12;
+
+  return starts.map(start => ({ start, end: Math.min(start + POSITION_SPAN, 24) }));
 }
 
 export function getCagedCaretFret(root: number, shape: CagedLetter): number {

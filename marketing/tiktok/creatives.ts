@@ -255,7 +255,8 @@ export const CREATIVES: Creative[] = [
       // Positions are anchored to the CAGED shapes, so name each one by its shape
       // rather than a number (players disagree on which box is "box 1").
       rows: getScalePositions(9).map(p => {
-        const shape = CAGED_ORDER.find(s => getCagedFretRange(9, s).start === p.start);
+        // Positions climb the neck, so a shape may sit an octave from its CAGED band.
+        const shape = CAGED_ORDER.find(s => (getCagedFretRange(9, s).start - p.start) % 12 === 0);
         check(!!shape, `position at fret ${p.start} maps to a CAGED shape`);
         return {
           lead: `<span style="color:${CAGED_COLORS[shape!].fill}">${shape}</span>`,
