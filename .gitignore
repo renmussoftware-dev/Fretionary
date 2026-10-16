@@ -38,3 +38,4 @@ credentials/
 # TikTok creatives: rendered images and intermediate HTML are regenerable
 marketing/tiktok/out/
 marketing/tiktok/.build/
+marketing/appstore/.build/
