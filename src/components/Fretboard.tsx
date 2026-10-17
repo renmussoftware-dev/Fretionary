@@ -6,12 +6,13 @@ import Svg, {
 import {
   NOTES, SCALES, CHORDS,
   CAGED_COLORS, CAGED_ORDER, POSITION_COLORS, COLORS as MUSIC_COLORS,
-  intervalColorBucket, scaleDegreeColorBucket,
+  intervalColorBucket, scaleDegreeColorBucket, type CagedLetter,
 } from '../constants/music';
 import { COLORS, FONT_FAMILY } from '../constants/theme';
 import {
   getScaleNotes, getChordNotes, getScalePositions,
-  getCagedFretRange, noteLabel, getTriadShapes, triadRoleLabel,
+  getCagedOccurrences, getCagedNotes, cagedScaleKey, isInCagedOccurrence,
+  noteLabel, getTriadShapes, triadRoleLabel, type CagedOccurrence,
 } from '../utils/theory';
 import { useStore, useIdentifyNotes, FRET_RANGES, type LabelSize } from '../store/useStore';
 import { getTuning, tuningNoteClasses, STANDARD_TUNING } from '../constants/tunings';
@@ -57,7 +58,7 @@ export default function Fretboard() {
   const isTablet = Math.min(screenW, screenH) >= 768;
   const isLandscape = screenW > screenH;
 
-  const { root, scaleKey, chordKey, mode, labelMode, activePosition, activeCaged, tuningId, customNotes, customCells, labelSize, fretRange } = useStore();
+  const { root, scaleKey, chordKey, mode, labelMode, activePosition, activeCaged, cagedTonality, cagedLayer, tuningId, customNotes, customCells, labelSize, fretRange } = useStore();
   const identifyNotes = useIdentifyNotes();
   const playbackHighlight = useStore(s => s.playbackHighlight);
   const triadHighlight = useStore(s => s.triadHighlight);
@@ -180,17 +181,32 @@ export default function Fretboard() {
     return m;
   }, [triadShapes]);
 
-  const cagedRange = useMemo(() =>
-    (mode === 'caged' && activeCaged)
-      ? getCagedFretRange(root, activeCaged as any)
-      : null,
-    [root, activeCaged, mode],
-  );
+  // Each shape at every octave it appears, keyed by letter. The selected
+  // shape reads its own list; "All" colors a dot by the first shape it sits in.
+  const cagedOccurrences = useMemo(() => {
+    const m = new Map<CagedLetter, CagedOccurrence[]>();
+    if (mode !== 'caged') return m;
+    for (const shape of CAGED_ORDER) {
+      m.set(shape, getCagedOccurrences(root, shape, cagedTonality, cagedLayer));
+    }
+    return m;
+  }, [root, mode, cagedTonality, cagedLayer]);
+  const activeOccurrences = activeCaged
+    ? cagedOccurrences.get(activeCaged as CagedLetter) ?? []
+    : [];
 
   const cagedNotes = useMemo(() =>
-    mode === 'caged' ? getScaleNotes(root, 'Major') : [],
-    [root, mode],
+    mode === 'caged' ? getCagedNotes(root, cagedTonality, cagedLayer) : [],
+    [root, mode, cagedTonality, cagedLayer],
   );
+  const labelScaleKey = mode === 'caged' ? cagedScaleKey(cagedTonality, cagedLayer) : scaleKey;
+
+  function cagedShapeAt(string: number, fret: number): CagedLetter | null {
+    for (const shape of CAGED_ORDER) {
+      if (cagedOccurrences.get(shape)?.some(o => isInCagedOccurrence(o, string, fret))) return shape;
+    }
+    return null;
+  }
 
   function isInRange(string: number, fret: number): boolean {
     if (mode === 'scales' && activePosition !== null) {
@@ -200,8 +216,12 @@ export default function Fretboard() {
       if (pos.cells) return pos.cells.has(`${string}:${fret}`);
       return fret >= pos.start && fret <= pos.end;
     }
-    if (mode === 'caged' && cagedRange) {
-      return fret >= cagedRange.start && fret <= cagedRange.end;
+    if (mode === 'caged' && activeCaged) {
+      return activeOccurrences.some(o => isInCagedOccurrence(o, string, fret));
+    }
+    // Chord layer with every shape: notes outside all five grips fade back.
+    if (mode === 'caged' && cagedLayer === 'chord') {
+      return cagedShapeAt(string, fret) !== null;
     }
     return true;
   }
@@ -275,12 +295,10 @@ export default function Fretboard() {
     }
 
     if (mode === 'caged' && !activeCaged) {
-      for (const shape of CAGED_ORDER) {
-        const range = getCagedFretRange(root, shape as any);
-        if (fret >= range.start && fret <= range.end) {
-          const col = CAGED_COLORS[shape];
-          return { fill: col.fill, stroke: col.stroke, text: '#fff', opacity: 1, scale: 1, isRoot: false };
-        }
+      const shape = cagedShapeAt(string, fret);
+      if (shape) {
+        const col = CAGED_COLORS[shape];
+        return { fill: col.fill, stroke: col.stroke, text: '#fff', opacity, scale, isRoot: false };
       }
     }
 
@@ -349,30 +367,30 @@ export default function Fretboard() {
 
         {/* CAGED highlight — same gradient treatment with a caret line.
             Caret only renders when it falls inside the window. */}
-        {mode === 'caged' && cagedRange && activeCaged && (() => {
+        {mode === 'caged' && activeCaged && activeOccurrences.map(occ => {
           const col = CAGED_COLORS[activeCaged];
-          const clampedStart = Math.max(cagedRange.start, winStart);
-          const clampedEnd = Math.min(cagedRange.end, winEnd);
+          const clampedStart = Math.max(occ.start, winStart);
+          const clampedEnd = Math.min(occ.end, winEnd);
           if (clampedStart > clampedEnd) return null;
           const x1 = clampedStart === 0 && showNut ? LEFT_PAD : fretX(clampedStart) - FRET_W / 2;
           const x2 = fretLineX(clampedEnd);
-          const caretInWindow = cagedRange.caretFret >= winStart && cagedRange.caretFret <= winEnd;
+          const caretInWindow = occ.caretFret >= winStart && occ.caretFret <= winEnd;
           return (
-            <G>
+            <G key={occ.caretFret}>
               <Rect x={x1} y={strY(0) - 14} width={x2 - x1} height={(STR_COUNT - 1) * STR_H + 28}
                 rx={10} fill={col.light} />
               {caretInWindow && (
                 <Line
-                  x1={fretX(cagedRange.caretFret)}
+                  x1={fretX(occ.caretFret)}
                   y1={strY(0) - 16}
-                  x2={fretX(cagedRange.caretFret)}
+                  x2={fretX(occ.caretFret)}
                   y2={strY(5) + 16}
                   stroke={col.fill} strokeWidth={1.5} strokeDasharray="5,4" strokeOpacity={0.6}
                 />
               )}
             </G>
           );
-        })()}
+        })}
 
         {/* Frets — only render lines for frets in the visible window. For
             showNut ranges that's frets 1..winEnd. For mid-neck ranges
@@ -483,7 +501,7 @@ export default function Fretboard() {
             const y = strY(s);
             const label = !col ? ''
               : roleCol ? triadRoleLabel(triadNotes!, ni)
-              : noteLabel(ni, root, labelMode, scaleKey, chordKey, mode);
+              : noteLabel(ni, root, labelMode, labelScaleKey, chordKey, mode);
             // User-controlled font size — the support-email request was that
             // labels were hard to read. Defaults to 'md' (11pt/9pt), one tier
             // above the old 'sm' baseline (9pt/7pt).

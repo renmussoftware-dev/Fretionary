@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import {
-  View, Text, ScrollView, TouchableOpacity, StyleSheet,
+  View, Text, ScrollView, TouchableOpacity, StyleSheet, TextInput, Alert,
   Animated, Modal, Pressable, useWindowDimensions, PanResponder,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -12,7 +12,9 @@ import {
   type Progression, type ExampleProgression,
 } from '../../src/constants/progressions';
 import ChordBox from '../../src/components/ChordBox';
-import { useStore } from '../../src/store/useStore';
+import { useStore, type CustomChord, type SavedItem } from '../../src/store/useStore';
+
+type SavedCustom = Extract<SavedItem, { kind: 'custom' }>;
 import { useAudioEngine } from '../../src/hooks/useAudioEngine';
 import { useProGate } from '../../src/hooks/useProGate';
 import { ProBanner } from '../../src/components/ProLock';
@@ -156,7 +158,20 @@ export default function ProgressionsScreen() {
   const [playing, setPlaying] = useState(false);
   const [bpm, setBpm] = useState(80);
   const [showModal, setShowModal] = useState(false);
-  const [customChords, setCustomChords] = useState<{ root: number; chordType: string }[]>([]);
+  const [customChords, setCustomChords] = useState<CustomChord[]>([]);
+  // Which saved progression the Custom builder holds, if any. Saving again
+  // updates it in place; "Save as new" forks it.
+  const [customId, setCustomId] = useState<string | null>(null);
+  const [customName, setCustomName] = useState<string | null>(null);
+  const [saveOpen, setSaveOpen] = useState(false);
+  const [saveName, setSaveName] = useState('');
+  const favorites = useStore(s => s.favorites);
+  const saveCustomProgression = useStore(s => s.saveCustomProgression);
+  const toggleFavorite = useStore(s => s.toggleFavorite);
+  const savedCustoms = useMemo(
+    () => favorites.filter((f): f is SavedCustom => f.kind === 'custom'),
+    [favorites],
+  );
   const [modalRoot, setModalRoot] = useState<number>(root); // 'pick any chord' picker root
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [savedOpen, setSavedOpen] = useState(false);
@@ -168,6 +183,11 @@ export default function ProgressionsScreen() {
   // then downgraded would otherwise be able to load it from the Saved
   // sheet, bypassing the in-tab paywall on the drawer list.
   useEffect(() => {
+    if (pendingNav?.kind === 'custom') {
+      loadCustom(pendingNav);
+      setPendingNav(null);
+      return;
+    }
     if (pendingNav?.kind === 'progression') {
       const match = PROGRESSIONS.find(p => p.name === pendingNav.progName);
       setPendingNav(null);
@@ -356,6 +376,74 @@ export default function ProgressionsScreen() {
     if (isPro && voicings.length > 0) playChord(voicings[0].frets);
   }
 
+  // ── Custom builder ──
+  function loadCustom(item: SavedCustom) {
+    setSubMode('custom');
+    setCustomChords(item.chords);
+    setCustomId(item.id);
+    setCustomName(item.name);
+    setActiveIdx(0);
+    setPlaying(false);
+  }
+
+  function newCustom() {
+    setCustomChords([]);
+    setCustomId(null);
+    setCustomName(null);
+    setActiveIdx(0);
+    setPlaying(false);
+  }
+
+  // Swap a chord with its neighbour. The highlighted step follows the chord
+  // it was on, so reordering never jumps the view to a different chord.
+  function moveCustom(i: number, dir: -1 | 1) {
+    const j = i + dir;
+    if (j < 0 || j >= customChords.length) return;
+    setCustomChords(ch => {
+      const next = [...ch];
+      [next[i], next[j]] = [next[j], next[i]];
+      return next;
+    });
+    setActiveIdx(a => (a === i ? j : a === j ? i : a));
+  }
+
+  function removeCustom(i: number) {
+    const remaining = customChords.length - 1;
+    setCustomChords(ch => ch.filter((_, j) => j !== i));
+    setActiveIdx(a => Math.max(0, Math.min(a > i ? a - 1 : a, remaining - 1)));
+  }
+
+  const customDefaultName = customChords.map(c => chordSymbol(c.root, c.chordType)).join(' – ');
+
+  function openSave() {
+    if (customChords.length === 0) return;
+    setSaveName(customName ?? customDefaultName);
+    setSaveOpen(true);
+  }
+
+  function confirmSave(asNew: boolean) {
+    const name = saveName.trim() || customDefaultName;
+    const id = !asNew && customId
+      ? customId
+      : `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
+    saveCustomProgression({ kind: 'custom', root: customChords[0].root, id, name, chords: customChords });
+    setCustomId(id);
+    setCustomName(name);
+    setSaveOpen(false);
+  }
+
+  function deleteCustom(item: SavedCustom) {
+    Alert.alert(`Delete "${item.name}"?`, 'This removes the saved progression.', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Delete', style: 'destructive', onPress: () => {
+          toggleFavorite(item);
+          if (item.id === customId) { setCustomId(null); setCustomName(null); }
+        },
+      },
+    ]);
+  }
+
   function pickProg(p: Progression) {
     setSelectedProg(p);
     setActiveIdx(0);
@@ -441,11 +529,18 @@ export default function ProgressionsScreen() {
                       />
                     </View>
                   )}
+                  {subMode === 'custom' && (
+                    <TouchableOpacity onPress={openSave} activeOpacity={0.7}
+                      style={[styles.activeCardHeart, styles.saveChip]}>
+                      <Text style={styles.saveChipTxt}>{customId ? 'Saved ✓' : 'Save'}</Text>
+                    </TouchableOpacity>
+                  )}
                   <View style={styles.activeCardTop}>
                     <Text style={styles.activeProgTitle}>
                       {subMode === 'examples'
                         ? (selectedExample?.name ?? 'Examples')
-                        : isNamedProg ? selectedProg.name : 'Custom'}
+                        : isNamedProg ? selectedProg.name
+                        : subMode === 'custom' && customName ? customName : 'Custom'}
                     </Text>
                     <Text style={styles.activeMeta}>
                       Key of {subMode === 'examples' && selectedExample
@@ -627,16 +722,67 @@ export default function ProgressionsScreen() {
                 {customChords.length === 0 && (
                   <Text style={styles.customEmpty}>Tap + Add chord to build your progression</Text>
                 )}
-                {customChords.map((c, i) => (
-                  <View key={i} style={styles.customItem}>
-                    <Text style={styles.customItemNum}>{chordRootName(c.root, c.chordType)}</Text>
-                    <Text style={styles.customItemName} numberOfLines={1}>{chordRootName(c.root, c.chordType)} {c.chordType}</Text>
-                    <TouchableOpacity onPress={() => { setCustomChords(ch => ch.filter((_, j) => j !== i)); if (activeIdx >= customChords.length - 1) setActiveIdx(0); }}
-                      style={styles.removeBtn} activeOpacity={0.7}>
-                      <Text style={styles.removeTxt}>x</Text>
+                {customChords.map((c, i) => {
+                  const sym = chordSymbol(c.root, c.chordType);
+                  const first = i === 0;
+                  const last = i === customChords.length - 1;
+                  return (
+                    <View key={i} style={styles.customItem}>
+                      <Text style={styles.customItemNum}>{i + 1}</Text>
+                      <Text style={styles.customItemName} numberOfLines={1}>{sym}</Text>
+                      <TouchableOpacity onPress={() => moveCustom(i, -1)} disabled={first}
+                        style={[styles.removeBtn, first && styles.moveBtnOff]} activeOpacity={0.7}
+                        accessibilityLabel={`Move ${sym} earlier`}>
+                        <Text style={styles.moveTxt}>▲</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity onPress={() => moveCustom(i, 1)} disabled={last}
+                        style={[styles.removeBtn, last && styles.moveBtnOff]} activeOpacity={0.7}
+                        accessibilityLabel={`Move ${sym} later`}>
+                        <Text style={styles.moveTxt}>▼</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity onPress={() => removeCustom(i)}
+                        style={styles.removeBtn} activeOpacity={0.7}
+                        accessibilityLabel={`Remove ${sym}`}>
+                        <Text style={styles.removeTxt}>x</Text>
+                      </TouchableOpacity>
+                    </View>
+                  );
+                })}
+                {customChords.length > 0 && (
+                  <View style={styles.customActions}>
+                    <TouchableOpacity onPress={openSave} style={[styles.addBtn, styles.customActionBtn]} activeOpacity={0.7}>
+                      <Text style={styles.addBtnTxt}>Save</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity onPress={newCustom} style={[styles.addBtn, styles.customActionBtn, styles.newBtn]} activeOpacity={0.7}>
+                      <Text style={styles.newBtnTxt}>New</Text>
                     </TouchableOpacity>
                   </View>
-                ))}
+                )}
+                {savedCustoms.length > 0 && (
+                  <Text style={styles.diatSubhead}>My progressions</Text>
+                )}
+                {savedCustoms.map(item => {
+                  const active = item.id === customId;
+                  return (
+                    <TouchableOpacity key={item.id} onPress={() => { loadCustom(item); closeDrawer(); }}
+                      style={[styles.progItem, active && styles.progItemActive]} activeOpacity={0.7}>
+                      <View style={styles.savedRow}>
+                        <View style={{ flex: 1 }}>
+                          <Text style={[styles.progName, active && styles.progNameActive]} numberOfLines={1}>
+                            {item.name}
+                          </Text>
+                          <Text style={styles.progNums} numberOfLines={1}>
+                            {item.chords.map(c => chordSymbol(c.root, c.chordType)).join(' – ')}
+                          </Text>
+                        </View>
+                        <TouchableOpacity onPress={() => deleteCustom(item)} style={styles.removeBtn} activeOpacity={0.7}
+                          accessibilityLabel={`Delete ${item.name}`}>
+                          <Text style={styles.removeTxt}>x</Text>
+                        </TouchableOpacity>
+                      </View>
+                    </TouchableOpacity>
+                  );
+                })}
                 <View style={{ height: 40 }} />
               </ScrollView>
             </View>
@@ -750,6 +896,44 @@ export default function ProgressionsScreen() {
         </View>
       </Modal>
 
+      <Modal visible={saveOpen} animationType="fade" transparent onRequestClose={() => setSaveOpen(false)}>
+        <View style={styles.saveOverlay}>
+          <Pressable style={StyleSheet.absoluteFill} onPress={() => setSaveOpen(false)} />
+          <View style={styles.saveCard}>
+            <Text style={styles.modalTitle}>Save progression</Text>
+            <Text style={styles.saveSub} numberOfLines={2}>{customDefaultName}</Text>
+            <TextInput
+              value={saveName}
+              onChangeText={setSaveName}
+              placeholder="Name"
+              placeholderTextColor={COLORS.textFaint}
+              style={styles.saveInput}
+              autoFocus
+              selectTextOnFocus
+              returnKeyType="done"
+              onSubmitEditing={() => confirmSave(false)}
+              maxLength={60}
+            />
+            <View style={styles.saveRow}>
+              <TouchableOpacity onPress={() => setSaveOpen(false)} style={styles.saveBtnGhost} activeOpacity={0.7}>
+                <Text style={styles.newBtnTxt}>Cancel</Text>
+              </TouchableOpacity>
+              {customId && (
+                <TouchableOpacity onPress={() => confirmSave(true)} style={styles.saveBtnGhost} activeOpacity={0.7}>
+                  <Text style={styles.newBtnTxt}>Save as new</Text>
+                </TouchableOpacity>
+              )}
+              <TouchableOpacity onPress={() => confirmSave(false)} style={styles.saveBtn} activeOpacity={0.7}>
+                <Text style={styles.saveBtnTxt}>{customId ? 'Update' : 'Save'}</Text>
+              </TouchableOpacity>
+            </View>
+            <Text style={styles.saveHint}>
+              Find it again under My progressions in the Custom list, or in the ♥ Saved sheet.
+            </Text>
+          </View>
+        </View>
+      </Modal>
+
       <SavedSheet visible={savedOpen} onClose={() => setSavedOpen(false)} />
       <HelpSheet visible={helpOpen} onClose={() => setHelpOpen(false)} tab="progressions" />
     </SafeAreaView>
@@ -847,6 +1031,31 @@ const styles = StyleSheet.create({
   customItemName: { fontSize: 11, color: COLORS.text, flex: 1 },
   removeBtn:      { width: 22, height: 22, borderRadius: 11, backgroundColor: COLORS.surfaceHigh, alignItems: 'center', justifyContent: 'center' },
   removeTxt:      { fontSize: 9, color: COLORS.textMuted },
+  moveTxt:        { fontSize: 8, color: COLORS.text },
+  moveBtnOff:     { opacity: 0.3 },
+  customActions:  { flexDirection: 'row', gap: 6, paddingHorizontal: SPACE.md, paddingTop: SPACE.sm },
+  customActionBtn:{ flex: 1, margin: 0 },
+  newBtn:         { borderColor: COLORS.border, backgroundColor: 'transparent' },
+  newBtnTxt:      { fontSize: 13, fontWeight: '600', color: COLORS.textMuted },
+  savedRow:       { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  saveChip:       {
+                    paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12,
+                    borderWidth: 1, borderColor: COLORS.accent, backgroundColor: COLORS.accentLight,
+                  },
+  saveChipTxt:    { fontSize: 11, fontWeight: '700', color: COLORS.accent },
+  saveOverlay:    { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'center', padding: SPACE.lg },
+  saveCard:       { backgroundColor: COLORS.bgElevated, borderRadius: RADIUS.lg, padding: SPACE.lg, gap: SPACE.sm },
+  saveSub:        { fontSize: 12, color: COLORS.textMuted },
+  saveInput:      {
+                    borderWidth: 1, borderColor: COLORS.border, borderRadius: RADIUS.md,
+                    paddingHorizontal: SPACE.md, paddingVertical: 10,
+                    fontSize: 15, color: COLORS.text, backgroundColor: COLORS.surface,
+                  },
+  saveRow:        { flexDirection: 'row', justifyContent: 'flex-end', gap: SPACE.sm, marginTop: 4 },
+  saveBtnGhost:   { paddingHorizontal: 12, paddingVertical: 9 },
+  saveBtn:        { paddingHorizontal: 16, paddingVertical: 9, borderRadius: RADIUS.md, backgroundColor: COLORS.accent },
+  saveBtnTxt:     { fontSize: 13, fontWeight: '700', color: COLORS.bg },
+  saveHint:       { fontSize: 11, color: COLORS.textFaint, lineHeight: 16 },
   right:          { flex: 1 },
   // Now-playing card — single mono numeral title + meta line + chord intervals
   activeCard:     {

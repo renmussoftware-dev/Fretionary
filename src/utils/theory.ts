@@ -1,6 +1,6 @@
 import {
   NOTES, OPEN_STRINGS, SCALES, CHORDS, CAGED_SHAPES, CAGED_ORDER,
-  type CagedLetter,
+  type CagedLetter, type CagedLayer, type CagedTonality,
 } from '../constants/music';
 
 export function getScaleNotes(root: number, scaleKey: string): number[] {
@@ -191,10 +191,81 @@ export function getCagedCaretFret(root: number, shape: CagedLetter): number {
   return 0;
 }
 
+// The chord grip's own span at its lowest position. The CAGED tab highlights
+// the wider scale window (getCagedOccurrences); marketing visuals tile grips.
 export function getCagedFretRange(root: number, shape: CagedLetter) {
   const cf = getCagedCaretFret(root, shape);
   const [lo, hi] = CAGED_SHAPES[shape].fretSpan;
   return { start: Math.max(0, cf + lo), end: cf + hi, caretFret: cf };
+}
+
+// Highest fret a CAGED occurrence may reach — the extended 24-fret neck.
+const CAGED_MAX_FRET = 24;
+
+// The scale the CAGED tab spells and labels against. Arpeggio and Chord use
+// the parent scale so the triad's notes keep their key spelling.
+export function cagedScaleKey(tonality: CagedTonality, layer: CagedLayer): string {
+  if (layer === 'pentatonic') return tonality === 'minor' ? 'Pentatonic Minor' : 'Pentatonic Major';
+  return tonality === 'minor' ? 'Natural Minor' : 'Major';
+}
+
+// Pitch classes the CAGED tab shows for this root, tonality and layer.
+export function getCagedNotes(root: number, tonality: CagedTonality, layer: CagedLayer): number[] {
+  if (layer === 'arpeggio' || layer === 'chord') {
+    return getChordNotes(root, tonality === 'minor' ? 'Minor' : 'Major');
+  }
+  return getScaleNotes(root, cagedScaleKey(tonality, layer));
+}
+
+export interface CagedOccurrence {
+  caretFret: number;
+  start: number;
+  end: number;
+  // Chord layer only: the grip's exact "s:f" cells.
+  cells?: ReadonlySet<string>;
+}
+
+/**
+ * Every place a CAGED shape sits on the neck for this root, low to high.
+ *
+ * The CAGED loop repeats at the 12th fret, so a shape at frets 0–3 is back
+ * at 12–15 (G major's G shape, C major's C shape). Showing only the lowest
+ * one left the top of the neck looking shapeless.
+ *
+ * The highlighted span is the shape's scale window, not its chord grip: the
+ * scale notes a player uses around a grip reach one fret further back than
+ * the grip itself (G major E shape is frets 2–5, the grip only 3–5). The
+ * Chord layer is the exception, it marks the grip's own notes.
+ */
+export function getCagedOccurrences(
+  root: number,
+  shape: CagedLetter,
+  tonality: CagedTonality,
+  layer: CagedLayer,
+): CagedOccurrence[] {
+  const def = CAGED_SHAPES[shape];
+  const grip = def.grip[tonality];
+  const gripOffsets = grip.map(([, off]) => off);
+  const [lo, hi] = layer === 'chord'
+    ? [Math.min(...gripOffsets), Math.max(...gripOffsets)]
+    : def.scaleWindow[tonality];
+  const out: CagedOccurrence[] = [];
+  for (let caret = getCagedCaretFret(root, shape); caret + hi <= CAGED_MAX_FRET; caret += 12) {
+    out.push({
+      caretFret: caret,
+      start: Math.max(0, caret + lo),
+      end: caret + hi,
+      cells: layer === 'chord'
+        ? new Set(grip.map(([s, off]) => `${s}:${caret + off}`))
+        : undefined,
+    });
+  }
+  return out;
+}
+
+export function isInCagedOccurrence(occ: CagedOccurrence, string: number, fret: number): boolean {
+  if (occ.cells) return occ.cells.has(`${string}:${fret}`);
+  return fret >= occ.start && fret <= occ.end;
 }
 
 // ── Enharmonic spelling ─────────────────────────────────────────────────────
@@ -461,8 +532,8 @@ export function noteLabel(
     // scale degree use a unique letter (C Dorian → B♭, not A♯). Falls back
     // to sharps-only NOTES when there's no scale/chord context to key off.
     if (mode === 'scales' || mode === 'caged') {
-      // CAGED overlays major-scale notes; scales mode uses the active scale.
-      const key = mode === 'caged' ? 'Major' : scaleKey;
+      // In CAGED mode the caller passes cagedScaleKey, not the Scales tab's.
+      const key = scaleKey;
       const sc = SCALES[key];
       if (sc) {
         const scNotes = getScaleNotes(root, key);

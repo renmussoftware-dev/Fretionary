@@ -5,6 +5,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as StoreReview from 'expo-store-review';
 import type { FretMap } from '../utils/diagramSvg';
 import { getTuning, tuningNoteClasses } from '../constants/tunings';
+import type { CagedLayer, CagedTonality } from '../constants/music';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const REVIEW_MIN_ACTIONS = 3;
@@ -80,10 +81,16 @@ export const SCALE_SPEED_MS: Record<ScalePlaybackSpeed, number> = {
   fast:   150,
 };
 
+export interface CustomChord { root: number; chordType: string }
+
+// 'custom' is a progression the user built in the Custom tab and saved under
+// a name. It lives in favorites so the Saved sheet lists it beside hearted
+// chords and scales; root is its first chord's, for the shared shape.
 export type SavedItem =
   | { kind: 'scale';       root: number; scaleKey: string;     addedAt: number }
   | { kind: 'chord';       root: number; chordKey: string;     addedAt: number }
-  | { kind: 'progression'; root: number; progName: string;     addedAt: number };
+  | { kind: 'progression'; root: number; progName: string;     addedAt: number }
+  | { kind: 'custom';      root: number; id: string; name: string; chords: CustomChord[]; addedAt: number };
 
 // Distributive Omit so the discriminated union survives the omission of `addedAt`.
 type DistributiveOmit<T, K extends keyof any> = T extends any ? Omit<T, K> : never;
@@ -140,6 +147,7 @@ function itemKey(it: SavedItemInput): string {
     case 'scale':       return `s:${it.root}:${it.scaleKey}`;
     case 'chord':       return `c:${it.root}:${it.chordKey}`;
     case 'progression': return `p:${it.root}:${it.progName}`;
+    case 'custom':      return `u:${it.id}`;
   }
 }
 
@@ -151,6 +159,9 @@ interface AppState {
   labelMode: LabelMode;
   activePosition: number | null;
   activeCaged: string | null;
+  // CAGED tab: major or minor shapes, and which notes ride on them.
+  cagedTonality: CagedTonality;
+  cagedLayer: CagedLayer;
   showAllFrets: boolean;
   isPro: boolean;
   tuningId: string;
@@ -249,6 +260,8 @@ interface AppState {
   setLabelMode: (l: LabelMode) => void;
   setActivePosition: (p: number | null) => void;
   setActiveCaged: (c: string | null) => void;
+  setCagedTonality: (t: CagedTonality) => void;
+  setCagedLayer: (l: CagedLayer) => void;
   setShowAllFrets: (v: boolean) => void;
   setIsPro: (v: boolean) => void;
   setTuningId: (id: string) => void;
@@ -258,6 +271,9 @@ interface AppState {
   setCustomNotes: (notes: number[]) => void;
 
   toggleFavorite: (item: SavedItemInput) => void;
+  // Upsert a saved custom progression by id — re-saving after an edit
+  // replaces it (and moves it to the top) instead of adding a copy.
+  saveCustomProgression: (item: Extract<SavedItemInput, { kind: 'custom' }>) => void;
   isFavorite: (item: SavedItemInput) => boolean;
   addRecent: (item: SavedItemInput) => void;
   clearRecents: () => void;
@@ -279,6 +295,8 @@ export const useStore = create<AppState>()(
       labelMode: 'name',
       activePosition: null,
       activeCaged: null,
+      cagedTonality: 'major',
+      cagedLayer: 'scale',
       showAllFrets: false,
       isPro: false,
       tuningId: 'standard',
@@ -407,6 +425,8 @@ export const useStore = create<AppState>()(
       setLabelMode: (labelMode) => set({ labelMode }),
       setActivePosition: (activePosition) => set({ activePosition }),
       setActiveCaged: (activeCaged) => set({ activeCaged }),
+      setCagedTonality: (cagedTonality) => set({ cagedTonality }),
+      setCagedLayer: (cagedLayer) => set({ cagedLayer }),
       setShowAllFrets: (showAllFrets) => set({ showAllFrets }),
       setIsPro: (isPro) => set({ isPro }),
       setTuningId: (tuningId) => set({ tuningId }),
@@ -473,6 +493,13 @@ export const useStore = create<AppState>()(
         }
       },
 
+      saveCustomProgression: (item) => {
+        const k = itemKey(item);
+        const rest = get().favorites.filter(f => itemKey(f) !== k);
+        set({ favorites: [{ ...item, addedAt: Date.now() }, ...rest] });
+        get().recordPositiveAction();
+      },
+
       isFavorite: (item) => {
         const k = itemKey(item);
         return get().favorites.some(f => itemKey(f) === k);
@@ -515,6 +542,8 @@ export const useStore = create<AppState>()(
         scalePlaybackSpeed: s.scalePlaybackSpeed,
         labelSize: s.labelSize,
         fretRange: s.fretRange,
+        cagedTonality: s.cagedTonality,
+        cagedLayer: s.cagedLayer,
         scalesExplored: s.scalesExplored,
         chordsLearned: s.chordsLearned,
         progressionsPlayed: s.progressionsPlayed,

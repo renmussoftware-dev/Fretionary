@@ -124,6 +124,7 @@ export default function Progress() {
                  NOTES[r.root]}{' '}
                 {r.kind === 'scale' ? r.scaleKey :
                  r.kind === 'chord' ? r.chordKey :
+                 r.kind === 'custom' ? r.name :
                  r.progName}
               </Text>
               <Text style={styles.recentChevron}>›</Text>

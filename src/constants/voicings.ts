@@ -31,6 +31,11 @@ export const VOICING_TEMPLATES: Record<string, VoicingTemplate[]> = {
     { frets:[0,2,2,0,0,0],       rootString:0, label:'Em shape', position:'low'  },
     { frets:[null,0,2,2,1,0],    rootString:1, label:'Am shape', position:'mid'  },
     { frets:[null,null,0,2,3,1], rootString:2, label:'Dm shape', position:'high' },
+    // The two CAGED minor shapes with no clean open chord — Cm x31013 and
+    // Gm 310033 at their home roots. Barre-style only; they complete the
+    // minor loop so the CAGED tab can draw all five reference grips.
+    { frets:[null,0,-2,-3,-2,0], rootString:1, label:'Cm shape', position:'mid'  },
+    { frets:[0,-2,-3,-3,0,0],    rootString:0, label:'Gm shape', position:'low'  },
   ],
 
   // R b3 b5

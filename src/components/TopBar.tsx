@@ -115,18 +115,20 @@ const segStyles = StyleSheet.create({
 });
 
 export default function TopBar() {
-  const { root, setRoot, scaleKey, chordKey, mode, setMode } = useStore();
+  const { root, setRoot, scaleKey, chordKey, mode, setMode, cagedTonality } = useStore();
   const { isPro } = useProGate();
   const [savedOpen, setSavedOpen] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
 
   // Name the root the way the active scale/chord spells it — "E♭ Dorian",
-  // not "D# Dorian". CAGED overlays the major scale, so it spells against
-  // Major. Identify has no scale/chord frame, so it keeps the bare sharp name.
+  // not "D# Dorian". CAGED spells against its major or natural minor scale
+  // ("Em CAGED" in minor). Identify has no scale/chord frame, so it keeps the bare sharp name.
   const titleSubject = mode === 'chords'
     ? `${chordRootName(root, chordKey)} ${chordKey}`
     : mode === 'caged'
-      ? `${scaleRootName(root, 'Major')} CAGED`
+      ? cagedTonality === 'minor'
+        ? `${scaleRootName(root, 'Natural Minor')}m CAGED`
+        : `${scaleRootName(root, 'Major')} CAGED`
       : mode === 'custom'
         ? `${NOTES[root]} Identify`
         : `${scaleRootName(root, scaleKey)} ${scaleKey}`;

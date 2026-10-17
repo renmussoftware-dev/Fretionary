@@ -230,12 +230,24 @@ export const CHORDS: Record<string, ChordDef> = {
   'Maj9♯11':     { intervals:[0,4,7,11,14,18],     intervalNames:['R','3','5','7','9','♯11'],     category:'extended', description:'Lydian major 9. Floating and cinematic.' },
 };
 
+export type CagedTonality = 'major' | 'minor';
+
+// One fretted note of a grip: [string (0=high e), fret offset from caret].
+export type GripNote = readonly [number, number];
+
 export interface CagedShape {
   name: string;
   rootString: number; // which string the root sits on (0=high e)
   description: string;
   fretSpan: [number, number]; // offset from caret fret [lo, hi]
   openShape: string; // what open chord it resembles
+  // The scale position that lives around the grip, as a caret offset. Wider
+  // than fretSpan: the scale reaches a fret behind the A, G, E and D grips
+  // (the G major E shape's scale runs 2–5, not just the 3–5 the grip covers).
+  // Every scale, pentatonic and arpeggio note inside this window belongs to
+  // the shape. The minor twin flattens the 3rd, which moves the window.
+  scaleWindow: Record<CagedTonality, [number, number]>;
+  grip: Record<CagedTonality, readonly GripNote[]>;
 }
 
 // fretSpan is measured from the caret (the fret where rootString carries the
@@ -256,16 +268,61 @@ export interface CagedShape {
 // These agree with VOICING_TEMPLATES, which encodes the same five shapes for
 // 'Major' independently (note it indexes strings the other way round:
 // 0=low E there, 0=high e here).
+//
+// scaleWindow and grip use the same caret offsets. The minor grips are the
+// major ones with the 3rd dropped a fret (open Am x02210, Em 022000, Dm
+// xx0231, plus the barre-only Cm x3101x and Gm 310033), and they keep the
+// same span, so the caret and octave placement are shared by both twins.
 export const CAGED_SHAPES: Record<string, CagedShape> = {
-  C: { name:'C shape', rootString:1, description:'Root on B string. Upper-neck brightness.', fretSpan:[-1,2], openShape:'C' },
-  A: { name:'A shape', rootString:2, description:'Root on G string. Very common barre shape.', fretSpan:[-2,0], openShape:'A' },
-  G: { name:'G shape', rootString:5, description:'Root on low E. Widest shape, spans 4+ frets.', fretSpan:[-3,0], openShape:'G' },
-  E: { name:'E shape', rootString:5, description:'Root on low E & high e. Most common barre shape.', fretSpan:[0,2], openShape:'E' },
+  C: {
+    name:'C shape', rootString:1, description:'Root on B string. Upper-neck brightness.', fretSpan:[-1,2], openShape:'C',
+    scaleWindow: { major: [-1, 2], minor: [-1, 2] },
+    grip: {
+      major: [[4, 2], [3, 1], [2, -1], [1, 0], [0, -1]],
+      minor: [[4, 2], [3, 0], [2, -1], [1, 0], [0, 2]],
+    },
+  },
+  A: {
+    name:'A shape', rootString:2, description:'Root on G string. Very common barre shape.', fretSpan:[-2,0], openShape:'A',
+    scaleWindow: { major: [-3, 0], minor: [-2, 1] },
+    grip: {
+      major: [[4, -2], [3, 0], [2, 0], [1, 0], [0, -2]],
+      minor: [[4, -2], [3, 0], [2, 0], [1, -1], [0, -2]],
+    },
+  },
+  G: {
+    name:'G shape', rootString:5, description:'Root on low E. Widest shape, spans 4+ frets.', fretSpan:[-3,0], openShape:'G',
+    scaleWindow: { major: [-4, 0], minor: [-3, 0] },
+    grip: {
+      major: [[5, 0], [4, -1], [3, -3], [2, -3], [1, -3], [0, 0]],
+      minor: [[5, 0], [4, -2], [3, -3], [2, -3], [1, 0], [0, 0]],
+    },
+  },
+  E: {
+    name:'E shape', rootString:5, description:'Root on low E & high e. Most common barre shape.', fretSpan:[0,2], openShape:'E',
+    scaleWindow: { major: [-1, 2], minor: [-1, 3] },
+    grip: {
+      major: [[5, 0], [4, 2], [3, 2], [2, 1], [1, 0], [0, 0]],
+      minor: [[5, 0], [4, 2], [3, 2], [2, 0], [1, 0], [0, 0]],
+    },
+  },
   // Anchored on the D string, not the high e: an open D is x x 0 2 3 2, so
   // the high e plays F# — the 3rd, not a root. Anchoring there put the caret
   // (and the whole highlight band) on a fret unrelated to the shape.
-  D: { name:'D shape', rootString:3, description:'Root on D string. Bright upper voicing for lead lines.', fretSpan:[0,3], openShape:'D' },
+  D: {
+    name:'D shape', rootString:3, description:'Root on D string. Bright upper voicing for lead lines.', fretSpan:[0,3], openShape:'D',
+    scaleWindow: { major: [-1, 3], minor: [0, 3] },
+    grip: {
+      major: [[3, 0], [2, 2], [1, 3], [0, 2]],
+      minor: [[3, 0], [2, 2], [1, 3], [0, 1]],
+    },
+  },
 };
+
+// What the CAGED tab lays over each shape. Scale is the full 7-note major or
+// natural minor scale; Pentatonic, Arpeggio (R-3-5 anywhere in the window)
+// and Chord (just the grip) are the same window seen through a smaller set.
+export type CagedLayer = 'scale' | 'pentatonic' | 'arpeggio' | 'chord';
 
 export const CAGED_ORDER = ['C','A','G','E','D'] as const;
 export type CagedLetter = typeof CAGED_ORDER[number];

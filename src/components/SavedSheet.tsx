@@ -5,7 +5,7 @@ import {
 import { router } from 'expo-router';
 import { COLORS, RADIUS, SPACE } from '../constants/theme';
 import { NOTES } from '../constants/music';
-import { scaleRootName, chordRootName } from '../utils/theory';
+import { scaleRootName, chordRootName, chordSymbol } from '../utils/theory';
 import { useStore, type SavedItem } from '../store/useStore';
 
 interface Props {
@@ -19,12 +19,14 @@ const KIND_LABEL: Record<SavedItem['kind'], string> = {
   scale: 'SCALE',
   chord: 'CHORD',
   progression: 'PROG',
+  custom: 'MINE',
 };
 
 const KIND_COLOR: Record<SavedItem['kind'], string> = {
   scale: '#378ADD',
   chord: '#1D9E75',
   progression: '#BA7517',
+  custom: '#8A6FD1',
 };
 
 function itemTitle(it: SavedItem): string {
@@ -33,6 +35,9 @@ function itemTitle(it: SavedItem): string {
   // no scale/chord, so their key keeps the bare sharp name.
   if (it.kind === 'scale') return `${scaleRootName(it.root, it.scaleKey)} ${it.scaleKey}`;
   if (it.kind === 'chord') return `${chordRootName(it.root, it.chordKey)} ${it.chordKey}`;
+  if (it.kind === 'custom') {
+    return `${it.name} · ${it.chords.map(c => chordSymbol(c.root, c.chordType)).join(' ')}`;
+  }
   return `${it.progName} · in ${NOTES[it.root]}`;
 }
 
@@ -113,14 +118,14 @@ export default function SavedSheet({ visible, onClose }: Props) {
                 </Text>
                 <Text style={styles.emptyDesc}>
                   {tab === 'favorites'
-                    ? 'Tap the heart on any chord, scale, or progression to save it for later.'
+                    ? 'Tap the heart on any chord, scale, or progression to save it for later. Progressions you build in Custom save here too.'
                     : 'Chords, scales, and progressions you select will appear here.'}
                 </Text>
               </View>
             ) : (
               items.map(it => (
                 <TouchableOpacity
-                  key={`${it.kind}-${it.root}-${'scaleKey' in it ? it.scaleKey : 'chordKey' in it ? it.chordKey : it.progName}`}
+                  key={`${it.kind}-${it.root}-${'scaleKey' in it ? it.scaleKey : 'chordKey' in it ? it.chordKey : 'id' in it ? it.id : it.progName}`}
                   onPress={() => handleTap(it)}
                   activeOpacity={0.7}
                   style={styles.row}

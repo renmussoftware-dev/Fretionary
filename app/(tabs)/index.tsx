@@ -24,10 +24,11 @@ import {
   NOTES, NOTE_DISPLAY,
   SCALES, CHORDS, CAGED_ORDER, CAGED_COLORS, CAGED_SHAPES,
   CAGED_SHAPE_TIPS, POSITION_COLORS,
+  type CagedLayer, type CagedLetter, type CagedTonality,
 } from '../../src/constants/music';
 import { useStore, useIdentifyNotes, SCALE_SPEED_MS, ScalePlaybackSpeed } from '../../src/store/useStore';
 import {
-  getScalePositions, getCagedCaretFret, getCagedFretRange, identifyCustomSelection,
+  getScalePositions, getCagedOccurrences, identifyCustomSelection,
   spellNoteAt, symbolToDegreeIdx, chordRootName, chordRootLetter,
   getScaleTriads,
 } from '../../src/utils/theory';
@@ -82,6 +83,20 @@ const INVERSION_OPTIONS = [
   { label: '2nd inv', value: '2', dotColor: INVERSION_COLORS[2], color: INVERSION_COLORS[2] },
 ];
 
+const CAGED_TONALITY_OPTIONS = [
+  { label: 'Major', value: 'major' },
+  { label: 'Minor', value: 'minor' },
+];
+
+// What rides on each shape. Same window throughout, smaller note sets as you
+// go down the list, ending with just the chord grip.
+const CAGED_LAYER_OPTIONS = [
+  { label: 'Scale',      value: 'scale'      },
+  { label: 'Pentatonic', value: 'pentatonic' },
+  { label: 'Arpeggio',   value: 'arpeggio'   },
+  { label: 'Chord',      value: 'chord'      },
+];
+
 const FRET_RANGE_OPTIONS = [
   { label: 'All',  value: 'all'      },
   { label: '0–5',  value: 'open'     },
@@ -125,6 +140,7 @@ export default function FretboardScreen() {
     chordKey, setChordKey, labelMode, setLabelMode,
     activePosition, setActivePosition,
     activeCaged, setActiveCaged,
+    cagedTonality, setCagedTonality, cagedLayer, setCagedLayer,
     toggleCustomNote, clearCustomNotes,
     labelSize, setLabelSize, fretRange, setFretRange,
   } = useStore();
@@ -266,10 +282,11 @@ export default function FretboardScreen() {
     })),
   ];
 
+  const cagedSuffix = cagedTonality === 'minor' ? 'm' : '';
   const cagedOptions = [
     { label: 'All', value: 'all' },
     ...CAGED_ORDER.map(shape => ({
-      label: `${shape} shape`,
+      label: `${shape}${cagedSuffix} shape`,
       value: shape,
       dotColor: CAGED_COLORS[shape]?.fill,
       color: CAGED_COLORS[shape]?.fill,
@@ -573,6 +590,18 @@ export default function FretboardScreen() {
         {/* CAGED shape selector + detail card */}
         {mode === 'caged' && (
           <View style={styles.section}>
+            <View style={styles.triadSub}>
+              <PillSelector label="Tonality" options={CAGED_TONALITY_OPTIONS}
+                value={cagedTonality}
+                onChange={v => v && setCagedTonality(v as CagedTonality)}
+                allowDeselect={false} />
+            </View>
+            <View style={styles.triadSub}>
+              <PillSelector label="Show" options={CAGED_LAYER_OPTIONS}
+                value={cagedLayer}
+                onChange={v => v && setCagedLayer(v as CagedLayer)}
+                allowDeselect={false} />
+            </View>
             <PillSelector label="CAGED shape" options={cagedOptions}
               value={activeCaged ?? 'all'}
               onChange={v => {
@@ -583,11 +612,16 @@ export default function FretboardScreen() {
             {activeCaged && CAGED_SHAPES[activeCaged] && (() => {
               const shape = CAGED_SHAPES[activeCaged];
               const col = CAGED_COLORS[activeCaged];
-              const caret = getCagedCaretFret(root, activeCaged as any);
-              // Where the shape actually starts. Not the same as the caret:
-              // the caret is the root on the anchor string, and the C, A and
-              // G shapes all reach below it (spans [-1,2], [-2,0], [-3,0]).
-              const cagedSpan = getCagedFretRange(root, activeCaged as any);
+              const minor = cagedTonality === 'minor';
+              // Every octave the shape appears at. The caret is the root on
+              // the anchor string; the highlighted span reaches below it for
+              // most shapes (the scale sits a fret behind the A/G/E/D grips).
+              const occurrences = getCagedOccurrences(root, activeCaged as CagedLetter, cagedTonality, cagedLayer);
+              const caret = occurrences[0]?.caretFret ?? 0;
+              const spans = occurrences.map(o => `${o.start}–${o.end}`);
+              const spanText = spans.length > 1
+                ? `${spans.slice(0, -1).join(', ')} and ${spans[spans.length - 1]}`
+                : spans[0] ?? '';
               const tips = CAGED_SHAPE_TIPS[activeCaged as keyof typeof CAGED_SHAPE_TIPS] ?? [];
               const protoRoot = CAGED_PROTOTYPE_ROOT[activeCaged];
               const protoNoteName = protoRoot !== undefined ? NOTES[protoRoot] : null;
@@ -598,8 +632,10 @@ export default function FretboardScreen() {
                       <Text style={styles.cagedShapeBadgeText}>{activeCaged}</Text>
                     </View>
                     <View style={{ flex: 1 }}>
-                      <Text style={styles.cagedShapeTitle}>{shape.name}</Text>
-                      <Text style={styles.cagedShapeSub}>Caret fret · {caret || 'open'}</Text>
+                      <Text style={styles.cagedShapeTitle}>{activeCaged}{cagedSuffix} shape</Text>
+                      <Text style={styles.cagedShapeSub}>
+                        Root fret · {caret || 'open'} · Frets {spanText}
+                      </Text>
                     </View>
                   </View>
 
@@ -613,18 +649,16 @@ export default function FretboardScreen() {
                   {protoRoot !== undefined && (
                     <View style={styles.cagedProtoWrap}>
                       <Text style={styles.cagedProtoLabel}>
-                        Reference shape · open {protoNoteName} major
+                        Reference shape · {protoNoteName} {minor ? 'minor' : 'major'}
                       </Text>
                       <ChordBox
                         root={protoRoot}
-                        chordKey="Major"
+                        chordKey={minor ? 'Minor' : 'Major'}
                         compact
-                        lockToLabel={`${activeCaged} shape`}
+                        lockToLabel={`${activeCaged}${cagedSuffix} shape`}
                       />
                       <Text style={styles.cagedProtoHint}>
-                        {cagedSpan.start > 0
-                          ? `Memorize this fingering — for your selected key it sits at frets ${cagedSpan.start}–${cagedSpan.end}. The colored region on the fretboard above shows where it lives.`
-                          : `Memorize this fingering — for your selected key the shape sits in open position, exactly as shown.`}
+                        {`Memorize this fingering. For your selected key the shape covers frets ${spanText}, and it repeats every 12 frets. The colored regions on the fretboard above show where it lives.`}
                       </Text>
                     </View>
                   )}

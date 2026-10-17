@@ -5,25 +5,26 @@ import { NOTES, SCALES, CHORDS } from '../constants/music';
 import { useStore, useIdentifyNotes } from '../store/useStore';
 import {
   getScaleNotes, getChordNotes, spellNoteAt, symbolToDegreeIdx,
-  scaleDegreeIdxAt, scaleRootLetter, chordRootLetter,
+  scaleDegreeIdxAt, scaleRootLetter, chordRootLetter, cagedScaleKey, getCagedNotes,
 } from '../utils/theory';
 
 const INTERVAL_NAMES = ['R','♭2','2','♭3','3','4','♭5','5','♭6','6','♭7','7'];
 
 export default function InfoPanel() {
-  const { root, scaleKey, chordKey, mode, activeCaged } = useStore();
+  const { root, scaleKey, chordKey, mode, activeCaged, cagedTonality, cagedLayer } = useStore();
   const customNotes = useIdentifyNotes();
 
-  // CAGED overlays the MAJOR scale on the neck — that's what noteLabel spells
-  // against and what the Formula/Degrees columns below already report. This
-  // used to read the active scaleKey in CAGED mode, so the Notes column listed
-  // a different set of notes than the dots on the neck AND than its own
-  // Formula column right beside it.
-  const scaleForNotes = mode === 'caged' ? 'Major' : scaleKey;
+  // CAGED overlays its own scale (major/minor, full or pentatonic) on the
+  // neck — that's what noteLabel spells against, so the Notes column must use
+  // it too, not the Scales tab's scaleKey, or it lists different notes than
+  // the dots.
+  const scaleForNotes = mode === 'caged' ? cagedScaleKey(cagedTonality, cagedLayer) : scaleKey;
+  const cagedTriad = mode === 'caged' && (cagedLayer === 'arpeggio' || cagedLayer === 'chord');
 
   let notes: number[];
   if (mode === 'chords') notes = getChordNotes(root, chordKey);
   else if (mode === 'custom') notes = customNotes;
+  else if (mode === 'caged') notes = getCagedNotes(root, cagedTonality, cagedLayer);
   else notes = getScaleNotes(root, scaleForNotes);
 
   // Spell by degree so this list matches the neck: C Dorian reads
@@ -50,9 +51,11 @@ export default function InfoPanel() {
       // scales + caged. The degree comes from the scale's degree symbols, not
       // the array index — pentatonic/blues/whole-tone skip letters, so index
       // and degree diverge (Pentatonic Minor's 2nd note is its ♭3).
+      // A CAGED triad is a subset of its scale, so look each note up there.
       const rl = scaleRootLetter(root, scaleForNotes);
+      const scaleNotes = getScaleNotes(root, scaleForNotes);
       notesStr = notes
-        .map((n, i) => spellNoteAt(root, scaleDegreeIdxAt(scaleForNotes, i), n, rl))
+        .map(n => spellNoteAt(root, scaleDegreeIdxAt(scaleForNotes, scaleNotes.indexOf(n)), n, rl))
         .join(' ');
     }
   }
@@ -75,10 +78,19 @@ export default function InfoPanel() {
     formulaLabel = 'Intervals';
     degreesLabel = 'About';
   } else if (mode === 'caged') {
-    formula = SCALES['Major']?.formula || '—';
-    degrees = SCALES['Major']?.degrees.join(' ') || '—';
+    if (cagedTriad) {
+      const ch = CHORDS[cagedTonality === 'minor' ? 'Minor' : 'Major'];
+      formula = ch.intervalNames.join(' ');
+      degrees = cagedLayer === 'chord' ? 'Chord grip' : 'Arpeggio';
+      formulaLabel = 'Intervals';
+      degreesLabel = 'Layer';
+    } else {
+      formula = SCALES[scaleForNotes]?.formula || '—';
+      degrees = SCALES[scaleForNotes]?.degrees.join(' ') || '—';
+    }
+    const m = cagedTonality === 'minor' ? 'm' : '';
     description = activeCaged
-      ? `${activeCaged} shape highlighted on the neck`
+      ? `${activeCaged}${m} shape highlighted on the neck`
       : 'Select a CAGED shape above';
   } else if (mode === 'custom') {
     formula = customNotes.length > 0
