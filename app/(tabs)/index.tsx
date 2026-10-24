@@ -30,7 +30,7 @@ import { useStore, useIdentifyNotes, SCALE_SPEED_MS, ScalePlaybackSpeed } from '
 import {
   getScalePositions, getCagedOccurrences, identifyCustomSelection,
   spellNoteAt, symbolToDegreeIdx, chordRootName, chordRootLetter,
-  getScaleTriads, supportsThreeNps, type PositionSystem,
+  getScaleTriads, type PositionSystem,
 } from '../../src/utils/theory';
 import { useProGate } from '../../src/hooks/useProGate';
 import { useAudioEngine } from '../../src/hooks/useAudioEngine';
@@ -514,27 +514,23 @@ export default function FretboardScreen() {
         {/* Position selector */}
         {mode === 'scales' && positions.length > 0 && (
           <View style={styles.section}>
-            {/* 3NPS only makes sense for 7+ note scales; pentatonic and
-                blues keep their two-per-string boxes. */}
-            {supportsThreeNps(scaleKey) && (
-              <View style={{ marginBottom: SPACE.sm }}>
-                <PillSelector label="Position style" options={POSITION_SYSTEM_OPTIONS}
-                  value={positionSystem}
-                  onChange={v => {
-                    if (!v) return;
-                    setPositionSystem(v as PositionSystem);
-                    // "All" lights the whole scale either way, so the switch
-                    // would look like it did nothing — show the first pattern.
-                    if (v === '3nps') setActivePosition(0);
-                  }}
-                  allowDeselect={false} />
-              </View>
-            )}
+            <View style={{ marginBottom: SPACE.sm }}>
+              <PillSelector label="Position style" options={POSITION_SYSTEM_OPTIONS}
+                value={positionSystem}
+                onChange={v => {
+                  if (!v) return;
+                  setPositionSystem(v as PositionSystem);
+                  // "All" lights the whole scale either way, so the switch
+                  // would look like it did nothing — show the first pattern.
+                  if (v === '3nps') setActivePosition(0);
+                }}
+                allowDeselect={false} />
+            </View>
             <PillSelector label="Position" options={posOptions}
               value={activePosition === null ? 'all' : String(activePosition)}
               onChange={v => {
                 // 3NPS pattern 1 is a free preview; the rest are Pro.
-                const freePreview = positionSystem === '3nps' && supportsThreeNps(scaleKey) && v === '0';
+                const freePreview = positionSystem === '3nps' && v === '0';
                 if (v !== null && v !== 'all' && !isPro && !freePreview) { requirePro(() => setActivePosition(Number(v))); return; }
                 setActivePosition(v === null || v === 'all' ? null : Number(v));
               }}

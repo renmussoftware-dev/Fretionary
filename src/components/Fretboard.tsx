@@ -355,6 +355,31 @@ export default function Fretboard() {
             and renders nothing visible. */}
         {mode === 'scales' && activePosition !== null && positions[activePosition] && (() => {
           const pos = positions[activePosition];
+          // 3NPS: one band per string, so diagonal patterns read as a
+          // staircase instead of a window spanning most of the neck.
+          if (pos.stepped && pos.cells) {
+            const spans = new Map<number, [number, number]>();
+            pos.cells.forEach(key => {
+              const [s, f] = key.split(':').map(Number);
+              const sp = spans.get(s);
+              spans.set(s, sp ? [Math.min(sp[0], f), Math.max(sp[1], f)] : [f, f]);
+            });
+            return (
+              <G>
+                {[...spans].map(([s, [lo, hi]]) => {
+                  const a = Math.max(lo, winStart);
+                  const b = Math.min(hi, winEnd);
+                  if (a > b) return null;
+                  const x1 = a === 0 && showNut ? LEFT_PAD : fretX(a) - FRET_W / 2;
+                  const x2 = fretLineX(b);
+                  return (
+                    <Rect key={s} x={x1} y={strY(s) - STR_H / 2} width={x2 - x1} height={STR_H}
+                      rx={8} fill="url(#posHL)" />
+                  );
+                })}
+              </G>
+            );
+          }
           const clampedStart = Math.max(pos.start, winStart);
           const clampedEnd = Math.min(pos.end, winEnd);
           if (clampedStart > clampedEnd) return null;

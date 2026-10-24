@@ -66,9 +66,7 @@ export function getScalePositions(
   noteClasses: readonly number[] = OPEN_STRINGS,
   system: PositionSystem = 'standard',
 ): ScalePosition[] {
-  if (system === '3nps' && scaleKey && supportsThreeNps(scaleKey)) {
-    return getThreeNpsPositions(root, scaleKey, noteClasses);
-  }
+  if (system === '3nps' && scaleKey) return getThreeNpsPositions(root, scaleKey, noteClasses);
   const boxes = scaleKey ? getPentatonicBoxes(root, scaleKey, noteClasses) : null;
   if (boxes) return boxes;
 
@@ -99,6 +97,9 @@ export interface ScalePosition {
   // Exact "s:f" cells in the box. When present, only these are in the
   // position; without it, every fret from start to end is.
   cells?: ReadonlySet<string>;
+  // Highlight each string's own span instead of one fret window — 3NPS
+  // patterns step up the neck string by string.
+  stepped?: boolean;
 }
 
 // The 5-note shape each box-based scale is built on. Blues is minor
@@ -197,19 +198,18 @@ function walkScale(
 
 const fits = (cells: readonly { f: number }[]) => cells.every(c => c.f >= 0 && c.f <= 24);
 
-// 3NPS only holds a hand position with 7+ notes. Fewer (pentatonic, blues,
-// whole tone) and three notes outrun each string's fourth, so the pattern
-// slides 2–3 frets per string — A minor pentatonic spans frets 5–22.
-export function supportsThreeNps(scaleKey: string): boolean {
-  return (SCALES[scaleKey]?.steps.length ?? 0) >= 7;
-}
-
 /**
  * Three-notes-per-string patterns: one per scale degree, each starting on
  * that degree on the lowest string. Pattern 1 starts on the root, and the
  * rest climb the neck in scale order — the usual 3NPS numbering, so a 7-note
- * scale gets 7 patterns. Any pattern that runs past fret 24 drops an octave,
- * and one that would cross the nut moves up an octave.
+ * scale gets 7 patterns and a pentatonic 5.
+ *
+ * With 7+ notes each pattern holds a hand position. With fewer (pentatonic,
+ * blues, whole tone) three notes outrun each string's fourth, so the pattern
+ * climbs 2–3 frets per string — the diagonal shapes players use for long
+ * runs (A minor pentatonic pattern 1 spans frets 5–22). Those can't always
+ * fit on the neck, so each pattern goes in the octave that keeps the most
+ * notes, and notes past the nut or fret 24 are dropped.
  */
 function getThreeNpsPositions(
   root: number,
@@ -219,23 +219,31 @@ function getThreeNpsPositions(
   const notes = getScaleNotes(root, scaleKey);
   const low = noteClasses.length - 1;
   const walk = (startFret: number) => walkScale(notes, startFret, 3, noteClasses);
+  const onNeck = (c: { f: number }) => c.f >= 0 && c.f <= 24;
 
-  const starts: number[] = [];
-  for (const n of notes) {
-    let start = ((n - noteClasses[low]) % 12 + 12) % 12;
-    const prev = starts[starts.length - 1];
-    if (prev !== undefined) while (start <= prev) start += 12;
-    if (!fits(walk(start))) start = [start - 12, start + 12].find(s => fits(walk(s))) ?? start;
-    starts.push(start);
-  }
-
-  return starts.map(start => {
-    const cells = walk(start);
+  let prev = -Infinity;
+  return notes.map(n => {
+    const base = ((n - noteClasses[low]) % 12 + 12) % 12;
+    // Most notes on the neck wins; on a tie, the lowest start that still
+    // climbs past the previous pattern, else the lowest start.
+    let best: { start: number; cells: { s: number; f: number }[] } | null = null;
+    for (let k = -2; k <= 2; k++) {
+      const start = base + 12 * k;
+      const cells = walk(start).filter(onNeck);
+      if (cells.length === 0) continue;
+      const better = !best
+        || cells.length > best.cells.length
+        || (cells.length === best.cells.length && best.start < prev && start >= prev);
+      if (better) best = { start, cells };
+    }
+    const cells = best!.cells;
+    prev = best!.start;
     const frets = cells.map(c => c.f);
     return {
       start: Math.min(...frets),
       end: Math.max(...frets),
       cells: new Set(cells.map(c => `${c.s}:${c.f}`)),
+      stepped: true,
     };
   });
 }
