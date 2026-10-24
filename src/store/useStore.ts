@@ -109,7 +109,7 @@ export interface ExerciseStat {
 }
 
 // How far the player nudges the tempo up after a clean run.
-const CLEAN_BPM_STEP = 4;
+export const CLEAN_BPM_STEP = 4;
 
 // Highest fret a tapped Identify position can live on (the 24-fret range).
 const CUSTOM_MAX_FRET = 24;

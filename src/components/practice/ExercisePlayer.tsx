@@ -5,10 +5,11 @@ import { COLORS, FONT_FAMILY, RADIUS, SPACE } from '../../constants/theme';
 import { isScaleFree } from '../../constants/subscription';
 import { useProGate } from '../../hooks/useProGate';
 import { useMetronomeClock, BPM_MIN, BPM_MAX } from '../../hooks/useMetronomeClock';
-import { useStore } from '../../store/useStore';
+import { useStore, CLEAN_BPM_STEP } from '../../store/useStore';
 import { chordRootName, scaleRootName } from '../../utils/theory';
 import PillSelector from '../PillSelector';
 import ExerciseFretboard from './ExerciseFretboard';
+import CleanRunCelebration from './CleanRunCelebration';
 import type { ExerciseDef } from './exerciseCatalog';
 
 export interface ExerciseResult {
@@ -61,6 +62,9 @@ export default function ExercisePlayer({ def, initialRoot, sessionLabel, onFinis
   const [stepIdx, setStepIdx] = useState<number | null>(null);
   const [secondsLeft, setSecondsLeft] = useState(def.minutes * 60);
   const [elapsed, setElapsed] = useState(0);
+  // Set on "Felt clean": the best as it stood before this run, so the
+  // celebration can count up from it. Finishing waits for Continue.
+  const [celebrate, setCelebrate] = useState<{ prevBest: number | null } | null>(null);
 
   const pattern = useMemo(() => def.build(root, variant), [def, root, variant]);
 
@@ -130,6 +134,10 @@ export default function ExercisePlayer({ def, initialRoot, sessionLabel, onFinis
 
   function finish(clean: boolean) {
     setRunning(false);
+    if (clean) {
+      setCelebrate({ prevBest: stat?.bestBpm ?? null });
+      return;
+    }
     onFinish({ bpm, seconds: elapsed, clean });
   }
 
@@ -247,6 +255,15 @@ export default function ExercisePlayer({ def, initialRoot, sessionLabel, onFinis
         <Text style={styles.finishHint}>
           Felt clean saves {bpm} bpm as your best and starts you a little faster next time.
         </Text>
+      )}
+
+      {celebrate && (
+        <CleanRunCelebration
+          bpm={bpm}
+          prevBest={celebrate.prevBest}
+          nextBpm={Math.min(BPM_MAX, bpm + CLEAN_BPM_STEP)}
+          onContinue={() => onFinish({ bpm, seconds: elapsed, clean: true })}
+        />
       )}
     </View>
   );
