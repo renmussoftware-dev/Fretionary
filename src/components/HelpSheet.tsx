@@ -38,6 +38,7 @@ const CONTENT: Record<HelpTab, Content> = {
         title: 'Play + explore',
         bullets: [
           'In Scales mode, tap "▶ Hear scale" to play the current scale — pick a speed and All / Single highlight.',
+          'For 7-note scales, "Position style" switches the positions between standard CAGED shapes and 3 notes per string (one pattern per scale degree).',
           'In CAGED mode, pick one of the 5 shapes to see where it sits on the neck plus a reference chord diagram. Switch Major/Minor, and show the full scale, the pentatonic box, the arpeggio or just the chord grip. Each shape repeats 12 frets up.',
           'Change the tuning via the top-right TUNING pill.',
         ],

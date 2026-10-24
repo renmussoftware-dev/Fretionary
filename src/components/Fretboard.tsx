@@ -162,9 +162,10 @@ export default function Fretboard() {
     return customNotes.includes(ni) || customCellSet.has(`${s}:${f}`);
   }
 
+  const positionSystem = useStore(s => s.positionSystem);
   const positions = useMemo(() =>
-    mode === 'scales' ? getScalePositions(root, scaleKey, noteClasses) : [],
-    [root, scaleKey, mode, noteClasses],
+    mode === 'scales' ? getScalePositions(root, scaleKey, noteClasses, positionSystem) : [],
+    [root, scaleKey, mode, noteClasses, positionSystem],
   );
 
   // String-set mode: only the closed triad shapes on those three strings
@@ -212,7 +213,7 @@ export default function Fretboard() {
     if (mode === 'scales' && activePosition !== null) {
       const pos = positions[activePosition];
       if (!pos) return false;
-      // Pentatonic boxes list their exact cells; other scales are a fret window.
+      // Pentatonic boxes and 3NPS list their exact cells; other scales are a fret window.
       if (pos.cells) return pos.cells.has(`${string}:${fret}`);
       return fret >= pos.start && fret <= pos.end;
     }

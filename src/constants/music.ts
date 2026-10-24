@@ -384,6 +384,10 @@ export const POSITION_COLORS = [
   { fill:'#3FA08A', light:'rgba(63,160,138,0.16)',  stroke:'#3FA08A' },
   { fill:'#5C8FCC', light:'rgba(92,143,204,0.16)',  stroke:'#5C8FCC' },
   { fill:'#C19052', light:'rgba(193,144,82,0.16)',  stroke:'#C19052' },
+  // 3-notes-per-string has one pattern per scale degree — up to 8.
+  { fill:'#C2588F', light:'rgba(194,88,143,0.16)',  stroke:'#C2588F' },
+  { fill:'#7FA346', light:'rgba(127,163,70,0.16)',  stroke:'#7FA346' },
+  { fill:'#4FA9BF', light:'rgba(79,169,191,0.16)',  stroke:'#4FA9BF' },
 ];
 
 export const CAGED_COLORS: Record<string, { fill:string; light:string; stroke:string }> = {

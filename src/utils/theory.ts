@@ -57,12 +57,18 @@ const POSITION_ORDER: readonly CagedLetter[] = ['E', 'D', 'C', 'A', 'G'];
  * standard tuning (which is what the CAGED tab pins), so in an alternate
  * tuning they stay put as hand positions while the notes inside them follow
  * the tuning.
+ *
+ * With `system` set to '3nps' every scale uses getThreeNpsPositions instead.
  */
 export function getScalePositions(
   root: number,
   scaleKey?: string,
   noteClasses: readonly number[] = OPEN_STRINGS,
+  system: PositionSystem = 'standard',
 ): ScalePosition[] {
+  if (system === '3nps' && scaleKey && supportsThreeNps(scaleKey)) {
+    return getThreeNpsPositions(root, scaleKey, noteClasses);
+  }
   const boxes = scaleKey ? getPentatonicBoxes(root, scaleKey, noteClasses) : null;
   if (boxes) return boxes;
 
@@ -82,6 +88,10 @@ export function getScalePositions(
 
   return starts.map(start => ({ start, end: Math.min(start + POSITION_SPAN, 24) }));
 }
+
+// 'standard' = CAGED windows (pentatonic/blues: two-per-string boxes);
+// '3nps' = three notes on every string.
+export type PositionSystem = 'standard' | '3nps';
 
 export interface ScalePosition {
   start: number;
@@ -123,30 +133,8 @@ function getPentatonicBoxes(
   if (!baseKey) return null;
   const shape = getScaleNotes(root, baseKey);
   const extras = getScaleNotes(root, scaleKey).filter(n => !shape.includes(n));
-
-  // Each string's open pitch in semitones above the lowest string.
   const low = noteClasses.length - 1;
-  const openPitch: number[] = [];
-  openPitch[low] = 0;
-  for (let s = low - 1; s >= 0; s--) {
-    openPitch[s] = openPitch[s + 1] + (((noteClasses[s] - noteClasses[s + 1]) % 12 + 12) % 12 || 12);
-  }
-
-  // Frets for a box whose first note is at `startFret` on the lowest string.
-  function walk(startFret: number) {
-    const cells: { s: number; f: number }[] = [];
-    let pitch = startFret;
-    for (let s = low; s >= 0; s--) {
-      for (let i = 0; i < 2; i++) {
-        if (cells.length > 0) {
-          do pitch++; while (!shape.includes(((noteClasses[low] + pitch) % 12 + 12) % 12));
-        }
-        cells.push({ s, f: pitch - openPitch[s] });
-      }
-    }
-    return cells;
-  }
-  const fits = (cells: { f: number }[]) => cells.every(c => c.f >= 0 && c.f <= 24);
+  const walk = (startFret: number) => walkScale(shape, startFret, 2, noteClasses);
 
   const starts: number[] = [];
   for (let k = 0; k < shape.length; k++) {
@@ -172,6 +160,83 @@ function getPentatonicBoxes(
       }
     }
     return { start: lo, end: hi, cells: keys };
+  });
+}
+
+/**
+ * Cells for a shape that starts at `startFret` on the lowest string and walks
+ * up `notes` in pitch order, `perString` notes on each string. Follows the
+ * actual tuning, so frets can come out negative or past 24 — check `fits`.
+ */
+function walkScale(
+  notes: readonly number[],
+  startFret: number,
+  perString: number,
+  noteClasses: readonly number[],
+) {
+  // Each string's open pitch in semitones above the lowest string.
+  const low = noteClasses.length - 1;
+  const openPitch: number[] = [];
+  openPitch[low] = 0;
+  for (let s = low - 1; s >= 0; s--) {
+    openPitch[s] = openPitch[s + 1] + (((noteClasses[s] - noteClasses[s + 1]) % 12 + 12) % 12 || 12);
+  }
+
+  const cells: { s: number; f: number }[] = [];
+  let pitch = startFret;
+  for (let s = low; s >= 0; s--) {
+    for (let i = 0; i < perString; i++) {
+      if (cells.length > 0) {
+        do pitch++; while (!notes.includes(((noteClasses[low] + pitch) % 12 + 12) % 12));
+      }
+      cells.push({ s, f: pitch - openPitch[s] });
+    }
+  }
+  return cells;
+}
+
+const fits = (cells: readonly { f: number }[]) => cells.every(c => c.f >= 0 && c.f <= 24);
+
+// 3NPS only holds a hand position with 7+ notes. Fewer (pentatonic, blues,
+// whole tone) and three notes outrun each string's fourth, so the pattern
+// slides 2–3 frets per string — A minor pentatonic spans frets 5–22.
+export function supportsThreeNps(scaleKey: string): boolean {
+  return (SCALES[scaleKey]?.steps.length ?? 0) >= 7;
+}
+
+/**
+ * Three-notes-per-string patterns: one per scale degree, each starting on
+ * that degree on the lowest string. Pattern 1 starts on the root, and the
+ * rest climb the neck in scale order — the usual 3NPS numbering, so a 7-note
+ * scale gets 7 patterns. Any pattern that runs past fret 24 drops an octave,
+ * and one that would cross the nut moves up an octave.
+ */
+function getThreeNpsPositions(
+  root: number,
+  scaleKey: string,
+  noteClasses: readonly number[],
+): ScalePosition[] {
+  const notes = getScaleNotes(root, scaleKey);
+  const low = noteClasses.length - 1;
+  const walk = (startFret: number) => walkScale(notes, startFret, 3, noteClasses);
+
+  const starts: number[] = [];
+  for (const n of notes) {
+    let start = ((n - noteClasses[low]) % 12 + 12) % 12;
+    const prev = starts[starts.length - 1];
+    if (prev !== undefined) while (start <= prev) start += 12;
+    if (!fits(walk(start))) start = [start - 12, start + 12].find(s => fits(walk(s))) ?? start;
+    starts.push(start);
+  }
+
+  return starts.map(start => {
+    const cells = walk(start);
+    const frets = cells.map(c => c.f);
+    return {
+      start: Math.min(...frets),
+      end: Math.max(...frets),
+      cells: new Set(cells.map(c => `${c.s}:${c.f}`)),
+    };
   });
 }
 

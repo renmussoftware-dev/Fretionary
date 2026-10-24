@@ -30,7 +30,7 @@ import { useStore, useIdentifyNotes, SCALE_SPEED_MS, ScalePlaybackSpeed } from '
 import {
   getScalePositions, getCagedOccurrences, identifyCustomSelection,
   spellNoteAt, symbolToDegreeIdx, chordRootName, chordRootLetter,
-  getScaleTriads,
+  getScaleTriads, supportsThreeNps, type PositionSystem,
 } from '../../src/utils/theory';
 import { useProGate } from '../../src/hooks/useProGate';
 import { useAudioEngine } from '../../src/hooks/useAudioEngine';
@@ -61,6 +61,11 @@ const TRIAD_OPTIONS = [
   { label: 'Major', value: 'major' },
   { label: 'Minor', value: 'minor' },
   { label: 'All',   value: 'all'   },
+];
+
+const POSITION_SYSTEM_OPTIONS = [
+  { label: 'Standard',     value: 'standard' },
+  { label: '3 per string', value: '3nps'     },
 ];
 
 const TRIAD_LABEL_OPTIONS = [
@@ -209,7 +214,9 @@ export default function FretboardScreen() {
     apply();
   }
 
-  const positions = mode === 'scales' ? getScalePositions(root, scaleKey) : [];
+  const positionSystem = useStore(s => s.positionSystem);
+  const setPositionSystem = useStore(s => s.setPositionSystem);
+  const positions = mode === 'scales' ? getScalePositions(root, scaleKey, undefined, positionSystem) : [];
 
   // ── Triads in scale ──
   // Off by default. With a filter on, the matching triads show as chips;
@@ -507,6 +514,16 @@ export default function FretboardScreen() {
         {/* Position selector */}
         {mode === 'scales' && positions.length > 0 && (
           <View style={styles.section}>
+            {/* 3NPS only makes sense for 7+ note scales; pentatonic and
+                blues keep their two-per-string boxes. */}
+            {supportsThreeNps(scaleKey) && (
+              <View style={{ marginBottom: SPACE.sm }}>
+                <PillSelector label="Position style" options={POSITION_SYSTEM_OPTIONS}
+                  value={positionSystem}
+                  onChange={v => v && setPositionSystem(v as PositionSystem)}
+                  allowDeselect={false} />
+              </View>
+            )}
             <PillSelector label="Position" options={posOptions}
               value={activePosition === null ? 'all' : String(activePosition)}
               onChange={v => {

@@ -4,6 +4,7 @@ import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as StoreReview from 'expo-store-review';
 import type { FretMap } from '../utils/diagramSvg';
+import type { PositionSystem } from '../utils/theory';
 import { getTuning, tuningNoteClasses } from '../constants/tunings';
 import type { CagedLayer, CagedTonality } from '../constants/music';
 
@@ -158,6 +159,9 @@ interface AppState {
   mode: AppMode;
   labelMode: LabelMode;
   activePosition: number | null;
+  // Scale positions as standard boxes or 3 notes per string. Persisted.
+  positionSystem: PositionSystem;
+  setPositionSystem: (system: PositionSystem) => void;
   activeCaged: string | null;
   // CAGED tab: major or minor shapes, and which notes ride on them.
   cagedTonality: CagedTonality;
@@ -294,6 +298,7 @@ export const useStore = create<AppState>()(
       mode: 'scales',
       labelMode: 'name',
       activePosition: null,
+      positionSystem: 'standard',
       activeCaged: null,
       cagedTonality: 'major',
       cagedLayer: 'scale',
@@ -424,6 +429,8 @@ export const useStore = create<AppState>()(
       setMode: (mode) => set({ mode, activePosition: null, activeCaged: null }),
       setLabelMode: (labelMode) => set({ labelMode }),
       setActivePosition: (activePosition) => set({ activePosition }),
+      // Position numbers mean different shapes in each system, so start over.
+      setPositionSystem: (positionSystem) => set({ positionSystem, activePosition: null }),
       setActiveCaged: (activeCaged) => set({ activeCaged }),
       setCagedTonality: (cagedTonality) => set({ cagedTonality }),
       setCagedLayer: (cagedLayer) => set({ cagedLayer }),
@@ -542,6 +549,7 @@ export const useStore = create<AppState>()(
         scalePlaybackSpeed: s.scalePlaybackSpeed,
         labelSize: s.labelSize,
         fretRange: s.fretRange,
+        positionSystem: s.positionSystem,
         cagedTonality: s.cagedTonality,
         cagedLayer: s.cagedLayer,
         scalesExplored: s.scalesExplored,
