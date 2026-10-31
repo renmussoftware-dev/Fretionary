@@ -33,7 +33,7 @@ export const FREE_PROGRESSIONS = new Set([
   '12-Bar Blues',
 ]);
 
-// ── FREE TUNINGS (2 of 9) ────────────────────────────────────────────────────
+// ── FREE TUNINGS (2 of 14)──────────────────────────────────────────────────
 export const FREE_TUNINGS = new Set([
   'standard',
   'drop-d',

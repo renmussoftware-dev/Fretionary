@@ -106,6 +106,42 @@ export const TUNINGS: Tuning[] = [
     midi: [38, 43, 48, 53, 57, 62],
     stringNames: ['d', 'A', 'F', 'C', 'G', 'D'],
   },
+  {
+    id: 'b-standard',
+    name: 'B Standard',
+    shortName: 'B Std',
+    description: 'B E A D F# B — 2½ steps down. Baritone weight on a six-string.',
+    category: 'down',
+    midi: [35, 40, 45, 50, 54, 59],
+    stringNames: ['b', 'F#', 'D', 'A', 'E', 'B'],
+  },
+  {
+    id: 'bb-standard',
+    name: 'Bb Standard',
+    shortName: 'Bb Std',
+    description: 'Bb Eb Ab Db F Bb — 3 steps down. Sludge, doom and modern metal.',
+    category: 'down',
+    midi: [34, 39, 44, 49, 53, 58],
+    stringNames: ['bb', 'F', 'Db', 'Ab', 'Eb', 'Bb'],
+  },
+  {
+    id: 'a-standard',
+    name: 'A Standard',
+    shortName: 'A Std',
+    description: 'A D G C E A — 3½ steps down. Baritone guitar territory.',
+    category: 'down',
+    midi: [33, 38, 43, 48, 52, 57],
+    stringNames: ['a', 'E', 'C', 'G', 'D', 'A'],
+  },
+  {
+    id: 'ab-standard',
+    name: 'Ab Standard',
+    shortName: 'Ab Std',
+    description: 'Ab Db Gb B Eb Ab — 4 steps down. Extreme low end for djent and doom.',
+    category: 'down',
+    midi: [32, 37, 42, 47, 51, 56],
+    stringNames: ['ab', 'Eb', 'B', 'Gb', 'Db', 'Ab'],
+  },
 ];
 
 const TUNINGS_BY_ID: Record<string, Tuning> = Object.fromEntries(

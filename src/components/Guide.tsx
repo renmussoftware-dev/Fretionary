@@ -92,7 +92,7 @@ const SECTIONS: Section[] = [
     features: [
       { name: 'Standard',        desc: 'E A D G B E — the universal default.', badge: 'free' },
       { name: 'Drop D',          desc: 'D A D G B E — heavy riffs and easy power chords.', badge: 'free' },
-      { name: '7 more tunings',  desc: 'Drop C, DADGAD, Open D / G / E, Eb Standard, D Standard.', badge: 'pro' },
+      { name: '12 more tunings', desc: 'Drop C, DADGAD, Open D / G / E, FACGCE, and Eb / D / B / Bb / A / Ab Standard.', badge: 'pro' },
     ],
   },
   {

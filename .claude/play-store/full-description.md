@@ -15,7 +15,7 @@ INTERACTIVE FRETBOARD
 ━━━━━━━━━━━━━━━━━━
 ALTERNATE TUNINGS
 ━━━━━━━━━━━━━━━━━━
-• 9 tunings — Standard, Drop D, Drop C, DADGAD, Open D, Open G, Open E, Eb Standard, D Standard
+• 14 tunings — Standard, Drop D, Drop C, DADGAD, Open D, Open G, Open E, FACGCE, and Eb, D, B, Bb, A and Ab Standard
 • The fretboard transposes in real time to your actual tuning
 
 ━━━━━━━━━━━━━━━━━━
