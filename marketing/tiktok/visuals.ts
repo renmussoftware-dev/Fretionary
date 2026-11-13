@@ -22,13 +22,16 @@ export const PALETTE = {
   orange: '#D77144',
 };
 
-type Bucket = 'root' | 'third' | 'fifth' | 'ext' | 'tone';
+type Bucket = 'root' | 'third' | 'fifth' | 'ext' | 'ninth' | 'eleventh' | 'thirteenth' | 'tone';
 
 const DOT: Record<Bucket, { fill: string; text: string }> = {
   root:  { fill: COLORS.root.fill,      text: COLORS.root.text },
   third: { fill: COLORS.third.fill,     text: COLORS.third.text },
   fifth: { fill: COLORS.fifth.fill,     text: COLORS.fifth.text },
   ext:   { fill: COLORS.extension.fill, text: COLORS.extension.text },
+  ninth:      { fill: COLORS.ninth.fill,      text: COLORS.ninth.text },
+  eleventh:   { fill: COLORS.eleventh.fill,   text: COLORS.eleventh.text },
+  thirteenth: { fill: COLORS.thirteenth.fill, text: COLORS.thirteenth.text },
   tone:  { fill: COLORS.scaleTone.fill, text: COLORS.scaleTone.text },
 };
 

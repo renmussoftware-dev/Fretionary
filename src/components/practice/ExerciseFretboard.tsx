@@ -4,6 +4,7 @@ import Svg, { Line, Rect, Circle, Text as SvgText, G } from 'react-native-svg';
 import { COLORS, FONT_FAMILY, SPACE } from '../../constants/theme';
 import { STRING_NAMES } from '../../constants/music';
 import type { ExercisePattern, StepBucket } from './exercisePatterns';
+import { COLORS as MUSIC_COLORS } from '../../constants/music';
 
 const STR_COUNT = 6;
 const STR_H = 30;
@@ -22,6 +23,9 @@ const BUCKET_COLORS: Record<StepBucket, { fill: string; stroke: string; text: st
   third: COLORS.third,
   fifth: COLORS.fifth,
   ext:   COLORS.ext,
+  ninth:      MUSIC_COLORS.ninth,
+  eleventh:   MUSIC_COLORS.eleventh,
+  thirteenth: MUSIC_COLORS.thirteenth,
   tone:  { fill: '#3F3F47', stroke: '#666670', text: '#E5E3DC' },
 };
 

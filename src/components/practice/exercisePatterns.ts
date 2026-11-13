@@ -1,6 +1,7 @@
 import {
   CHORDS, SCALES, INTERVAL_NAMES,
   intervalColorBucket, intervalLongName, scaleDegreeColorBucket,
+  type IntervalBucket,
 } from '../../constants/music';
 import { chordSymbol, diatonicChordRootName, getScaleNotes } from '../../utils/theory';
 
@@ -14,7 +15,7 @@ const LOW_TO_HIGH = [5, 4, 3, 2, 1, 0];
 // Highest fret any pattern may ask for — reachable on an acoustic.
 export const EXERCISE_MAX_FRET = 15;
 
-export type StepBucket = 'root' | 'third' | 'fifth' | 'ext' | 'tone';
+export type StepBucket = IntervalBucket | 'tone';
 
 export interface ExerciseStep {
   stringIdx: number;

@@ -6,7 +6,7 @@ import Svg, {
 import {
   NOTES, SCALES, CHORDS,
   CAGED_COLORS, CAGED_ORDER, POSITION_COLORS, COLORS as MUSIC_COLORS,
-  intervalColorBucket, scaleDegreeColorBucket, type CagedLetter,
+  intervalColor, scaleDegreeColorBucket, type CagedLetter,
 } from '../constants/music';
 import { COLORS, FONT_FAMILY } from '../constants/theme';
 import {
@@ -247,12 +247,7 @@ export default function Fretboard() {
       const ci = ch.intervals.map(i => i % 12);
       const pos = ci.indexOf(intv);
       const symbol = pos >= 0 ? ch.intervalNames[pos] : undefined;
-      if (symbol) {
-        const bucket = intervalColorBucket(symbol);
-        if (bucket === 'third') return { ...MUSIC_COLORS.third,     opacity, scale, isRoot: false };
-        if (bucket === 'fifth') return { ...MUSIC_COLORS.fifth,     opacity, scale, isRoot: false };
-        if (bucket === 'ext')   return { ...MUSIC_COLORS.extension, opacity, scale, isRoot: false };
-      }
+      if (symbol && symbol !== 'R') return { ...intervalColor(symbol), opacity, scale, isRoot: false };
     }
 
     if (mode === 'scales') {

@@ -21,7 +21,7 @@ interface Section {
 const SECTIONS: Section[] = [
   {
     title: 'Fretboard',
-    intro: 'The interactive neck — switch between scales, chords, CAGED and Identify views. Color-coded by interval (root / 3rd / 5th / extension).',
+    intro: 'The interactive neck — switch between scales, chords, CAGED and Identify views. Color-coded by interval (root / 3rd / 5th / 7th, plus 9th / 11th / 13th on chords).',
     navTo: '/',
     navLabel: 'Open Fretboard',
     features: [

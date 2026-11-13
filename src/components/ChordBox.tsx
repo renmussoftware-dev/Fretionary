@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ScrollView, useWindowDimensions } from 'react-native';
 import Svg, { Circle, Line, Text as SvgText, G, Rect } from 'react-native-svg';
 import { COLORS, RADIUS, SPACE } from '../constants/theme';
-import { NOTES, CHORDS, OPEN_STRINGS, intervalColorBucket, COLORS as MUSIC_COLORS } from '../constants/music';
+import { NOTES, CHORDS, OPEN_STRINGS, intervalColor, COLORS as MUSIC_COLORS } from '../constants/music';
 import {
   getChordVoicings, spellNoteAt, symbolToDegreeIdx, chordRootLetter,
   type ChordVoicing,
@@ -160,22 +160,15 @@ export default function ChordBox({ root, chordKey, compact = false, lockToLabel 
           const intv = (ni - root + 12) % 12;
           // Color by the note's INTERVAL ROLE in the chord, not by its index
           // in the intervals[] array. The pills above the diagram do this via
-          // intervalColorBucket(symbol); the diagram now matches so a "4" pill
-          // (blue) lines up with a blue dot on the neck, a "5" pill (green)
-          // with a green dot, etc.
+          // intervalColor(symbol); the diagram matches so a "4" pill (orange)
+          // lines up with an orange dot on the neck, a "5" pill (green) with
+          // a green dot, etc.
           const chIv = ch?.intervals.map((i: number) => i % 12) ?? [];
           const ivPos = chIv.indexOf(intv);
           const symbol = ivPos >= 0 ? ch?.intervalNames[ivPos] : undefined;
-          const bucket: 'root' | 'third' | 'fifth' | 'ext' | undefined =
-            ni === root ? 'root' :
-            symbol ? intervalColorBucket(symbol) :
-            undefined;
-
           const palette =
-            bucket === 'root'  ? MUSIC_COLORS.root :
-            bucket === 'third' ? MUSIC_COLORS.third :
-            bucket === 'fifth' ? MUSIC_COLORS.fifth :
-            bucket === 'ext'   ? MUSIC_COLORS.extension :
+            ni === root ? MUSIC_COLORS.root :
+            symbol ? intervalColor(symbol) :
             { fill: '#3A3A46', stroke: '#52525F', text: '#C0BEB8' };
 
           const fill = palette.fill;

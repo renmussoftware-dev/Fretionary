@@ -157,13 +157,27 @@ export function categoryLabel(cat: ChordDef['category']): string {
   return CATEGORY_LABELS[cat];
 }
 
-// Map an interval symbol to one of the four note-color buckets used on the
-// fretboard so the interval-structure cards match the dot palette.
-export function intervalColorBucket(symbol: string): 'root' | 'third' | 'fifth' | 'ext' {
+export type IntervalBucket =
+  'root' | 'third' | 'fifth' | 'ext' | 'ninth' | 'eleventh' | 'thirteenth';
+
+// Map an interval symbol to its note-color bucket, so the interval-structure
+// cards match the dot palette. Each interval family gets its own colour:
+// 'ext' is the 7ths, and 2nds/9ths, 4ths/11ths and 6ths/13ths each have one,
+// so a Major 9's 7 and 9 (or a 13th's 7, 9, 11 and 13) can be told apart.
+export function intervalColorBucket(symbol: string): IntervalBucket {
   if (symbol === 'R') return 'root';
   if (symbol === '3' || symbol === '♭3') return 'third';
   if (symbol === '5' || symbol === '♭5' || symbol === '♯5') return 'fifth';
+  if (symbol === '2' || symbol === '♭2' || symbol === '9' || symbol === '♭9' || symbol === '♯9') return 'ninth';
+  if (symbol === '4' || symbol === '♯4' || symbol === '11' || symbol === '♯11') return 'eleventh';
+  if (symbol === '6' || symbol === '♭6' || symbol === '13' || symbol === '♭13') return 'thirteenth';
   return 'ext';
+}
+
+// The palette for an interval symbol in a chord context.
+export function intervalColor(symbol: string): { fill: string; stroke: string; text: string } {
+  const bucket = intervalColorBucket(symbol);
+  return bucket === 'ext' ? COLORS.extension : COLORS[bucket];
 }
 
 /**
@@ -368,7 +382,10 @@ export const COLORS = {
   root:       { fill:'#E0CC58', stroke:'#B49E2E', text:'#3E3208' },
   third:      { fill:'#D45846', stroke:'#9B3A2D', text:'#fff' },
   fifth:      { fill:'#3FA08A', stroke:'#26786A', text:'#fff' },
-  extension:  { fill:'#5C8FCC', stroke:'#3D6BA0', text:'#fff' },
+  extension:  { fill:'#5C8FCC', stroke:'#3D6BA0', text:'#fff' },    // 7ths
+  ninth:      { fill:'#9477E0', stroke:'#6A4FB8', text:'#fff' },    // 2nds / 9ths
+  eleventh:   { fill:'#E0913F', stroke:'#AD6A22', text:'#3A2206' }, // 4ths / 11ths
+  thirteenth: { fill:'#CC62A0', stroke:'#9A3F75', text:'#fff' },    // 6ths / 13ths
   // Solid neutral grey — still clearly subordinate to the colored interval
   // notes, but with real presence on the dark surface (the design's prior
   // 10% white was so faint the dots looked unrendered).

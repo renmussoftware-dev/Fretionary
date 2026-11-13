@@ -8,7 +8,7 @@ import ChordBox from '../../src/components/ChordBox';
 import { COLORS, SPACE, RADIUS, FONT_FAMILY } from '../../src/constants/theme';
 import {
   NOTES, NOTE_DISPLAY, CHORDS,
-  intervalLongName, categoryLabel, intervalColorBucket,
+  intervalLongName, categoryLabel, intervalColor,
   COLORS as MUSIC_COLORS,
 } from '../../src/constants/music';
 import { useStore } from '../../src/store/useStore';
@@ -267,12 +267,7 @@ export default function ChordsScreen() {
                 contentContainerStyle={styles.ivCardRow}
               >
                 {chord.intervalNames.map((name, i) => {
-                  const bucket = intervalColorBucket(name);
-                  const palette =
-                    bucket === 'root' ? MUSIC_COLORS.root :
-                    bucket === 'third' ? MUSIC_COLORS.third :
-                    bucket === 'fifth' ? MUSIC_COLORS.fifth :
-                    MUSIC_COLORS.extension;
+                  const palette = intervalColor(name);
                   return (
                     <View key={i} style={styles.ivCard}>
                       <View style={[styles.ivCircle, { backgroundColor: palette.fill, borderColor: palette.stroke }]}>
