@@ -661,7 +661,7 @@ export function noteLabel(
   return NOTES[noteIdx];
 }
 
-import { VOICING_TEMPLATES } from '../constants/voicings';
+import { VOICING_TEMPLATES, OPEN_VOICINGS } from '../constants/voicings';
 
 export interface ChordVoicing {
   frets: (number | null)[];
@@ -671,78 +671,75 @@ export interface ChordVoicing {
   position: string;
 }
 
-// Find which fret a given note falls on a given string at or above minFret
-function findNoteFret(stringIdx: number, noteClass: number, minFret: number): number | null {
-  // stringIdx 0=low E, 5=high e; OPEN_STRINGS index 5=low E, 0=high e
-  const openNote = OPEN_STRINGS[5 - stringIdx];
-  for (let f = minFret; f <= minFret + 12; f++) {
-    if ((openNote + f) % 12 === noteClass) return f;
+// Highest fret a voicing may reach, and how many frets a chord diagram draws.
+const VOICING_MAX_FRET = 15;
+const DIAGRAM_FRETS = 5;
+
+// Turn absolute frets into a ChordVoicing, or null when the shape can't be
+// played or drawn: a string below the nut, a fret past VOICING_MAX_FRET, or a
+// spread wider than the chord diagram (which is pinned to the nut whenever a
+// string rings open).
+function buildVoicing(
+  frets: (number | null)[], rootFret: number, label: string, position: string,
+): ChordVoicing | null {
+  if (frets.some(f => f !== null && f < 0)) return null;
+  const pressed = frets.filter(f => f !== null && f > 0) as number[];
+  const hasOpenString = frets.some(f => f === 0);
+  // If any string rings open, we have to show the nut — pinning baseFret to
+  // 1 keeps fret 2 (and the open-string markers) where they belong.
+  // Otherwise, slide the diagram down to start at the lowest pressed fret.
+  const baseFret = hasOpenString
+    ? 1
+    : pressed.length > 0
+      ? Math.min(...pressed)
+      : Math.max(rootFret, 1);
+  if (pressed.length > 0) {
+    const top = Math.max(...pressed);
+    if (top > VOICING_MAX_FRET) return null;
+    if (top - baseFret + 1 > DIAGRAM_FRETS) return null;
   }
-  return null;
+  return { frets, baseFret, rootFret, label, position };
 }
 
 export function getChordVoicings(root: number, chordKey: string): ChordVoicing[] {
-  const templates = VOICING_TEMPLATES[chordKey];
-  if (!templates || templates.length === 0) return [];
-
   const results: ChordVoicing[] = [];
-
-  for (const tmpl of templates) {
-    const rootStringOpen = OPEN_STRINGS[5 - tmpl.rootString];
-    let rootFret: number | null = null;
-
-    // Find root fret on the template's root string
-    for (let rf = 0; rf <= 12; rf++) {
-      if ((rootStringOpen + rf) % 12 === root) {
-        rootFret = rf;
-        break;
-      }
+  const seen = new Set<string>();
+  const add = (v: ChordVoicing | null): boolean => {
+    if (!v) return false;
+    const id = v.frets.join(',');
+    if (!seen.has(id)) {
+      seen.add(id);
+      results.push(v);
     }
+    return true;
+  };
 
-    if (rootFret === null) continue;
-
-    // Build absolute fret positions — offsets can be negative (strings tuned
-    // above the root string may need frets below rootFret to voice the chord)
-    const frets: (number | null)[] = tmpl.frets.map(f => {
-      if (f === null) return null;
-      const abs = rootFret! + f;
-      return abs < 0 ? null : abs; // mute if goes below nut
-    });
-
-    // Skip a template when it can't actually be voiced for this root — i.e.
-    // any non-null offset would land below fret 0 and get force-muted, leaving
-    // a broken chord (e.g. a C-shape barre played at A would have most strings
-    // muted). Counts the would-be-muted strings; if >1 string is lost this way,
-    // the shape isn't usable for this root.
-    const lostToNegative = tmpl.frets.filter(f =>
-      f !== null && (rootFret! + f) < 0,
-    ).length;
-    if (lostToNegative > 1) continue;
-
-    const pressed = frets.filter(f => f !== null && f > 0) as number[];
-    const hasOpenString = frets.some(f => f === 0);
-    // If any string rings open, we have to show the nut — pinning baseFret to
-    // 1 keeps fret 2 (and the open-string markers) where they belong.
-    // Otherwise, slide the diagram down to start at the lowest pressed fret.
-    const displayBase = hasOpenString
-      ? 1
-      : pressed.length > 0
-        ? Math.min(...pressed)
-        : rootFret;
-
-    // Skip shapes that go above fret 12
-    if (pressed.length > 0 && Math.max(...pressed) > 12) continue;
-
-    results.push({
-      frets,
-      baseFret: displayBase,
-      rootFret,
-      label: rootFret === 0 ? tmpl.label : `${tmpl.label} (${rootFret}fr)`,
-      position: tmpl.position,
-    });
+  // Open-position chords that only exist at this root.
+  for (const frets of OPEN_VOICINGS[chordKey]?.[NOTES[root]] ?? []) {
+    const rootFret = frets.find(f => f !== null) ?? 0;
+    add(buildVoicing(frets, rootFret, 'Open', 'open'));
   }
 
-  return results;
+  for (const tmpl of VOICING_TEMPLATES[chordKey] ?? []) {
+    // Lowest fret on the template's root string that carries the root.
+    const rootStringOpen = OPEN_STRINGS[5 - tmpl.rootString];
+    const lowest = (root - rootStringOpen + 12) % 12;
+    // Offsets can be negative (strings tuned above the root string may need
+    // frets below rootFret), so a shape can fall off the nut for low roots —
+    // an A-string shape reaching back 3 frets has nowhere to go at A. Play it
+    // an octave up instead of dropping the chord.
+    for (const rootFret of [lowest, lowest + 12]) {
+      const frets = tmpl.frets.map(f => (f === null ? null : rootFret + f));
+      const label = rootFret === 0 ? tmpl.label : `${tmpl.label} (${rootFret}fr)`;
+      if (add(buildVoicing(frets, rootFret, label, tmpl.position))) break;
+    }
+  }
+
+  // Open shapes first, then up the neck, so the first voicing — the one shown
+  // and played by default — is the easiest to reach. Array.sort is stable, so
+  // shapes at the same fret keep their template order.
+  const reach = (v: ChordVoicing) => (v.frets.some(f => f === 0) ? 0 : v.baseFret);
+  return results.sort((a, b) => reach(a) - reach(b));
 }
 
 // ── Custom-tab note identifier ──────────────────────────────────────────────
