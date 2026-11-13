@@ -1,0 +1,26 @@
+What's new in Fretionary 5.1
+
+TRIADS INSIDE ANY SCALE
+• See the major and minor triads that live inside the scale you're playing. Tap a triad to hold it on the neck and hear it.
+• Label triads by chord role (R / 3 / 5) and narrow them to a 3-string set. Root position, 1st and 2nd inversions are outlined and color-coded.
+
+3-NOTES-PER-STRING PATTERNS
+• A new Position style toggle: Standard or 3 per string.
+• 3NPS works for every scale, including pentatonic, blues and whole tone, with each string's span highlighted as it climbs the neck.
+
+BETTER SCALE BOXES
+• Pentatonic and blues boxes are now the true two-notes-per-string shapes, with the blue note inside each box.
+• Positions are numbered the standard way. Box 1 is the shape with the root on the low E, in every key.
+
+CAGED, REBUILT
+• CAGED shapes now show the full scale window for each shape and repeat all the way up the neck.
+• Major and minor CAGED, with Scale, Pentatonic, Arpeggio and Chord layers.
+• Custom progressions: reorder chords, then save, update or delete them by name under My progressions.
+
+EXERCISES
+• Tap "Felt clean" after a run to see your new best tempo count up, plus where your next session will start.
+
+4 NEW TUNINGS
+• B, Bb, A and Ab Standard for baritone, doom and down-tuned metal. That brings Fretionary to 14 tunings.
+
+Thanks for playing with Fretionary! If it's helping your practice, a quick rating means a lot.
