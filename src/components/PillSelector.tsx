@@ -1,6 +1,6 @@
 import React from 'react';
 import { ScrollView, TouchableOpacity, Text, StyleSheet, View } from 'react-native';
-import { COLORS, FONT_FAMILY, RADIUS, SPACE } from '../constants/theme';
+import { COLORS, FONT_FAMILY, RADIUS, SPACE, makeStyles } from '../constants/theme';
 
 interface Option {
   label: string;
@@ -18,6 +18,7 @@ interface Props {
 }
 
 export default function PillSelector({ options, value, onChange, allowDeselect = true, label }: Props) {
+  const styles = useStyles();
   return (
     <View>
       {label && <Text style={styles.label}>{label}</Text>}
@@ -52,7 +53,7 @@ export default function PillSelector({ options, value, onChange, allowDeselect =
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles(COLORS => ({
   label: {
     fontSize: 10,
     fontWeight: '600',
@@ -95,4 +96,4 @@ const styles = StyleSheet.create({
     color: COLORS.text,
     fontWeight: '600',
   },
-});
+}));

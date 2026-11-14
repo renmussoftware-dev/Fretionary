@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { useFocusEffect } from 'expo-router';
-import { COLORS, FONT_FAMILY, RADIUS, SPACE } from '../../constants/theme';
+import { COLORS, FONT_FAMILY, RADIUS, SPACE, makeStyles } from '../../constants/theme';
 import { isScaleFree } from '../../constants/subscription';
 import { useProGate } from '../../hooks/useProGate';
 import { useMetronomeClock, BPM_MIN, BPM_MAX } from '../../hooks/useMetronomeClock';
@@ -50,6 +50,7 @@ function clock(totalSec: number): string {
  * the tempo as a personal best and opens a few bpm faster next time.
  */
 export default function ExercisePlayer({ def, initialRoot, sessionLabel, onFinish, onExit }: Props) {
+  const styles = useStyles();
   const { isPro, requirePro } = useProGate();
   const stat = useStore(s => s.exerciseStats[def.id]);
 
@@ -269,7 +270,7 @@ export default function ExercisePlayer({ def, initialRoot, sessionLabel, onFinis
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles(COLORS => ({
   wrap: { paddingVertical: SPACE.md },
   topBar: {
     flexDirection: 'row', alignItems: 'center',
@@ -344,9 +345,9 @@ const styles = StyleSheet.create({
   },
   finishBtnText: { fontSize: 13, fontWeight: '600', color: COLORS.text },
   cleanBtn: { borderColor: '#1D9E75', backgroundColor: 'rgba(29,158,117,0.18)' },
-  cleanBtnText: { fontSize: 13, fontWeight: '700', color: '#3FCB9C' },
+  cleanBtnText: { fontSize: 13, fontWeight: '700', color: COLORS.success },
   finishHint: {
     fontSize: 11, color: COLORS.textFaint, lineHeight: 16, textAlign: 'center',
     marginHorizontal: SPACE.lg, marginTop: SPACE.sm,
   },
-});
+}));

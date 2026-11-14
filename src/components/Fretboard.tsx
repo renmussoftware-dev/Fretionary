@@ -8,7 +8,7 @@ import {
   CAGED_COLORS, CAGED_ORDER, POSITION_COLORS, COLORS as MUSIC_COLORS,
   intervalColor, scaleDegreeColorBucket, type CagedLetter,
 } from '../constants/music';
-import { COLORS, FONT_FAMILY } from '../constants/theme';
+import { COLORS, FONT_FAMILY, makeStyles } from '../constants/theme';
 import {
   getScaleNotes, getChordNotes, getScalePositions,
   getCagedOccurrences, getCagedNotes, cagedScaleKey, isInCagedOccurrence,
@@ -53,6 +53,7 @@ const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 export const INVERSION_COLORS = [POSITION_COLORS[0].fill, POSITION_COLORS[1].fill, POSITION_COLORS[3].fill];
 
 export default function Fretboard() {
+  const styles = useStyles();
   const { width: screenW, height: screenH } = useWindowDimensions();
   // Shortest edge — a phone turned landscape must not classify as a tablet.
   const isTablet = Math.min(screenW, screenH) >= 768;
@@ -298,14 +299,15 @@ export default function Fretboard() {
       }
     }
 
-    return { ...MUSIC_COLORS.scaleTone, opacity, scale, isRoot: false };
+    return { ...COLORS.tone, opacity, scale, isRoot: false };
   }
 
-  const inlayColor   = 'rgba(255,255,255,0.06)';
-  const fretColor    = 'rgba(255,255,255,0.08)';
-  const fretColorHL  = 'rgba(255,255,255,0.16)';
-  const stringColor  = 'rgba(242,241,236,0.55)';
-  const nutColor     = '#D9D6CC';
+  const inlayColor   = COLORS.fb.inlay;
+  const fretColor    = COLORS.fb.fret;
+  const fretColorHL  = COLORS.fb.fretStrong;
+  const stringColor  = COLORS.fb.string;
+  const nutColor     = COLORS.fb.nut;
+  const ringColor    = COLORS.fb.ring;
 
   return (
     <ScrollView horizontal showsHorizontalScrollIndicator={false}
@@ -326,8 +328,8 @@ export default function Fretboard() {
               scale playback. Different hue from rootGlow so it reads as
               "now playing" rather than "this is the root." */}
           <RadialGradient id="playGlow" cx="50%" cy="50%" r="50%">
-            <Stop offset="0%" stopColor="#ffffff" stopOpacity="0.7" />
-            <Stop offset="100%" stopColor="#ffffff" stopOpacity="0" />
+            <Stop offset="0%" stopColor={ringColor} stopOpacity="0.7" />
+            <Stop offset="100%" stopColor={ringColor} stopOpacity="0" />
           </RadialGradient>
         </Defs>
 
@@ -432,12 +434,12 @@ export default function Fretboard() {
             <Line
               x1={LEFT_PAD} y1={strY(s)}
               x2={LEFT_PAD + (showNut ? NUT_W : 0) + cellCount * FRET_W} y2={strY(s)}
-              stroke={stringColor} strokeWidth={0.5 + (s / STR_COUNT) * 1.4} strokeOpacity={0.7}
+              stroke={stringColor} strokeWidth={0.7 + (s / STR_COUNT) * 1.4}
             />
             <SvgText
               x={LEFT_PAD - 10} y={strY(s) + 4}
-              textAnchor="middle" fontSize={10} fill="rgba(242,241,236,0.40)"
-              fontFamily={FONT_FAMILY.mono} fontWeight="500"
+              textAnchor="middle" fontSize={11} fill={COLORS.fb.label}
+              fontFamily={FONT_FAMILY.mono} fontWeight="600"
             >
               {stringNames[s]}
             </SvgText>
@@ -465,8 +467,8 @@ export default function Fretboard() {
           <SvgText key={f}
             x={fretX(f)}
             y={SVG_H - 6}
-            textAnchor="middle" fontSize={9} fill={COLORS.textFaint}
-            fontFamily={FONT_FAMILY.mono}
+            textAnchor="middle" fontSize={11} fill={COLORS.fb.label}
+            fontFamily={FONT_FAMILY.mono} fontWeight="600"
           >
             {f}
           </SvgText>
@@ -553,8 +555,8 @@ export default function Fretboard() {
                 {isCustom && !col && (
                   <Circle
                     cx={x} cy={y} r={DOT_R * 0.4}
-                    fill="rgba(255,255,255,0.05)"
-                    stroke="rgba(255,255,255,0.12)"
+                    fill={COLORS.fb.ghostFill}
+                    stroke={COLORS.fb.ghostStroke}
                     strokeWidth={0.8}
                   />
                 )}
@@ -571,7 +573,7 @@ export default function Fretboard() {
                         cx={x} cy={y}
                         r={pulse.interpolate({ inputRange: [0, 1], outputRange: [r, r + 9] })}
                         fill="none"
-                        stroke={isTriadRoot ? '#ffffff' : col.fill}
+                        stroke={isTriadRoot ? ringColor : col.fill}
                         strokeWidth={2}
                         strokeOpacity={pulse.interpolate({ inputRange: [0, 1], outputRange: [0.9, 0] })}
                       />
@@ -579,7 +581,7 @@ export default function Fretboard() {
                     <Circle
                       cx={x} cy={y} r={r}
                       fill={col.fill}
-                      stroke={isPlaying || isTriadRoot ? '#ffffff' : col.stroke}
+                      stroke={isPlaying || isTriadRoot ? ringColor : col.stroke}
                       strokeWidth={isPlaying ? 2.5 : isTriadRoot ? 2 : 1}
                     />
                     {label ? (
@@ -613,7 +615,7 @@ export default function Fretboard() {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles(COLORS => ({
   scroll: { flexGrow: 0 },
   scrollContent: { paddingBottom: 4 },
-});
+}));

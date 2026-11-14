@@ -7,7 +7,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { PACKAGE_TYPE } from 'react-native-purchases';
 import type { PurchasesPackage } from 'react-native-purchases';
-import { COLORS, SPACE, RADIUS } from '../constants/theme';
+import { COLORS, SPACE, RADIUS, makeStyles } from '../constants/theme';
 import { useRevenueCat } from '../hooks/useRevenueCat';
 import { logPaywallView, logInitiateCheckout } from '../utils/analytics';
 import { openSupportEmail } from '../utils/support';
@@ -19,6 +19,7 @@ interface Props {
 }
 
 export default function Paywall({ onClose, onSuccess }: Props) {
+  const styles = useStyles();
   const { isLoading, isPro, packages, purchasePackage, restorePurchases } = useRevenueCat();
   const recordPositiveAction = useStore(s => s.recordPositiveAction);
   const [purchasing, setPurchasing] = useState(false);
@@ -294,7 +295,7 @@ export default function Paywall({ onClose, onSuccess }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles(COLORS => ({
   safe:             { flex: 1, backgroundColor: COLORS.bg },
   loadingWrap:      { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 16 },
   loadingText:      { color: COLORS.textMuted, fontSize: 14 },
@@ -364,4 +365,4 @@ const styles = StyleSheet.create({
   legalLinks:       { flexDirection: 'row', justifyContent: 'center', marginTop: SPACE.sm },
   legalLink:        { fontSize: 11, color: COLORS.textMuted },
   legalDot:         { fontSize: 11, color: COLORS.textFaint },
-});
+}));

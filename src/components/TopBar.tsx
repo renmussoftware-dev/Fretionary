@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Animated } from 'react-native';
-import { COLORS, FONT_FAMILY, RADIUS, SPACE } from '../constants/theme';
+import { COLORS, FONT_FAMILY, RADIUS, SPACE, makeStyles } from '../constants/theme';
 import { NOTES, NOTE_DISPLAY } from '../constants/music';
 import { scaleRootName, chordRootName } from '../utils/theory';
 import { useStore, type AppMode } from '../store/useStore';
@@ -27,6 +27,7 @@ function SegmentedControl({
   onChange: (m: AppMode) => void;
   isPro: boolean;
 }) {
+  const segStyles = useSegStyles();
   const idx = MODES.findIndex(m => m.value === value);
   const slide = useRef(new Animated.Value(idx)).current;
 
@@ -77,7 +78,7 @@ function SegmentedControl({
   );
 }
 
-const segStyles = StyleSheet.create({
+const useSegStyles = makeStyles(COLORS => ({
   track: {
     flex: 1,
     flexDirection: 'row',
@@ -112,9 +113,10 @@ const segStyles = StyleSheet.create({
     letterSpacing: 0.1,
   },
   labelActive: { color: COLORS.text },
-});
+}));
 
 export default function TopBar() {
+  const styles = useStyles();
   const { root, setRoot, scaleKey, chordKey, mode, setMode, cagedTonality } = useStore();
   const { isPro } = useProGate();
   const [savedOpen, setSavedOpen] = useState(false);
@@ -188,7 +190,7 @@ export default function TopBar() {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles(COLORS => ({
   wrap: {
     backgroundColor: COLORS.surface,
     borderBottomWidth: 1,
@@ -258,4 +260,4 @@ const styles = StyleSheet.create({
     color: COLORS.text,
     fontWeight: '700',
   },
-});
+}));

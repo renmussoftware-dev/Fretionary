@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { router } from 'expo-router';
-import { COLORS, RADIUS, SPACE } from '../constants/theme';
+import { COLORS, RADIUS, SPACE, makeStyles } from '../constants/theme';
 import { useProGate } from '../hooks/useProGate';
 
 interface FeatureRow {
@@ -106,6 +106,7 @@ const SECTIONS: Section[] = [
 ];
 
 function Badge({ kind }: { kind: 'free' | 'pro' | 'mixed' }) {
+  const styles = useStyles();
   if (kind === 'free') {
     return <View style={[styles.badge, styles.badgeFree]}><Text style={styles.badgeFreeText}>FREE</Text></View>;
   }
@@ -116,6 +117,7 @@ function Badge({ kind }: { kind: 'free' | 'pro' | 'mixed' }) {
 }
 
 export default function Guide() {
+  const styles = useStyles();
   const { isPro } = useProGate();
 
   return (
@@ -129,7 +131,7 @@ export default function Guide() {
           <View style={styles.proHint}>
             <Text style={styles.proHintText}>
               You{'\u2019'}re on the <Text style={{ fontWeight: '700' }}>Free</Text> plan. Items marked
-              {' '}<Text style={{ color: '#E8D44D', fontWeight: '700' }}>🔒 PRO</Text>{' '}
+              {' '}<Text style={{ color: COLORS.gold, fontWeight: '700' }}>🔒 PRO</Text>{' '}
               unlock with a subscription.
             </Text>
             <TouchableOpacity onPress={() => router.push('/paywall')} activeOpacity={0.85} style={styles.proCta}>
@@ -169,7 +171,7 @@ export default function Guide() {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles(COLORS => ({
   wrap: { paddingHorizontal: SPACE.lg, paddingTop: SPACE.md, paddingBottom: SPACE.xl },
 
   intro: { marginBottom: SPACE.xl },
@@ -216,11 +218,11 @@ const styles = StyleSheet.create({
     marginLeft: 'auto',
   },
   badgeFree: { backgroundColor: 'rgba(29,158,117,0.18)', borderWidth: 1, borderColor: '#1D9E75' },
-  badgeFreeText: { fontSize: 9, fontWeight: '800', color: '#1D9E75', letterSpacing: 0.4 },
+  badgeFreeText: { fontSize: 9, fontWeight: '800', color: COLORS.success, letterSpacing: 0.4 },
   badgePro: { backgroundColor: 'rgba(232,212,77,0.15)', borderWidth: 1, borderColor: '#C4A800' },
-  badgeProText: { fontSize: 9, fontWeight: '800', color: '#E8D44D', letterSpacing: 0.4 },
+  badgeProText: { fontSize: 9, fontWeight: '800', color: COLORS.gold, letterSpacing: 0.4 },
   badgeMixed: { backgroundColor: 'rgba(110,96,217,0.18)', borderWidth: 1, borderColor: '#6E60D9' },
-  badgeMixedText: { fontSize: 9, fontWeight: '800', color: '#837AB7', letterSpacing: 0.4 },
+  badgeMixedText: { fontSize: 9, fontWeight: '800', color: COLORS.accentText, letterSpacing: 0.4 },
 
   navBtn: {
     marginTop: SPACE.md,
@@ -231,4 +233,4 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   navBtnText: { fontSize: 13, fontWeight: '700', color: COLORS.accent },
-});
+}));

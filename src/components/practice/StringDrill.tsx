@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ScrollView } from 'react-native';
-import { COLORS, RADIUS, SPACE } from '../../constants/theme';
+import { COLORS, RADIUS, SPACE, makeStyles } from '../../constants/theme';
 import { NOTES, OPEN_STRINGS, STRING_NAMES, NOTE_DISPLAY } from '../../constants/music';
 import type { PracticeDifficulty } from '../../constants/subscription';
 import PracticeFretboard, { type Highlight } from './PracticeFretboard';
@@ -36,6 +36,7 @@ function buildFretQueue(maxFret: number, stringIdx: number, naturalsOnly: boolea
 }
 
 export default function StringDrill({ difficulty, onComplete, onExit }: Props) {
+  const styles = useStyles();
   const cfg = DIFFICULTY[difficulty];
   const optionNoteClasses = cfg.naturalsOnly ? NATURAL_NOTES : ALL_NOTE_CLASSES;
 
@@ -235,7 +236,7 @@ export default function StringDrill({ difficulty, onComplete, onExit }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles(COLORS => ({
   wrap: { paddingHorizontal: SPACE.lg, paddingVertical: SPACE.md, alignItems: 'center' },
   topBar: {
     flexDirection: 'row', alignItems: 'center', alignSelf: 'stretch',
@@ -270,6 +271,6 @@ const styles = StyleSheet.create({
   pillCorrect: { borderColor: '#1D9E75', backgroundColor: 'rgba(29,158,117,0.18)' },
   pillWrong: { borderColor: '#E24B4A', backgroundColor: 'rgba(226,75,74,0.18)' },
   pillText: { fontSize: 14, fontWeight: '700', color: COLORS.text },
-  pillTextCorrect: { fontSize: 14, fontWeight: '700', color: '#1D9E75' },
-  pillTextWrong: { fontSize: 14, fontWeight: '700', color: '#E24B4A' },
-});
+  pillTextCorrect: { fontSize: 14, fontWeight: '700', color: COLORS.success },
+  pillTextWrong: { fontSize: 14, fontWeight: '700', color: COLORS.danger },
+}));

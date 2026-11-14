@@ -1,7 +1,7 @@
 import React from 'react';
 import { TouchableOpacity, StyleSheet, View, Text } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
-import { COLORS } from '../constants/theme';
+import { COLORS, makeStyles } from '../constants/theme';
 import { useStore, type SavedItemInput } from '../store/useStore';
 
 interface Props {
@@ -11,6 +11,7 @@ interface Props {
 }
 
 export default function HeartButton({ item, size = 'md', withLabel = false }: Props) {
+  const styles = useStyles();
   const isFavorite = useStore(s => s.isFavorite(item));
   const toggleFavorite = useStore(s => s.toggleFavorite);
 
@@ -44,7 +45,7 @@ export default function HeartButton({ item, size = 'md', withLabel = false }: Pr
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles(COLORS => ({
   btn: { padding: 4, alignItems: 'center', justifyContent: 'center' },
   btnWithLabel: {
     flexDirection: 'row',
@@ -53,4 +54,4 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
   },
   label: { fontSize: 12, fontWeight: '600' },
-});
+}));

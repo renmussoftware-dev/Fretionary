@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
-import { COLORS, RADIUS, SPACE } from '../../constants/theme';
+import { COLORS, RADIUS, SPACE, makeStyles } from '../../constants/theme';
 import { NOTES, OPEN_STRINGS, NOTE_DISPLAY } from '../../constants/music';
 import type { PracticeDifficulty } from '../../constants/subscription';
 import PracticeFretboard, { type Highlight } from './PracticeFretboard';
@@ -37,6 +37,7 @@ function pickTargetNote(naturalsOnly: boolean, exclude: number | null): number {
 }
 
 export default function FindTheNoteDrill({ difficulty, onComplete, onExit }: Props) {
+  const styles = useStyles();
   const cfg = DIFFICULTY[difficulty];
   const targetCount = TARGETS_PER_ROUND[difficulty];
 
@@ -194,7 +195,7 @@ export default function FindTheNoteDrill({ difficulty, onComplete, onExit }: Pro
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles(COLORS => ({
   wrap: { paddingHorizontal: SPACE.lg, paddingVertical: SPACE.md, alignItems: 'center' },
   topBar: {
     flexDirection: 'row', alignItems: 'center', alignSelf: 'stretch',
@@ -216,4 +217,4 @@ const styles = StyleSheet.create({
   fbWrap: { alignSelf: 'stretch', alignItems: 'center', marginBottom: SPACE.md },
   skipBtn: { paddingHorizontal: 14, paddingVertical: 8 },
   skipText: { fontSize: 12, color: COLORS.textMuted, fontWeight: '600' },
-});
+}));

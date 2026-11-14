@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
-import { COLORS, FONT_FAMILY, RADIUS, SPACE } from '../constants/theme';
+import { COLORS, FONT_FAMILY, RADIUS, SPACE, makeStyles } from '../constants/theme';
 import { useStore } from '../store/useStore';
 import { getDailyPick } from '../utils/dailyPick';
 import { useProGate } from '../hooks/useProGate';
@@ -24,6 +24,7 @@ import { isChordFree, isScaleFree } from '../constants/subscription';
  * the chord/scale picker gates.
  */
 export default function DailyPickCard() {
+  const styles = useStyles();
   const pick = useMemo(() => getDailyPick(), []);
   const setRoot = useStore(s => s.setRoot);
   const setScaleKey = useStore(s => s.setScaleKey);
@@ -84,7 +85,7 @@ export default function DailyPickCard() {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles(COLORS => ({
   card: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -94,8 +95,8 @@ const styles = StyleSheet.create({
     gap: SPACE.md,
     borderRadius: RADIUS.lg,
     borderWidth: 1,
-    borderColor: 'rgba(232,212,77,0.32)',
-    backgroundColor: 'rgba(232,212,77,0.05)',
+    borderColor: COLORS.goldBorder,
+    backgroundColor: COLORS.goldSoft,
   },
   topRow: {
     flexDirection: 'row',
@@ -107,14 +108,14 @@ const styles = StyleSheet.create({
   eyebrow: {
     fontSize: 10,
     fontWeight: '700',
-    color: '#E8D44D',
+    color: COLORS.gold,
     letterSpacing: 1.5,
     fontFamily: FONT_FAMILY.mono,
   },
   streakText: {
     fontSize: 11,
     fontWeight: '700',
-    color: '#E8D44D',
+    color: COLORS.gold,
     letterSpacing: 0.2,
   },
   title: {
@@ -132,6 +133,6 @@ const styles = StyleSheet.create({
   arrow: {
     fontSize: 22,
     fontWeight: '700',
-    color: '#E8D44D',
+    color: COLORS.gold,
   },
-});
+}));

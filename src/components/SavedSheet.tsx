@@ -3,7 +3,7 @@ import {
   View, Text, Modal, ScrollView, TouchableOpacity, Pressable, StyleSheet, Alert,
 } from 'react-native';
 import { router } from 'expo-router';
-import { COLORS, RADIUS, SPACE } from '../constants/theme';
+import { COLORS, RADIUS, SPACE, makeStyles } from '../constants/theme';
 import { NOTES } from '../constants/music';
 import { scaleRootName, chordRootName, chordSymbol } from '../utils/theory';
 import { useStore, type SavedItem } from '../store/useStore';
@@ -42,6 +42,7 @@ function itemTitle(it: SavedItem): string {
 }
 
 export default function SavedSheet({ visible, onClose }: Props) {
+  const styles = useStyles();
   const favorites = useStore(s => s.favorites);
   const recents = useStore(s => s.recents);
   const toggleFavorite = useStore(s => s.toggleFavorite);
@@ -156,7 +157,7 @@ export default function SavedSheet({ visible, onClose }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles(COLORS => ({
   overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'flex-end' },
   sheet: {
     backgroundColor: COLORS.bgElevated,
@@ -203,4 +204,4 @@ const styles = StyleSheet.create({
   kindText: { fontSize: 9, fontWeight: '800', color: '#fff', letterSpacing: 0.6 },
   itemTitle: { flex: 1, fontSize: 14, fontWeight: '600', color: COLORS.text },
   removeBtn: { fontSize: 22, color: COLORS.textMuted, paddingHorizontal: 6, lineHeight: 24 },
-});
+}));

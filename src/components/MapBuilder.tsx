@@ -4,7 +4,7 @@ import {
   StyleSheet, Alert,
 } from 'react-native';
 import { SvgXml } from 'react-native-svg';
-import { COLORS, FONT_FAMILY, RADIUS, SPACE } from '../constants/theme';
+import { COLORS, FONT_FAMILY, RADIUS, SPACE, makeStyles } from '../constants/theme';
 import { NOTES, NOTE_DISPLAY, OPEN_STRINGS, SCALES, CHORDS } from '../constants/music';
 import { useStore } from '../store/useStore';
 import { useProGate } from '../hooks/useProGate';
@@ -41,6 +41,7 @@ function seedColor(semitone: number): string {
 }
 
 export default function MapBuilder() {
+  const styles = useStyles();
   const { isPro, requirePro } = useProGate();
   const root = useStore(s => s.root);
   const scaleKey = useStore(s => s.scaleKey);
@@ -526,7 +527,7 @@ export default function MapBuilder() {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles(COLORS => ({
   boardWrap: {
     backgroundColor: COLORS.surface,
     borderRadius: RADIUS.lg,
@@ -549,7 +550,7 @@ const styles = StyleSheet.create({
     borderWidth: 2, borderColor: 'transparent',
   },
   chipActive: {
-    borderColor: '#FFFFFF',
+    borderColor: COLORS.text,
   },
   rowWrap: {
     flexDirection: 'row',
@@ -572,10 +573,10 @@ const styles = StyleSheet.create({
   seedBtn: {
     paddingHorizontal: 12, paddingVertical: 8,
     borderRadius: RADIUS.md,
-    backgroundColor: 'rgba(232,212,77,0.08)',
-    borderWidth: 1, borderColor: 'rgba(232,212,77,0.3)',
+    backgroundColor: COLORS.goldSoft,
+    borderWidth: 1, borderColor: COLORS.goldBorder,
   },
-  seedText: { fontSize: 12, color: '#E8D44D', fontWeight: '600' },
+  seedText: { fontSize: 12, color: COLORS.gold, fontWeight: '600' },
   fingerDivider: {
     width: 1, height: 20, backgroundColor: COLORS.borderLight, marginHorizontal: 4,
   },
@@ -607,7 +608,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(226,75,74,0.08)',
     borderWidth: 1, borderColor: 'rgba(226,75,74,0.3)',
   },
-  clearText: { fontSize: 12, color: '#E24B4A', fontWeight: '600' },
+  clearText: { fontSize: 12, color: COLORS.danger, fontWeight: '600' },
   nameInput: {
     backgroundColor: COLORS.surface,
     borderRadius: RADIUS.md,
@@ -675,4 +676,4 @@ const styles = StyleSheet.create({
   sheetMeta: { fontSize: 11, color: COLORS.textFaint, marginTop: 2 },
   sheetDelete: { padding: 8 },
   sheetDeleteText: { color: COLORS.textFaint, fontSize: 14 },
-});
+}));

@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import {
   View, Text, TouchableOpacity, StyleSheet, Modal, ScrollView, Pressable,
 } from 'react-native';
-import { COLORS, RADIUS, SPACE } from '../constants/theme';
+import { COLORS, RADIUS, SPACE, makeStyles } from '../constants/theme';
 import { TUNINGS, getTuning, type Tuning } from '../constants/tunings';
 import { useStore } from '../store/useStore';
 import { useProGate } from '../hooks/useProGate';
@@ -14,6 +14,7 @@ interface Props {
 }
 
 export default function TuningPicker({ forcedStandard = false }: Props) {
+  const styles = useStyles();
   const { tuningId, setTuningId } = useStore();
   const { isPro, requirePro } = useProGate();
   const [open, setOpen] = useState(false);
@@ -106,7 +107,7 @@ export default function TuningPicker({ forcedStandard = false }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles(COLORS => ({
   button: {
     flexDirection: 'row', alignItems: 'center',
     paddingHorizontal: 10, paddingVertical: 5,
@@ -162,4 +163,4 @@ const styles = StyleSheet.create({
   rowDesc: { fontSize: 12, color: COLORS.textFaint, lineHeight: 17 },
   lockBadge: { fontSize: 9, fontWeight: '700', color: COLORS.textMuted, letterSpacing: 0.6 },
   activeDot: { fontSize: 10, color: COLORS.accent, marginLeft: 'auto' },
-});
+}));

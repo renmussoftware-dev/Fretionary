@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import {
   View, Text, TouchableOpacity, StyleSheet, Animated,
 } from 'react-native';
-import { COLORS, FONT_FAMILY, RADIUS, SPACE } from '../constants/theme';
+import { COLORS, FONT_FAMILY, RADIUS, SPACE, makeStyles } from '../constants/theme';
 import { useMetronomeClock, BPM_MIN, BPM_MAX } from '../hooks/useMetronomeClock';
 
 interface TimeSig { name: string; beats: number; }
@@ -19,6 +19,7 @@ const TIME_SIGS: TimeSig[] = [
 const TAP_WINDOW_MS = 2500;  // taps older than this expire
 
 export default function Metronome() {
+  const styles = useStyles();
   const tapTimesRef = useRef<number[]>([]);
   const pulseAnim = useRef(new Animated.Value(0)).current;
   const beatAnim = useRef(new Animated.Value(-1)).current;
@@ -151,7 +152,7 @@ export default function Metronome() {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles(COLORS => ({
   wrap: { paddingHorizontal: SPACE.lg, paddingTop: SPACE.lg, alignItems: 'center' },
 
   // Hero BPM card — large rounded panel with mono number + beat dots
@@ -283,4 +284,4 @@ const styles = StyleSheet.create({
   },
   playCircleOn: { backgroundColor: '#D45846' },
   playGlyph: { fontSize: 32, color: '#fff', fontWeight: '700', lineHeight: 36 },
-});
+}));

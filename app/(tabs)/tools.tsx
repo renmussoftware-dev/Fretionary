@@ -3,7 +3,7 @@ import {
   View, Text, ScrollView, TouchableOpacity, StyleSheet,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { COLORS, FONT_FAMILY, RADIUS, SPACE } from '../../src/constants/theme';
+import { COLORS, FONT_FAMILY, RADIUS, SPACE, makeStyles } from '../../src/constants/theme';
 import Metronome from '../../src/components/Metronome';
 import Guide from '../../src/components/Guide';
 import Progress from '../../src/components/Progress';
@@ -21,6 +21,7 @@ const TOOLS: { mode: ToolMode; label: string; sub: string }[] = [
 ];
 
 function Support() {
+  const styles = useStyles();
   return (
     <View style={{ gap: SPACE.lg }}>
       <View style={styles.supportWrap}>
@@ -61,6 +62,7 @@ function Support() {
 }
 
 export default function ToolsScreen() {
+  const styles = useStyles();
   const [mode, setMode] = useState<ToolMode>('guide');
 
   let body: React.ReactNode;
@@ -109,7 +111,7 @@ export default function ToolsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles(COLORS => ({
   safe: { flex: 1, backgroundColor: COLORS.bg },
   header: {
     backgroundColor: COLORS.surface,
@@ -179,4 +181,4 @@ const styles = StyleSheet.create({
   },
   supportStoreLink:     { paddingVertical: 4 },
   supportStoreLinkText: { fontSize: 12, color: COLORS.textMuted },
-});
+}));

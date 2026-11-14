@@ -5,7 +5,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import ChordBox from '../../src/components/ChordBox';
-import { COLORS, SPACE, RADIUS, FONT_FAMILY } from '../../src/constants/theme';
+import { COLORS, SPACE, RADIUS, FONT_FAMILY, makeStyles } from '../../src/constants/theme';
 import {
   NOTES, NOTE_DISPLAY, CHORDS,
   intervalLongName, categoryLabel, intervalColor,
@@ -30,6 +30,7 @@ const CAT_MAP: Record<string, string> = {
 const DRAWER_W = 220;
 
 export default function ChordsScreen() {
+  const styles = useStyles();
   const { width: screenW, height: screenH } = useWindowDimensions();
   const isTablet = screenW >= 768;
   const { root, setRoot } = useStore();
@@ -371,7 +372,7 @@ export default function ChordsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles(COLORS => ({
   safe:         { flex: 1, backgroundColor: COLORS.bg },
   header:       {
                   backgroundColor: COLORS.surface,
@@ -543,4 +544,4 @@ const styles = StyleSheet.create({
   toggleDots:    { fontSize: 13, color: COLORS.textFaint, lineHeight: 14, letterSpacing: -2 },
   toggleArrow:   { fontSize: 16, color: COLORS.text, fontWeight: '600', lineHeight: 18 },
   toggleLabel:   { fontSize: 9, fontWeight: '700', color: COLORS.textMuted, letterSpacing: 1.2 },
-});
+}));

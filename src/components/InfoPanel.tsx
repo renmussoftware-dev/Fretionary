@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
-import { COLORS, FONT_FAMILY, SPACE } from '../constants/theme';
+import { COLORS, FONT_FAMILY, SPACE, makeStyles } from '../constants/theme';
 import { NOTES, SCALES, CHORDS } from '../constants/music';
 import { useStore, useIdentifyNotes } from '../store/useStore';
 import {
@@ -11,6 +11,7 @@ import {
 const INTERVAL_NAMES = ['R','♭2','2','♭3','3','4','♭5','5','♭6','6','♭7','7'];
 
 export default function InfoPanel() {
+  const styles = useStyles();
   const { root, scaleKey, chordKey, mode, activeCaged, cagedTonality, cagedLayer } = useStore();
   const customNotes = useIdentifyNotes();
 
@@ -127,7 +128,7 @@ export default function InfoPanel() {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles(COLORS => ({
   wrap: {
     backgroundColor: COLORS.surface,
     borderTopWidth: 1,
@@ -170,4 +171,4 @@ const styles = StyleSheet.create({
     lineHeight: 18,
     paddingHorizontal: 12,
   },
-});
+}));

@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, ScrollView, TouchableOpacity, StyleSheet } from 'react-native';
 import Svg, { Line, Rect, Circle, Text as SvgText, G } from 'react-native-svg';
-import { COLORS } from '../../constants/theme';
+import { COLORS, makeStyles } from '../../constants/theme';
 import { OPEN_STRINGS, NOTES } from '../../constants/music';
 
 const STR_COUNT = 6;
@@ -26,7 +26,8 @@ const KIND_COLORS = {
   target:  { fill: '#6E60D9', stroke: '#4F3FBA', text: '#fff' },
   correct: { fill: '#1D9E75', stroke: '#0F6E56', text: '#fff' },
   wrong:   { fill: '#E24B4A', stroke: '#A32D2D', text: '#fff' },
-  pending: { fill: '#3A3A46', stroke: '#52525F', text: '#fff' },
+  // Getter: COLORS follows the active theme, so don't capture it at import.
+  get pending() { return COLORS.tone; },
 };
 
 export default function PracticeFretboard({
@@ -37,6 +38,7 @@ export default function PracticeFretboard({
   showAllNotes = false,
   disabled = false,
 }: Props) {
+  const styles = useStyles();
   const FRET_W = 50;
   const STR_H = 32;
   const LEFT_PAD = 28;
@@ -70,11 +72,11 @@ export default function PracticeFretboard({
             const x = fretX(f);
             return f === 12 ? (
               <G key={f}>
-                <Circle cx={x} cy={strY(1.5)} r={3.5} fill="#252528" />
-                <Circle cx={x} cy={strY(3.5)} r={3.5} fill="#252528" />
+                <Circle cx={x} cy={strY(1.5)} r={3.5} fill={COLORS.fb.inlay} />
+                <Circle cx={x} cy={strY(3.5)} r={3.5} fill={COLORS.fb.inlay} />
               </G>
             ) : (
-              <Circle key={f} cx={x} cy={strY(2.5)} r={3.5} fill="#252528" />
+              <Circle key={f} cx={x} cy={strY(2.5)} r={3.5} fill={COLORS.fb.inlay} />
             );
           })}
 
@@ -84,7 +86,7 @@ export default function PracticeFretboard({
               key={s}
               x1={LEFT_PAD} y1={strY(s)}
               x2={LEFT_PAD + NUT_W + maxFret * FRET_W} y2={strY(s)}
-              stroke="#3A3A46"
+              stroke={COLORS.fb.string}
               strokeWidth={0.6 + (s / STR_COUNT) * 2}
             />
           ))}
@@ -93,7 +95,7 @@ export default function PracticeFretboard({
           <Rect
             x={LEFT_PAD} y={strY(0) - 10}
             width={NUT_W} height={(STR_COUNT - 1) * STR_H + 20}
-            rx={3} fill="#888680"
+            rx={3} fill={COLORS.fb.nut}
           />
 
           {/* Frets */}
@@ -102,7 +104,7 @@ export default function PracticeFretboard({
               key={f}
               x1={LEFT_PAD + NUT_W + f * FRET_W} y1={strY(0) - 8}
               x2={LEFT_PAD + NUT_W + f * FRET_W} y2={strY(5) + 8}
-              stroke="#2E2E38" strokeWidth={1}
+              stroke={COLORS.fb.fret} strokeWidth={1}
             />
           ))}
 
@@ -113,8 +115,8 @@ export default function PracticeFretboard({
               x={fretX(f)}
               y={SVG_H - 4}
               textAnchor="middle"
-              fontSize={9}
-              fill={COLORS.textFaint}
+              fontSize={10}
+              fill={COLORS.fb.label}
             >
               {f}
             </SvgText>
@@ -133,7 +135,7 @@ export default function PracticeFretboard({
                     y={strY(s) + 3}
                     textAnchor="middle"
                     fontSize={9}
-                    fill={COLORS.textFaint}
+                    fill={COLORS.textMuted}
                   >
                     {NOTES[ni]}
                   </SvgText>
@@ -196,7 +198,7 @@ export default function PracticeFretboard({
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles(COLORS => ({
   scroll: { flexGrow: 0 },
   tap: { position: 'absolute', borderRadius: 999 },
-});
+}));

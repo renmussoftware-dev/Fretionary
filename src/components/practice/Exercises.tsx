@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { router } from 'expo-router';
-import { COLORS, FONT_FAMILY, RADIUS, SPACE } from '../../constants/theme';
+import { COLORS, FONT_FAMILY, RADIUS, SPACE, makeStyles } from '../../constants/theme';
 import { isExerciseFree } from '../../constants/subscription';
 import { useProGate } from '../../hooks/useProGate';
 import { useStore, todayKey } from '../../store/useStore';
@@ -30,6 +30,7 @@ interface Active {
  * full library grouped by category underneath.
  */
 export default function Exercises({ tabs, onScrollTop }: Props) {
+  const styles = useStyles();
   const { isPro, requirePro } = useProGate();
   const appRoot = useStore(s => s.root);
   const currentStreak = useStore(s => s.currentStreak);
@@ -220,7 +221,7 @@ export default function Exercises({ tabs, onScrollTop }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles(COLORS => ({
   wrap: { paddingHorizontal: SPACE.lg, paddingVertical: SPACE.md },
   intro: { fontSize: 13, color: COLORS.textMuted, lineHeight: 19, marginBottom: SPACE.lg },
 
@@ -240,10 +241,10 @@ const styles = StyleSheet.create({
   sessionTitle: { fontSize: 18, fontWeight: '700', color: COLORS.text, marginBottom: SPACE.sm },
   sessionRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 7 },
   check: { width: 16, fontSize: 14, fontWeight: '700', color: COLORS.textFaint, textAlign: 'center' },
-  checkDone: { color: '#3FCB9C' },
+  checkDone: { color: COLORS.success },
   sessionItem: { flex: 1, fontSize: 14, fontWeight: '600', color: COLORS.text },
   sessionMeta: { fontSize: 12, color: COLORS.textMuted, fontVariant: ['tabular-nums'] },
-  sessionCompleteText: { fontSize: 13, fontWeight: '600', color: '#3FCB9C', marginTop: SPACE.sm },
+  sessionCompleteText: { fontSize: 13, fontWeight: '600', color: COLORS.success, marginTop: SPACE.sm },
 
   primaryBtn: {
     marginTop: SPACE.md,
@@ -292,6 +293,6 @@ const styles = StyleSheet.create({
   exTitle: { fontSize: 13, fontWeight: '700', color: COLORS.text, marginBottom: 2 },
   exSummary: { fontSize: 11, color: COLORS.textFaint, lineHeight: 15 },
   exMeta: { fontSize: 12, fontWeight: '600', color: COLORS.textMuted, fontVariant: ['tabular-nums'] },
-  exPro: { fontSize: 10, fontWeight: '800', color: '#E8D44D', letterSpacing: 0.6 },
+  exPro: { fontSize: 10, fontWeight: '800', color: COLORS.gold, letterSpacing: 0.6 },
   lockedText: { color: COLORS.textMuted },
-});
+}));

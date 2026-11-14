@@ -16,12 +16,17 @@ import Onboarding from '../src/components/Onboarding';
 import { initAnalytics, maybePromptATT, logTutorialComplete } from '../src/utils/analytics';
 import { useStore, PAYWALL_PROMPT_MIN_ACTIONS } from '../src/store/useStore';
 import { maybeRequestPushPermission, scheduleStreakReminder } from '../src/utils/notifications';
+import { COLORS, loadTheme, useThemeName } from '../src/constants/theme';
 
 const ONBOARDING_KEY = 'fretionary_onboarded_v1';
 const PROACTIVE_PAYWALL_DELAY_MS = 800;
 
 export default function RootLayout() {
   const [showOnboarding, setShowOnboarding] = useState<boolean | null>(null);
+  // Saved light/dark choice — loaded before the first screen renders so a
+  // light-theme user never gets a dark flash on launch.
+  const [themeReady, setThemeReady] = useState(false);
+  const themeName = useThemeName();
 
   // Reactive store reads — when isPro flips after RevenueCat loads, the
   // proactive-paywall effect re-evaluates and bails. positiveActionCount
@@ -64,6 +69,8 @@ export default function RootLayout() {
     // Initialize Meta SDK (syncs advertiser-tracking with current ATT status —
     // does NOT prompt). Safe to call before ATT decision; we re-sync after.
     initAnalytics();
+
+    loadTheme().then(() => setThemeReady(true));
 
     // Check if onboarding has been completed
     AsyncStorage.getItem(ONBOARDING_KEY).then(val => {
@@ -144,16 +151,16 @@ export default function RootLayout() {
     setShowOnboarding(false);
   }
 
-  // Wait until we know whether to show onboarding AND fonts have loaded
-  if (showOnboarding === null || !fontsLoaded) return null;
+  // Wait until we know whether to show onboarding AND fonts + theme have loaded
+  if (showOnboarding === null || !fontsLoaded || !themeReady) return null;
 
   return (
-    <GestureHandlerRootView style={styles.root}>
-      <StatusBar style="light" />
+    <GestureHandlerRootView style={[styles.root, { backgroundColor: COLORS.bg }]}>
+      <StatusBar style={themeName === 'light' ? 'dark' : 'light'} />
       {showOnboarding ? (
         <Onboarding onDone={finishOnboarding} />
       ) : (
-        <Stack screenOptions={{ headerShown: false }}>
+        <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: COLORS.bg } }}>
           <Stack.Screen name="(tabs)" />
           <Stack.Screen
             name="paywall"

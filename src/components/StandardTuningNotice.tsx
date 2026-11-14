@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
-import { COLORS, RADIUS, SPACE } from '../constants/theme';
+import { COLORS, RADIUS, SPACE, makeStyles } from '../constants/theme';
 import { useStore } from '../store/useStore';
 import { getTuning } from '../constants/tunings';
 
@@ -10,6 +10,7 @@ interface Props {
 }
 
 export default function StandardTuningNotice({ context }: Props) {
+  const styles = useStyles();
   const tuningId = useStore(s => s.tuningId);
   if (tuningId === 'standard') return null;
   const t = getTuning(tuningId);
@@ -23,7 +24,7 @@ export default function StandardTuningNotice({ context }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles(COLORS => ({
   wrap: {
     alignSelf: 'stretch',
     marginHorizontal: SPACE.lg,
@@ -42,4 +43,4 @@ const styles = StyleSheet.create({
   },
   icon: { color: COLORS.accent, fontWeight: '700' },
   bold: { fontWeight: '700', color: COLORS.text },
-});
+}));

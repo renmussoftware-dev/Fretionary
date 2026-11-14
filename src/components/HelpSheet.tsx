@@ -3,7 +3,7 @@ import {
   View, Text, TouchableOpacity, StyleSheet, Modal, ScrollView, Pressable,
 } from 'react-native';
 import { router } from 'expo-router';
-import { COLORS, FONT_FAMILY, RADIUS, SPACE } from '../constants/theme';
+import { COLORS, FONT_FAMILY, RADIUS, SPACE, makeStyles } from '../constants/theme';
 
 // Which tab's help content to show. Each key maps to a curated short-form
 // summary — "how to use this screen" in 4-6 bullets. The full walkthrough
@@ -146,6 +146,7 @@ interface Props {
  * this sheet.
  */
 export default function HelpSheet({ visible, onClose, tab }: Props) {
+  const styles = useStyles();
   const content = CONTENT[tab];
 
   return (
@@ -192,7 +193,7 @@ export default function HelpSheet({ visible, onClose, tab }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles(COLORS => ({
   overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'flex-end' },
   sheet: {
     backgroundColor: COLORS.bgElevated,
@@ -232,4 +233,4 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   guideBtnText: { fontSize: 13, fontWeight: '600', color: COLORS.textMuted },
-});
+}));

@@ -19,7 +19,10 @@ import ChordBox from '../../src/components/ChordBox';
 const CAGED_PROTOTYPE_ROOT: Record<string, number> = {
   C: 0, A: 9, G: 7, E: 4, D: 2,
 };
-import { COLORS, SPACE, RADIUS, FONT_FAMILY } from '../../src/constants/theme';
+import {
+  COLORS, SPACE, RADIUS, FONT_FAMILY, makeStyles,
+  setThemeName, useThemeName, type ThemeName,
+} from '../../src/constants/theme';
 import {
   NOTES, NOTE_DISPLAY,
   SCALES, CHORDS, CAGED_ORDER, CAGED_COLORS, CAGED_SHAPES,
@@ -41,6 +44,11 @@ const LABEL_OPTIONS = [
   { label: 'Degree', value: 'degree' },
   { label: 'Interval', value: 'interval' },
   { label: 'None', value: 'none' },
+];
+
+const THEME_OPTIONS = [
+  { label: 'Dark', value: 'dark' },
+  { label: 'Light', value: 'light' },
 ];
 
 const LABEL_SIZE_OPTIONS = [
@@ -112,6 +120,8 @@ const FRET_RANGE_OPTIONS = [
 ];
 
 export default function FretboardScreen() {
+  const styles = useStyles();
+  const themeName = useThemeName();
   const { width: screenW, height: screenH } = useWindowDimensions();
   // Shortest edge, not width: a phone turned landscape is 800+ wide and the
   // old `screenW >= 768` check would have flipped it into the tablet layout.
@@ -704,8 +714,12 @@ export default function FretboardScreen() {
           <PillSelector label="Note labels" options={LABEL_OPTIONS} value={labelMode}
             onChange={v => v && setLabelMode(v as any)} allowDeselect={false} />
         </View>
-        {/* Display section — readability controls. Both pickers apply across
-            every fretboard mode and persist via the store. */}
+        {/* Display section — readability controls. These apply across every
+            fretboard mode and persist. Appearance is app-wide. */}
+        <View style={styles.section}>
+          <PillSelector label="Appearance" options={THEME_OPTIONS} value={themeName}
+            onChange={v => v && setThemeName(v as ThemeName)} allowDeselect={false} />
+        </View>
         <View style={styles.section}>
           <PillSelector label="Label size" options={LABEL_SIZE_OPTIONS} value={labelSize}
             onChange={v => v && setLabelSize(v as any)} allowDeselect={false} />
@@ -764,7 +778,7 @@ export default function FretboardScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles(COLORS => ({
   safe: { flex: 1, backgroundColor: COLORS.bg },
   landscapeWrap: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   fbWrap: {
@@ -1095,4 +1109,4 @@ const styles = StyleSheet.create({
     fontFamily: FONT_FAMILY.mono,
   },
   cagedTipText:    { flex: 1, fontSize: 13, color: COLORS.text, lineHeight: 19 },
-});
+}));

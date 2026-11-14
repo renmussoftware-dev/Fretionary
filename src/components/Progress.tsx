@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { router } from 'expo-router';
-import { COLORS, FONT_FAMILY, RADIUS, SPACE } from '../constants/theme';
+import { COLORS, FONT_FAMILY, RADIUS, SPACE, makeStyles } from '../constants/theme';
 import { useStore } from '../store/useStore';
 import { SCALES, CHORDS, NOTES } from '../constants/music';
 import { scaleRootName, chordRootName } from '../utils/theory';
@@ -22,6 +22,7 @@ import { PROGRESSIONS } from '../constants/progressions';
  * gate on actual audio playback, not just tapping the item in a picker.
  */
 export default function Progress() {
+  const styles = useStyles();
   const currentStreak = useStore(s => s.currentStreak);
   const longestStreak = useStore(s => s.longestStreak);
   const scalesExplored = useStore(s => s.scalesExplored);
@@ -137,6 +138,7 @@ export default function Progress() {
 }
 
 function ProgressBar({ title, done, total, hint }: { title: string; done: number; total: number; hint: string }) {
+  const styles = useStyles();
   const pct = total > 0 ? (done / total) * 100 : 0;
   return (
     <View style={styles.barCard}>
@@ -152,7 +154,7 @@ function ProgressBar({ title, done, total, hint }: { title: string; done: number
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles(COLORS => ({
   wrap: { paddingHorizontal: SPACE.lg, paddingTop: SPACE.md, paddingBottom: SPACE.xl },
 
   // Streak hero
@@ -160,13 +162,13 @@ const styles = StyleSheet.create({
     padding: SPACE.lg,
     borderRadius: RADIUS.lg,
     borderWidth: 1,
-    borderColor: 'rgba(232,200,77,0.32)',
-    backgroundColor: 'rgba(232,200,77,0.06)',
+    borderColor: COLORS.goldBorder,
+    backgroundColor: COLORS.goldSoft,
     marginBottom: SPACE.lg,
   },
   streakEyebrow: {
     fontSize: 10, fontWeight: '700',
-    color: '#E8C84D', letterSpacing: 1.5,
+    color: COLORS.gold, letterSpacing: 1.5,
     fontFamily: FONT_FAMILY.mono,
     marginBottom: 6,
   },
@@ -245,4 +247,4 @@ const styles = StyleSheet.create({
   recentKind: { fontSize: 16, color: COLORS.accent, width: 20, textAlign: 'center' },
   recentText: { flex: 1, fontSize: 13, color: COLORS.text },
   recentChevron: { fontSize: 18, color: COLORS.textFaint, lineHeight: 20 },
-});
+}));

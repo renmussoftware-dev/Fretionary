@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ScrollView, useWindowDimensions } from 'react-native';
 import Svg, { Circle, Line, Text as SvgText, G, Rect } from 'react-native-svg';
-import { COLORS, RADIUS, SPACE } from '../constants/theme';
+import { COLORS, RADIUS, SPACE, makeStyles } from '../constants/theme';
 import { NOTES, CHORDS, OPEN_STRINGS, intervalColor, COLORS as MUSIC_COLORS } from '../constants/music';
 import {
   getChordVoicings, spellNoteAt, symbolToDegreeIdx, chordRootLetter,
@@ -31,6 +31,7 @@ const FRETS_SHOWN = 5;
 const STRINGS = 6;
 
 export default function ChordBox({ root, chordKey, compact = false, lockToLabel }: Props) {
+  const styles = useStyles();
   const { width: screenW } = useWindowDimensions();
   const isTablet = screenW >= 768;
 
@@ -103,7 +104,7 @@ export default function ChordBox({ root, chordKey, compact = false, lockToLabel 
         <Line
           x1={sx(0)} y1={fy(0)}
           x2={sx(STRINGS - 1)} y2={fy(0)}
-          stroke={voicing.baseFret <= 1 ? '#888680' : '#3A3A46'}
+          stroke={voicing.baseFret <= 1 ? COLORS.fb.nut : COLORS.fb.string}
           strokeWidth={voicing.baseFret <= 1 ? (compact ? 4 : 5) : 1.5}
         />
 
@@ -112,7 +113,7 @@ export default function ChordBox({ root, chordKey, compact = false, lockToLabel 
           <Line key={i}
             x1={sx(0)} y1={fy(i + 1)}
             x2={sx(STRINGS - 1)} y2={fy(i + 1)}
-            stroke="#2E2E38" strokeWidth={1}
+            stroke={COLORS.fb.fret} strokeWidth={1}
           />
         ))}
 
@@ -121,7 +122,7 @@ export default function ChordBox({ root, chordKey, compact = false, lockToLabel 
           <Line key={s}
             x1={sx(s)} y1={fy(0)}
             x2={sx(s)} y2={fy(FRETS_SHOWN)}
-            stroke="#3A3A46"
+            stroke={COLORS.fb.string}
             strokeWidth={compact ? 0.7 + (5 - s) * 0.12 : 1 + (5 - s) * 0.2}
           />
         ))}
@@ -169,7 +170,7 @@ export default function ChordBox({ root, chordKey, compact = false, lockToLabel 
           const palette =
             ni === root ? MUSIC_COLORS.root :
             symbol ? intervalColor(symbol) :
-            { fill: '#3A3A46', stroke: '#52525F', text: '#C0BEB8' };
+            COLORS.tone;
 
           const fill = palette.fill;
           const stroke = palette.stroke;
@@ -270,7 +271,7 @@ export default function ChordBox({ root, chordKey, compact = false, lockToLabel 
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles(COLORS => ({
   wrap:           { alignItems: 'center' },
   compactWrap:    { alignItems: 'center' },
   empty:          { padding: SPACE.lg, alignItems: 'center' },
@@ -297,4 +298,4 @@ const styles = StyleSheet.create({
   pillActive:     { backgroundColor: COLORS.accent, borderColor: COLORS.accent },
   pillText:       { fontSize: 11, fontWeight: '500', color: COLORS.textMuted, lineHeight: 14 },
   pillTextActive: { color: '#fff' },
-});
+}));

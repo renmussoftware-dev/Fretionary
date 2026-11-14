@@ -1,11 +1,12 @@
 import React, { useCallback, useRef, useState } from 'react';
 import { View, Text, ScrollView, StyleSheet, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { COLORS, SPACE } from '../../src/constants/theme';
+import { COLORS, SPACE, makeStyles } from '../../src/constants/theme';
 import Practice from '../../src/components/practice/Practice';
 import HelpSheet from '../../src/components/HelpSheet';
 
 export default function PracticeScreen() {
+  const styles = useStyles();
   const [helpOpen, setHelpOpen] = useState(false);
   const scrollRef = useRef<ScrollView>(null);
   const scrollTop = useCallback(() => {
@@ -36,7 +37,7 @@ export default function PracticeScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles(COLORS => ({
   safe: { flex: 1, backgroundColor: COLORS.bg },
   header: {
     flexDirection: 'row',
@@ -60,4 +61,4 @@ const styles = StyleSheet.create({
   },
   helpBtnText: { fontSize: 15, fontWeight: '700', color: COLORS.textMuted, lineHeight: 16 },
   body: { paddingBottom: 60 },
-});
+}));

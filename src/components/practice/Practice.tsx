@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { router } from 'expo-router';
-import { COLORS, RADIUS, SPACE } from '../../constants/theme';
+import { COLORS, RADIUS, SPACE, makeStyles } from '../../constants/theme';
 import {
   isPracticeFree,
   type PracticeMode,
@@ -39,6 +39,7 @@ interface Props {
 }
 
 export default function Practice({ onScrollTop = () => {} }: Props) {
+  const styles = useStyles();
   const { isPro, requirePro } = useProGate();
   const recordPositiveAction = useStore(s => s.recordPositiveAction);
   const [stage, setStage] = useState<Stage>('menu');
@@ -178,7 +179,7 @@ export default function Practice({ onScrollTop = () => {} }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles(COLORS => ({
   wrap: { paddingHorizontal: SPACE.lg, paddingVertical: SPACE.md },
   intro: { fontSize: 13, color: COLORS.textMuted, lineHeight: 19, marginBottom: SPACE.lg },
 
@@ -216,7 +217,7 @@ const styles = StyleSheet.create({
   },
   modeHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 4 },
   modeTitle: { fontSize: 16, fontWeight: '700', color: COLORS.text, flex: 1 },
-  modePro: { fontSize: 10, fontWeight: '800', color: '#E8D44D', letterSpacing: 0.6 },
+  modePro: { fontSize: 10, fontWeight: '800', color: COLORS.gold, letterSpacing: 0.6 },
   modeTagline: { fontSize: 12, color: COLORS.textMuted, marginBottom: SPACE.md },
 
   diffRow: { gap: 6 },
@@ -254,4 +255,4 @@ const styles = StyleSheet.create({
     borderWidth: 1, borderColor: COLORS.border, backgroundColor: COLORS.surface,
   },
   secondaryBtnText: { fontSize: 14, fontWeight: '600', color: COLORS.text },
-});
+}));

@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef } from 'react';
 import { ScrollView, View, StyleSheet, useWindowDimensions } from 'react-native';
 import Svg, { Line, Rect, Circle, Text as SvgText, G } from 'react-native-svg';
-import { COLORS, FONT_FAMILY, SPACE } from '../../constants/theme';
+import { COLORS, FONT_FAMILY, SPACE, makeStyles } from '../../constants/theme';
 import { STRING_NAMES } from '../../constants/music';
 import type { ExercisePattern, StepBucket } from './exercisePatterns';
 import { COLORS as MUSIC_COLORS } from '../../constants/music';
@@ -19,14 +19,15 @@ const MIN_FRETS = 5;      // never draw a window narrower than one hand span
 const INLAYS = [3, 5, 7, 9, 12, 15];
 
 const BUCKET_COLORS: Record<StepBucket, { fill: string; stroke: string; text: string }> = {
-  root:  COLORS.root,
-  third: COLORS.third,
-  fifth: COLORS.fifth,
-  ext:   COLORS.ext,
+  // Getters: COLORS follows the active theme, so don't capture it at import.
+  get root()  { return COLORS.root; },
+  get third() { return COLORS.third; },
+  get fifth() { return COLORS.fifth; },
+  get ext()   { return COLORS.ext; },
   ninth:      MUSIC_COLORS.ninth,
   eleventh:   MUSIC_COLORS.eleventh,
   thirteenth: MUSIC_COLORS.thirteenth,
-  tone:  { fill: '#3F3F47', stroke: '#666670', text: '#E5E3DC' },
+  get tone()  { return COLORS.tone; },
 };
 
 interface Props {
@@ -42,6 +43,7 @@ interface Props {
  * screen, so a shape at the 9th fret isn't a scroll away from the nut.
  */
 export default function ExerciseFretboard({ pattern, stepIdx }: Props) {
+  const styles = useStyles();
   const { width: screenW } = useWindowDimensions();
   const scrollRef = useRef<ScrollView>(null);
   const availW = screenW - SPACE.lg * 2;
@@ -115,11 +117,11 @@ export default function ExerciseFretboard({ pattern, stepIdx }: Props) {
             const x = fretX(f);
             return f === 12 ? (
               <G key={f}>
-                <Circle cx={x} cy={strY(1.5)} r={3} fill="#252528" />
-                <Circle cx={x} cy={strY(3.5)} r={3} fill="#252528" />
+                <Circle cx={x} cy={strY(1.5)} r={3} fill={COLORS.fb.inlay} />
+                <Circle cx={x} cy={strY(3.5)} r={3} fill={COLORS.fb.inlay} />
               </G>
             ) : (
-              <Circle key={f} cx={x} cy={strY(2.5)} r={3} fill="#252528" />
+              <Circle key={f} cx={x} cy={strY(2.5)} r={3} fill={COLORS.fb.inlay} />
             );
           })}
 
@@ -129,14 +131,14 @@ export default function ExerciseFretboard({ pattern, stepIdx }: Props) {
               <SvgText
                 x={LEFT_PAD - 8} y={strY(s) + 3.5}
                 textAnchor="middle" fontSize={10}
-                fill={COLORS.textFaint} fontFamily={FONT_FAMILY.mono}
+                fill={COLORS.fb.label} fontFamily={FONT_FAMILY.mono}
               >
                 {STRING_NAMES[s]}
               </SvgText>
               <Line
                 x1={LEFT_PAD} y1={strY(s)}
                 x2={boardX + count * fretW} y2={strY(s)}
-                stroke="#3A3A46"
+                stroke={COLORS.fb.string}
                 strokeWidth={0.6 + (s / STR_COUNT) * 2}
               />
             </G>
@@ -147,7 +149,7 @@ export default function ExerciseFretboard({ pattern, stepIdx }: Props) {
             <Rect
               x={boardX - NUT_W} y={strY(0) - 10}
               width={NUT_W} height={(STR_COUNT - 1) * STR_H + 20}
-              rx={2.5} fill="#888680"
+              rx={2.5} fill={COLORS.fb.nut}
             />
           )}
 
@@ -157,7 +159,7 @@ export default function ExerciseFretboard({ pattern, stepIdx }: Props) {
               key={i}
               x1={boardX + i * fretW} y1={strY(0) - 8}
               x2={boardX + i * fretW} y2={strY(5) + 8}
-              stroke="#2E2E38" strokeWidth={1}
+              stroke={COLORS.fb.fret} strokeWidth={1}
             />
           ))}
 
@@ -169,7 +171,7 @@ export default function ExerciseFretboard({ pattern, stepIdx }: Props) {
                 key={f}
                 x={fretX(f)} y={height - 5}
                 textAnchor="middle" fontSize={10}
-                fill={COLORS.textFaint} fontFamily={FONT_FAMILY.mono}
+                fill={COLORS.fb.label} fontFamily={FONT_FAMILY.mono}
               >
                 {f}
               </SvgText>
@@ -205,6 +207,6 @@ export default function ExerciseFretboard({ pattern, stepIdx }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles(COLORS => ({
   scroll: { flexGrow: 0 },
-});
+}));

@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { router } from 'expo-router';
-import { COLORS, RADIUS } from '../constants/theme';
+import { COLORS, RADIUS, makeStyles } from '../constants/theme';
 
 interface Props {
   size?: 'sm' | 'md';
@@ -9,6 +9,7 @@ interface Props {
 }
 
 export function ProLockBadge({ size = 'sm', style }: Props) {
+  const styles = useStyles();
   return (
     <View style={[styles.badge, size === 'md' && styles.badgeMd, style]}>
       <Text style={[styles.lock, size === 'md' && styles.lockMd]}>🔒</Text>
@@ -27,6 +28,7 @@ interface RowProps {
 }
 
 export function ProLockedRow({ children, style, onPress }: RowProps) {
+  const styles = useStyles();
   return (
     <TouchableOpacity
       style={[styles.lockedRow, style]}
@@ -45,6 +47,7 @@ export function ProLockedRow({ children, style, onPress }: RowProps) {
  * ProBanner — shown at the top of a list when some items are locked.
  */
 export function ProBanner() {
+  const styles = useStyles();
   return (
     <TouchableOpacity
       style={styles.banner}
@@ -57,7 +60,7 @@ export function ProBanner() {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles(COLORS => ({
   badge: {
     width: 18, height: 18,
     borderRadius: 9,
@@ -89,5 +92,5 @@ const styles = StyleSheet.create({
     marginVertical: 8,
   },
   bannerText: { fontSize: 13, color: COLORS.text, fontWeight: '500', marginBottom: 4 },
-  bannerCta:  { fontSize: 13, color: '#837AB7', fontWeight: '700' },
-});
+  bannerCta:  { fontSize: 13, color: COLORS.accentText, fontWeight: '700' },
+}));

@@ -5,7 +5,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Circle, Line, Rect, Text as SvgText } from 'react-native-svg';
-import { COLORS, SPACE, RADIUS } from '../constants/theme';
+import { COLORS, SPACE, RADIUS, makeStyles } from '../constants/theme';
 
 interface Props {
   onDone: () => void;
@@ -168,6 +168,7 @@ const SLIDES = [
 ];
 
 export default function Onboarding({ onDone }: Props) {
+  const styles = useStyles();
   const { width } = useWindowDimensions();
   const [current, setCurrent] = useState(0);
   const scrollRef = useRef<ScrollView>(null);
@@ -274,7 +275,7 @@ export default function Onboarding({ onDone }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles(COLORS => ({
   safe:             { flex: 1, backgroundColor: COLORS.bg },
   skip:             { position: 'absolute', top: 56, right: 24, zIndex: 10, padding: 8 },
   skipText:         { color: COLORS.textMuted, fontSize: 14 },
@@ -300,4 +301,4 @@ const styles = StyleSheet.create({
 
   btn:              { borderRadius: RADIUS.full, paddingVertical: 16, alignItems: 'center' },
   btnText:          { fontSize: 16, fontWeight: '700' },
-});
+}));

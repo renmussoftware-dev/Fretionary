@@ -5,7 +5,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Circle, Line, Text as SvgText, G, Rect } from 'react-native-svg';
-import { COLORS, SPACE, RADIUS, FONT_FAMILY } from '../../src/constants/theme';
+import { COLORS, SPACE, RADIUS, FONT_FAMILY, makeStyles } from '../../src/constants/theme';
 import { NOTES, NOTE_DISPLAY, CHORDS, OPEN_STRINGS, intervalColor, COLORS as MUSIC_COLORS } from '../../src/constants/music';
 import {
   PROGRESSIONS, GENRES, EXAMPLE_PROGRESSIONS,
@@ -69,26 +69,26 @@ function ProgFretboard({ chordRoot, chordKey, rootLetter, animVal }: {
             const x = FBL + FBNW + f * FBFW - FBFW / 2;
             return f === 12
               ? <G key={f}>
-                  <Circle cx={x} cy={fbY(1.5)} r={3} fill="#252528" />
-                  <Circle cx={x} cy={fbY(3.5)} r={3} fill="#252528" />
+                  <Circle cx={x} cy={fbY(1.5)} r={3} fill={COLORS.fb.inlay} />
+                  <Circle cx={x} cy={fbY(3.5)} r={3} fill={COLORS.fb.inlay} />
                 </G>
-              : <Circle key={f} cx={x} cy={fbY(2.5)} r={3} fill="#252528" />;
+              : <Circle key={f} cx={x} cy={fbY(2.5)} r={3} fill={COLORS.fb.inlay} />;
           })}
           {Array.from({ length: FBSTR }, (_, s) => (
             <Line key={s} x1={FBL} y1={fbY(s)} x2={FBL + FBNW + FBFRETS * FBFW} y2={fbY(s)}
-              stroke="#3A3A46" strokeWidth={0.5 + (s / FBSTR) * 2} />
+              stroke={COLORS.fb.string} strokeWidth={0.5 + (s / FBSTR) * 2} />
           ))}
-          <Rect x={FBL} y={fbY(0) - 8} width={FBNW} height={(FBSTR - 1) * FBSH + 16} rx={2} fill="#888680" />
+          <Rect x={FBL} y={fbY(0) - 8} width={FBNW} height={(FBSTR - 1) * FBSH + 16} rx={2} fill={COLORS.fb.nut} />
           {Array.from({ length: FBFRETS }, (_, i) => i + 1).map(f => (
             <Line key={f} x1={FBL + FBNW + f * FBFW} y1={fbY(0) - 6}
-              x2={FBL + FBNW + f * FBFW} y2={fbY(5) + 6} stroke="#2E2E38" strokeWidth={1} />
+              x2={FBL + FBNW + f * FBFW} y2={fbY(5) + 6} stroke={COLORS.fb.fret} strokeWidth={1} />
           ))}
           {[1, 3, 5, 7, 9, 12].map(f => (
             <SvgText key={f} x={FBL + FBNW + f * FBFW - FBFW / 2} y={FBH - 4}
-              textAnchor="middle" fontSize={8} fill="#4A4A54">{f}</SvgText>
+              textAnchor="middle" fontSize={8} fill={COLORS.fb.label}>{f}</SvgText>
           ))}
           {['e', 'B', 'G', 'D', 'A', 'E'].map((n, s) => (
-            <SvgText key={s} x={FBL - 6} y={fbY(s) + 4} textAnchor="middle" fontSize={9} fill="#888680">{n}</SvgText>
+            <SvgText key={s} x={FBL - 6} y={fbY(s) + 4} textAnchor="middle" fontSize={9} fill={COLORS.fb.label}>{n}</SvgText>
           ))}
           {Array.from({ length: FBSTR }, (_, s) =>
             Array.from({ length: FBFRETS + 1 }, (_, f) => {
@@ -105,7 +105,7 @@ function ProgFretboard({ chordRoot, chordKey, rootLetter, animVal }: {
               const { fill, stroke, text: tc } =
                 ni === chordRoot ? MUSIC_COLORS.root :
                 symbol ? intervalColor(symbol) :
-                { fill: '#3A3A46', stroke: '#52525F', text: '#C0BEB8' };
+                COLORS.tone;
               // Spell by the interval role resolved above so a min7 chord in
               // the progression reads E♭/B♭ rather than D#/A#.
               const noteName = symbol
@@ -130,6 +130,7 @@ function ProgFretboard({ chordRoot, chordKey, rootLetter, animVal }: {
 function MiniBox({ root, chordKey, numeral, active, onPress }: {
   root: number; chordKey: string; numeral: string; active: boolean; onPress: () => void;
 }) {
+  const styles = useStyles();
   return (
     <TouchableOpacity onPress={onPress} activeOpacity={0.8}
       style={[styles.miniBox, active && styles.miniBoxActive]}>
@@ -141,6 +142,7 @@ function MiniBox({ root, chordKey, numeral, active, onPress }: {
 
 
 export default function ProgressionsScreen() {
+  const styles = useStyles();
   const { width: screenW, height: screenH } = useWindowDimensions();
   const isTablet = screenW >= 768;
   const { root, setRoot } = useStore();
@@ -938,7 +940,7 @@ export default function ProgressionsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles(COLORS => ({
   safe:           { flex: 1, backgroundColor: COLORS.bg },
   header:         {
                     backgroundColor: COLORS.surface,
@@ -1085,12 +1087,12 @@ const styles = StyleSheet.create({
                     borderWidth: 1, borderColor: COLORS.border,
                     backgroundColor: COLORS.surfaceHigh,
                   },
-  chordChipActive:{ borderColor: '#E8D44D' },
+  chordChipActive:{ borderColor: COLORS.gold },
   chordChipTxt:   {
                     fontSize: 13, fontWeight: '600', color: COLORS.textMuted,
                     fontFamily: FONT_FAMILY.mono,
                   },
-  chordChipTxtActive: { color: '#E8D44D' },
+  chordChipTxtActive: { color: COLORS.gold },
   activeName:     { fontSize: 24, fontWeight: '700', color: COLORS.text, marginTop: SPACE.sm },
   activeIntervals:{ fontSize: 11, color: COLORS.textMuted, letterSpacing: 0.4, marginTop: 3 },
   activeProgName: { fontSize: 11, color: COLORS.textFaint, marginTop: 6, fontWeight: '600' },
@@ -1152,9 +1154,9 @@ const styles = StyleSheet.create({
                   },
   boxRow:         { paddingHorizontal: SPACE.md, gap: 8, paddingBottom: SPACE.md },
   miniBox:        { alignItems: 'center', padding: 7, borderRadius: RADIUS.md, borderWidth: 1, borderColor: COLORS.border, backgroundColor: COLORS.surface, minWidth: 70 },
-  miniBoxActive:  { borderColor: '#E8D44D', backgroundColor: COLORS.surfaceHigh },
+  miniBoxActive:  { borderColor: COLORS.gold, backgroundColor: COLORS.surfaceHigh },
   miniNum:        { fontSize: 11, fontWeight: '700', color: COLORS.textMuted, marginBottom: 3 },
-  miniNumActive:  { color: '#E8D44D' },
+  miniNumActive:  { color: COLORS.gold },
   miniName:       { fontSize: 8, color: COLORS.textFaint, marginTop: 1 },
   miniNameActive: { color: COLORS.textMuted },
   descCard:       { marginHorizontal: SPACE.md, marginBottom: SPACE.md, backgroundColor: COLORS.surface, borderRadius: RADIUS.md, padding: SPACE.md, borderWidth: 1, borderColor: COLORS.border },
@@ -1177,4 +1179,4 @@ const styles = StyleSheet.create({
   modalNotePillActive: { backgroundColor: '#E8D44D', borderColor: '#C4A800' },
   modalNoteText:       { fontSize: 13, fontWeight: '600', color: COLORS.textMuted },
   modalNoteTextActive: { color: '#5C4400' },
-});
+}));

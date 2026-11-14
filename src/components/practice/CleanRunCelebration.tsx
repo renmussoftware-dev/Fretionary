@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Modal, Animated, Easing } from 'react-native';
-import { COLORS, FONT_FAMILY, RADIUS, SPACE } from '../../constants/theme';
+import { COLORS, FONT_FAMILY, RADIUS, SPACE, makeStyles } from '../../constants/theme';
 
 interface Props {
   bpm: number;
@@ -17,6 +17,7 @@ const GREEN = '#3FCB9C';
  * old best to the new one, with the gain and next session's tempo under it.
  */
 export default function CleanRunCelebration({ bpm, prevBest, nextBpm, onContinue }: Props) {
+  const styles = useStyles();
   const isFirst = prevBest === null;
   const isNewBest = isFirst || bpm > prevBest;
   const from = isNewBest ? (prevBest ?? Math.max(0, bpm - 40)) : bpm;
@@ -101,7 +102,7 @@ export default function CleanRunCelebration({ bpm, prevBest, nextBpm, onContinue
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles(COLORS => ({
   backdrop: {
     flex: 1, alignItems: 'center', justifyContent: 'center',
     padding: SPACE.lg, backgroundColor: 'rgba(0,0,0,0.6)',
@@ -113,7 +114,7 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.surface,
   },
   eyebrow: {
-    fontSize: 11, fontWeight: '700', color: GREEN,
+    fontSize: 11, fontWeight: '700', color: COLORS.success,
     letterSpacing: 1.6, textTransform: 'uppercase', fontFamily: FONT_FAMILY.mono,
     marginBottom: SPACE.sm,
   },
@@ -133,7 +134,7 @@ const styles = StyleSheet.create({
     marginBottom: SPACE.sm,
   },
   badgeQuiet: { backgroundColor: COLORS.surfaceHigh, borderColor: COLORS.border },
-  badgeText: { fontSize: 14, fontWeight: '800', color: GREEN, fontVariant: ['tabular-nums'] },
+  badgeText: { fontSize: 14, fontWeight: '800', color: COLORS.success, fontVariant: ['tabular-nums'] },
   badgeTextQuiet: { color: COLORS.textMuted, fontWeight: '600' },
   fromTo: { fontSize: 12, color: COLORS.textMuted, fontFamily: FONT_FAMILY.mono, marginBottom: 4 },
   next: { fontSize: 13, color: COLORS.textMuted, marginBottom: SPACE.lg },
@@ -143,4 +144,4 @@ const styles = StyleSheet.create({
     borderRadius: RADIUS.full, backgroundColor: '#1D9E75',
   },
   btnText: { fontSize: 15, fontWeight: '700', color: '#fff' },
-});
+}));

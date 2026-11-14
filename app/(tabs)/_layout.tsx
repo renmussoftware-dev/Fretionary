@@ -1,9 +1,10 @@
 import { Tabs } from 'expo-router';
 import { View, StyleSheet } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { COLORS, RADIUS } from '../../src/constants/theme';
+import { COLORS, RADIUS, makeStyles, useThemeName } from '../../src/constants/theme';
 
 function TabIcon({ focused, children }: { focused: boolean; children: React.ReactNode }) {
+  const styles = useStyles();
   return (
     <View style={[styles.iconWrap, focused && styles.iconWrapActive]}>
       {children}
@@ -12,6 +13,7 @@ function TabIcon({ focused, children }: { focused: boolean; children: React.Reac
 }
 
 export default function TabLayout() {
+  useThemeName();
   const insets = useSafeAreaInsets();
   const tabBarHeight = 54 + insets.bottom;
 
@@ -141,7 +143,7 @@ function ToolsIcon({ color }: { color: string }) {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles(COLORS => ({
   iconWrap: { alignItems: 'center', justifyContent: 'center' },
   iconWrapActive: {},
-});
+}));
