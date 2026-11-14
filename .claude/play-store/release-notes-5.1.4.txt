@@ -1,8 +1,10 @@
 <en-US>
-• Triads in any scale: see and hear the major and minor triads, with R/3/5 labels and inversions on 3-string sets
+• Triads in any scale, with R/3/5 labels and inversions on 3-string sets
 • 3-notes-per-string patterns for every scale
-• True two-notes-per-string pentatonic and blues boxes, numbered the standard way
-• CAGED rebuilt: full scale windows, major and minor, and four layers
+• True two-notes-per-string pentatonic and blues boxes
+• CAGED rebuilt: full scale windows, major and minor, four layers
+• Every chord now has voicings in every key, open shapes first
+• 9ths, 11ths and 13ths get their own colors
 • Save your custom progressions
 • Best-tempo celebration in Exercises
 • 4 new tunings: B, Bb, A and Ab Standard
